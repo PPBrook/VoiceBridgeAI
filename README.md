@@ -10,6 +10,7 @@ AI 同声传译助手 — 实时将英文音频翻译为中文（字幕 / 语音
 - Chrome 标签页音频捕获
 - WebSocket 实时传输 PCM
 - 英文语音识别（Whisper base.en）→ 按句字幕（VAD 静音分句）
+- 英文 → 中文机器翻译（双语字幕）
 
 ## 快速启动
 
@@ -41,6 +42,7 @@ cd server && python main.py
 | [Uvicorn](https://www.uvicorn.org/)                         | ASGI 服务器            | uvicorn.org                       |
 | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) | 英文 ASR（Whisper 推理）  | github.com/SYSTRAN/faster-whisper |
 | [NumPy](https://numpy.org/)                                 | PCM 重采样与数组处理        | numpy.org                         |
+| [deep-translator](https://github.com/nidhaloff/deep-translator) | 英译中（Google Translate 非官方接口） | github.com/nidhaloff/deep-translator |
 
 
 运行时模型：`Systran/faster-whisper-base.en`（首次启动自动下载）
@@ -55,5 +57,6 @@ cd server && python main.py
 - PCM 采集与 WebSocket 传输（`static/js/app.js`、`server/main.py`）
 - 音频缓冲、重采样与 ASR 调度（`server/asr.py`）
 - RMS 静音检测与按句切分（`server/vad.py`）
-- 字幕展示与状态 UI（`static/`）
+- 英译中翻译（`server/translate.py`）
+- 双语字幕展示（`static/`）
 

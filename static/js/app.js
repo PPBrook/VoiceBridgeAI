@@ -59,9 +59,18 @@ function connectWs(sampleRate) {
         const msg = JSON.parse(ev.data);
         if (msg.type === "asr" && msg.text) {
           const li = document.createElement("li");
-          li.textContent = msg.text;
           if (msg.segmentId != null) {
             li.dataset.segmentId = String(msg.segmentId);
+          }
+          const en = document.createElement("div");
+          en.className = "seg-en";
+          en.textContent = msg.text;
+          li.appendChild(en);
+          if (msg.translation) {
+            const zh = document.createElement("div");
+            zh.className = "seg-zh";
+            zh.textContent = msg.translation;
+            li.appendChild(zh);
           }
           segmentsEl.appendChild(li);
         }
