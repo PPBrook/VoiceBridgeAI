@@ -19,6 +19,21 @@ button {
 
 button:disabled { opacity: 0.6; cursor: wait; }
 
+.hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  color: #80868b;
+  line-height: 1.5;
+}
+
+.hint.warn {
+  padding: 0.625rem 0.75rem;
+  color: #fbbf24;
+  background: #1c1510;
+  border: 1px solid #5c4a1f;
+  border-radius: 6px;
+}
+
 #status {
   margin: 0.75rem 0 0;
   font-size: 0.875rem;

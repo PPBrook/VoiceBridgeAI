@@ -5,7 +5,8 @@
 - FastAPI 服务
 - 静态页面入口
 - `GET /api/health` 健康检查
-- 浏览器标签页音频捕获（Chrome，需勾选「分享标签页音频」）
+- 浏览器标签页音频捕获（**Chrome / Edge**）
+- WebSocket 实时传输 PCM 到服务端
 
 ## 快速启动
 
@@ -21,7 +22,7 @@ chmod +x run.sh && ./run.sh
 curl http://127.0.0.1:8765/api/health
 ```
 
-浏览器访问：<http://127.0.0.1:8765>
+浏览器访问：<http://127.0.0.1:8765>（须用 **Chrome**，不要用 `0.0.0.0` 或 Cursor 内置浏览器）
 
 ## 手动启动
 

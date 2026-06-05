@@ -4,15 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>VoiceBridgeAI</title>
+  <link rel="icon" href="data:," />
   <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
   <main>
     <h1>VoiceBridgeAI</h1>
-    <button type="button" id="capture">捕获标签页音频</button>
+    <button type="button" id="capture">捕获音频</button>
+    <p id="hint" class="hint"></p>
     <p id="status">idle</p>
     <pre id="health">…</pre>
   </main>
+  <script src="/static/js/capture.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>
