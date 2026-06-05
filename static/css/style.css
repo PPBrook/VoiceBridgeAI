@@ -5,7 +5,26 @@ body {
   color: #e8eaed;
 }
 
-h1 { font-size: 1.25rem; font-weight: 600; }
+h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; }
+
+button {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  color: #e8eaed;
+  background: #1a73e8;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+button:disabled { opacity: 0.6; cursor: wait; }
+
+#status {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  color: #9aa0a6;
+  font-family: ui-monospace, monospace;
+}
 
 pre {
   margin-top: 1rem;
