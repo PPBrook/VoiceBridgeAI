@@ -34,6 +34,11 @@ def region() -> str:
     return os.getenv("TMT_REGION", "ap-guangzhou").strip() or "ap-guangzhou"
 
 
+def reset_client() -> None:
+    global _client
+    _client = None
+
+
 def _client_instance():
     global _client
     if _client is not None:

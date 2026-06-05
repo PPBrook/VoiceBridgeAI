@@ -6,6 +6,61 @@ const captureBtn = document.getElementById("capture");
 const asrModeEl = document.getElementById("asr-mode");
 const translateModeEl = document.getElementById("translate-mode");
 const engineSettingsNoteEl = document.getElementById("engine-settings-note");
+const tencentAppIdEl = document.getElementById("tencent-app-id");
+const tencentSecretIdEl = document.getElementById("tencent-secret-id");
+const tencentSecretKeyEl = document.getElementById("tencent-secret-key");
+const tencentEngineEl = document.getElementById("tencent-engine");
+const tencentTmtRegionEl = document.getElementById("tencent-tmt-region");
+const tencentTmtProjectIdEl = document.getElementById("tencent-tmt-project-id");
+const qiniuApiKeyEl = document.getElementById("qiniu-api-key");
+const qiniuBaseUrlEl = document.getElementById("qiniu-base-url");
+const qiniuModelEl = document.getElementById("qiniu-model");
+const saveCloudBtn = document.getElementById("save-cloud");
+const cloudSettingsNoteEl = document.getElementById("cloud-settings-note");
+const toggleCloudBtn = document.getElementById("toggle-cloud");
+const cloudSettingsEl = document.getElementById("cloud-settings");
+const toggleCloudAdvancedBtn = document.getElementById("toggle-cloud-advanced");
+const cloudAdvancedEl = document.getElementById("cloud-advanced");
+
+const cloudInputs = [
+  tencentAppIdEl,
+  tencentSecretIdEl,
+  tencentSecretKeyEl,
+  tencentEngineEl,
+  tencentTmtRegionEl,
+  tencentTmtProjectIdEl,
+  qiniuApiKeyEl,
+  qiniuBaseUrlEl,
+  qiniuModelEl,
+  saveCloudBtn,
+  toggleCloudAdvancedBtn,
+];
+
+let cloudPanelOpen = false;
+let cloudAdvancedOpen = false;
+
+function setCloudPanelOpen(open) {
+  cloudPanelOpen = open;
+  cloudSettingsEl.hidden = !open;
+  toggleCloudBtn.textContent = open ? "收起 API 配置 ▴" : "API 配置 ▾";
+  if (!open) setCloudAdvancedOpen(false);
+}
+
+function setCloudAdvancedOpen(open) {
+  cloudAdvancedOpen = open;
+  cloudAdvancedEl.hidden = !open;
+  toggleCloudAdvancedBtn.textContent = open
+    ? "收起高级选项 ▴"
+    : "高级选项 ▾";
+}
+
+function cloudNeedsTencent(d) {
+  return d.asrMode === "tencent" || d.translateMode === "dual";
+}
+
+function cloudNeedsQiniu(d) {
+  return d.translateMode === "dual";
+}
 
 let stream = null;
 let audioCtx = null;
@@ -24,6 +79,61 @@ function engineConfig() {
 function setSettingsEnabled(enabled) {
   asrModeEl.disabled = !enabled;
   translateModeEl.disabled = !enabled;
+  toggleCloudBtn.disabled = !enabled;
+  cloudInputs.forEach((el) => {
+    if (el) el.disabled = !enabled;
+  });
+}
+
+function applyCloudStatus(d) {
+  const t = d.tencent || {};
+  const q = d.qiniu || {};
+  if (t.appId) tencentAppIdEl.value = t.appId;
+  if (t.engine) tencentEngineEl.value = t.engine;
+  if (t.tmtRegion) tencentTmtRegionEl.value = t.tmtRegion;
+  if (t.tmtProjectId) tencentTmtProjectIdEl.value = t.tmtProjectId;
+  tencentSecretIdEl.placeholder = t.hasSecretId
+    ? "已配置，留空不修改"
+    : "粘贴 SecretId";
+  tencentSecretKeyEl.placeholder = t.hasSecretKey
+    ? "已配置，留空不修改"
+    : "粘贴 SecretKey";
+  if (q.baseUrl) qiniuBaseUrlEl.value = q.baseUrl;
+  if (q.model) qiniuModelEl.value = q.model;
+  qiniuApiKeyEl.placeholder = q.hasApiKey ? "已配置，留空不修改" : "粘贴 API Key";
+
+  const issues = [];
+  if (cloudNeedsTencent(d)) {
+    if (d.asrMode === "tencent" && !t.asrConfigured) {
+      issues.push("腾讯云 ASR 未配置（AppId + Secret）");
+    }
+    if (cloudNeedsQiniu(d) && !t.tmtConfigured) {
+      issues.push("腾讯云 TMT 未配置（SecretId + SecretKey）");
+    }
+  }
+  if (cloudNeedsQiniu(d) && !q.configured) {
+    issues.push("七牛 Key 未配置");
+  }
+
+  let line = "";
+  let warn = false;
+  if (issues.length) {
+    line = issues.join(" · ");
+    warn = true;
+  } else if (d.asrMode === "tencent" && d.translateMode === "dual") {
+    line = "演示路径就绪：腾讯云 ASR + TMT + 七牛润色";
+  } else if (cloudNeedsQiniu(d)) {
+    line = "双引擎就绪";
+  } else if (cloudNeedsTencent(d) && t.asrConfigured) {
+    line = "腾讯云 ASR 已配置";
+  } else {
+    line = "当前引擎组合无需云端 Key";
+  }
+  cloudSettingsNoteEl.textContent = line;
+  cloudSettingsNoteEl.classList.toggle("warn", warn);
+  if (!cloudPanelOpen) {
+    toggleCloudBtn.title = issues.length ? issues[0] : line;
+  }
 }
 
 function applyEngineStatus(d) {
@@ -77,6 +187,7 @@ function applyEngineStatus(d) {
   } else if (d.translateMode === "dual" && (!d.tmtConfigured || !d.qiniuConfigured)) {
     engineSettingsNoteEl.classList.add("warn");
   }
+  applyCloudStatus(d);
 }
 
 fetch("/api/health")
@@ -316,6 +427,7 @@ function stopCapture() {
 
 async function startCapture() {
   captureBtn.disabled = true;
+  setCloudPanelOpen(false);
   setSettingsEnabled(false);
   setStatus("loading asr…");
 
@@ -385,6 +497,68 @@ asrModeEl.addEventListener("change", () => {
 translateModeEl.addEventListener("change", () => {
   if (active) return;
   postEngineSettings().catch(() => {});
+});
+
+function cloudConfigPayload() {
+  const tencent = {};
+  const appId = tencentAppIdEl.value.trim();
+  const engine = tencentEngineEl.value.trim();
+  const tmtRegion = tencentTmtRegionEl.value.trim();
+  const tmtProjectId = tencentTmtProjectIdEl.value.trim();
+  if (appId) tencent.appId = appId;
+  if (engine) tencent.engine = engine;
+  if (tmtRegion) tencent.tmtRegion = tmtRegion;
+  if (tmtProjectId) tencent.tmtProjectId = tmtProjectId;
+  const secretId = tencentSecretIdEl.value.trim();
+  const secretKey = tencentSecretKeyEl.value.trim();
+  if (secretId) tencent.secretId = secretId;
+  if (secretKey) tencent.secretKey = secretKey;
+
+  const qiniu = {};
+  const baseUrl = qiniuBaseUrlEl.value.trim();
+  const model = qiniuModelEl.value.trim();
+  if (baseUrl) qiniu.baseUrl = baseUrl;
+  if (model) qiniu.model = model;
+  const qKey = qiniuApiKeyEl.value.trim();
+  if (qKey) qiniu.apiKey = qKey;
+  return {
+    ...engineConfig(),
+    tencent,
+    qiniu,
+  };
+}
+
+async function postCloudSettings() {
+  const r = await fetch("/api/cloud/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(cloudConfigPayload()),
+  });
+  const d = await r.json();
+  applyEngineStatus(d);
+  applyCloudStatus(d);
+  tencentSecretIdEl.value = "";
+  tencentSecretKeyEl.value = "";
+  qiniuApiKeyEl.value = "";
+  cloudSettingsNoteEl.textContent += " · 已保存";
+}
+
+saveCloudBtn.addEventListener("click", () => {
+  if (active) return;
+  postCloudSettings().catch(() => {
+    cloudSettingsNoteEl.textContent = "保存失败";
+    cloudSettingsNoteEl.classList.add("warn");
+  });
+});
+
+toggleCloudBtn.addEventListener("click", () => {
+  if (active) return;
+  setCloudPanelOpen(!cloudPanelOpen);
+});
+
+toggleCloudAdvancedBtn.addEventListener("click", () => {
+  if (active) return;
+  setCloudAdvancedOpen(!cloudAdvancedOpen);
 });
 
 captureBtn.addEventListener("click", () => {
