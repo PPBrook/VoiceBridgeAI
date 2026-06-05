@@ -12,9 +12,9 @@ from translate_tmt import region as tmt_region
 
 # 页面展示（定版 3 项）
 UI_TRANSLATE_MODES = (
-    {"id": "dual", "label": "双引擎（TMT 草稿 + 七牛润色）"},
-    {"id": "argos", "label": "Argos 离线翻译"},
-    {"id": "local", "label": "Google 在线（无需密钥）"},
+    {"id": "dual", "label": "云端双擎翻译 · 快译+润色"},
+    {"id": "argos", "label": "本地离线翻译 · 无需密钥"},
+    {"id": "local", "label": "联网在线翻译 · 免费兜底"},
 )
 
 _UI_IDS = frozenset(m["id"] for m in UI_TRANSLATE_MODES)

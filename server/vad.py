@@ -82,8 +82,11 @@ class UtteranceEngine:
 class ReviseEngine:
     """VAD buffer with periodic refine while the speaker is still talking."""
 
-    def __init__(self, sample_rate: int) -> None:
+    def __init__(self, sample_rate: int, refine_interval_s: float | None = None) -> None:
         self.sample_rate = sample_rate
+        self.refine_interval_s = (
+            refine_interval_s if refine_interval_s is not None else REFINE_INTERVAL_S
+        )
         self.buffer = PcmBuffer()
         self.silence_samples = 0
         self.next_segment_id = 0
@@ -91,8 +94,10 @@ class ReviseEngine:
         self.current_seg_id = 0
         self.samples_since_refine = 0
 
-    def reset(self, sample_rate: int) -> None:
+    def reset(self, sample_rate: int, refine_interval_s: float | None = None) -> None:
         self.sample_rate = sample_rate
+        if refine_interval_s is not None:
+            self.refine_interval_s = refine_interval_s
         self.buffer = PcmBuffer()
         self.silence_samples = 0
         self.in_utterance = False
@@ -119,7 +124,7 @@ class ReviseEngine:
 
         dur = self.buffer.duration(self.sample_rate)
         silence_s = self.silence_samples / self.sample_rate
-        refine_samples = int(REFINE_INTERVAL_S * self.sample_rate)
+        refine_samples = int(self.refine_interval_s * self.sample_rate)
 
         if self.in_utterance:
             self.samples_since_refine += n_samples
