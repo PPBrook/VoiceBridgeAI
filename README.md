@@ -17,10 +17,10 @@ chmod +x run.sh && ./run.sh
 另开终端验证：
 
 ```bash
-curl http://localhost:8765/api/health
+curl http://127.0.0.1:8765/api/health
 ```
 
-浏览器打开 **http://localhost:8765**（不要用 `0.0.0.0`）。
+浏览器访问：<http://127.0.0.1:8765>
 
 ## 手动启动
 
