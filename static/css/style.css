@@ -112,6 +112,15 @@ button:disabled { opacity: 0.6; cursor: wait; }
   color: #5f6368;
 }
 
+.segments li.revise-flash {
+  animation: revise-flash 0.45s ease;
+}
+
+@keyframes revise-flash {
+  from { background: rgba(26, 115, 232, 0.22); }
+  to { background: transparent; }
+}
+
 .seg-en {
   font-size: 0.9375rem;
   color: #9aa0a6;

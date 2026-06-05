@@ -1,4 +1,4 @@
-"""VoiceBridgeAI — tab capture, PCM, ASR (Tencent / local), translate."""
+"""VoiceBridgeAI — tab capture, PCM, ASR (Tencent / local), translate, revise."""
 
 import asyncio
 import json
@@ -12,9 +12,11 @@ from fastapi.staticfiles import StaticFiles
 
 from asr_config import default_mode, get_status as get_asr_status, normalize_mode
 from pcm import PcmFramer, resample_to_16k
+from revise import ReviseScheduler
 from tencent_asr import TencentAsrStream, configured as tencent_configured
-from translate import translate as translate_zh
-from vad import UtteranceEngine
+from translate import get_status as get_translate_status
+from translate import translate_final, translate_partial
+from vad import ReviseEngine
 from whisper_asr import load_model as load_whisper
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -53,6 +55,8 @@ FEATURES = [
     "asr-settings",
     "utterance-vad",
     "translate-zh",
+    "translate-dual-engine",
+    "subtitle-revise",
 ]
 
 
@@ -73,9 +77,10 @@ def health():
     return {
         "status": "ok",
         "version": "0.1.0",
-        "pr": 8,
+        "pr": 10,
         "features": FEATURES,
         **get_asr_status(),
+        **get_translate_status(),
     }
 
 
@@ -100,10 +105,9 @@ async def websocket_pcm(ws: WebSocket):
     asr_mode = default_mode()
     alive = True
     tencent: TencentAsrStream | None = None
-    engine: UtteranceEngine | None = None
+    engine: ReviseEngine | None = None
     framer = PcmFramer()
-    pipeline_lock = asyncio.Lock()
-    translate_lock = asyncio.Lock()
+    local_tasks: dict[int, asyncio.Task] = {}
     log.info("client connected")
 
     def mark_dead() -> None:
@@ -120,76 +124,55 @@ async def websocket_pcm(ws: WebSocket):
             mark_dead()
             return False
 
-    async def emit_local(seg_id: int, pcm: bytes) -> None:
+    revise = ReviseScheduler(translate_partial, translate_final, send_json)
+
+    def cancel_local_task(seg_id: int) -> None:
+        task = local_tasks.pop(seg_id, None)
+        if task and not task.done():
+            task.cancel()
+
+    async def run_local(seg_id: int, pcm: bytes, *, final: bool) -> None:
         from whisper_asr import transcribe
 
-        if not alive:
-            return
-        async with pipeline_lock:
+        try:
+            if not alive:
+                return
             text = await asyncio.to_thread(transcribe, pcm, sample_rate)
             if not text or not alive:
                 return
-            await send_json(
-                {
-                    "type": "asr",
-                    "segmentId": seg_id,
-                    "text": text,
-                    "translation": "",
-                    "partial": False,
-                    "final": False,
-                }
-            )
-        async with translate_lock:
-            zh = await asyncio.to_thread(translate_zh, text)
-        if not alive:
-            return
-        await send_json(
-            {
-                "type": "asr",
-                "segmentId": seg_id,
-                "text": text,
-                "translation": zh,
-                "partial": False,
-                "final": True,
-            }
-        )
-        log.info("segment %d [local]: %s → %s", seg_id, text, zh)
+            if final:
+                await revise.finalize(seg_id, text)
+                log.info("segment %d [local final]: %s", seg_id, text)
+            else:
+                await revise.emit_english(seg_id, text, partial=True, final=False)
+                await revise.schedule_partial_translation(seg_id, text)
+                log.info("segment %d [local refine]: %s", seg_id, text)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("local refine failed seg=%s", seg_id)
+
+    def schedule_local(seg_id: int, pcm: bytes, *, final: bool) -> None:
+        cancel_local_task(seg_id)
+        local_tasks[seg_id] = asyncio.create_task(run_local(seg_id, pcm, final=final))
 
     async def handle_tencent(index: int, text: str, is_final: bool) -> None:
         if not alive or not text:
             return
         if is_final:
-            async with translate_lock:
-                zh = await asyncio.to_thread(translate_zh, text)
-            if not alive:
-                return
-            await send_json(
-                {
-                    "type": "asr",
-                    "segmentId": index,
-                    "text": text,
-                    "translation": zh,
-                    "partial": False,
-                    "final": True,
-                }
-            )
-            log.info("segment %d [tencent final]: %s → %s", index, text, zh)
+            await revise.finalize(index, text)
+            log.info("segment %d [tencent final]: %s", index, text)
         else:
-            await send_json(
-                {
-                    "type": "asr",
-                    "segmentId": index,
-                    "text": text,
-                    "translation": "",
-                    "partial": True,
-                    "final": False,
-                }
-            )
+            await revise.emit_english(index, text, partial=True, final=False)
+            await revise.schedule_partial_translation(index, text)
 
     async def start_asr(mode: str) -> bool:
         nonlocal tencent, engine, framer, asr_mode
         asr_mode = normalize_mode(mode)
         framer = PcmFramer()
+        revise.clear()
+        for seg_id in list(local_tasks):
+            cancel_local_task(seg_id)
         if tencent:
             await tencent.close()
             tencent = None
@@ -220,7 +203,7 @@ async def websocket_pcm(ws: WebSocket):
                 return False
         else:
             await asyncio.to_thread(load_whisper)
-            engine = UtteranceEngine(sample_rate)
+            engine = ReviseEngine(sample_rate)
         await send_json({"type": "asrReady", **get_asr_status(asr_mode)})
         log.info("asr ready mode=%s sampleRate=%s", asr_mode, sample_rate)
         return True
@@ -254,15 +237,20 @@ async def websocket_pcm(ws: WebSocket):
                     for frame in framer.push(pcm16):
                         await tencent.send_pcm(frame)
                 elif engine is not None:
-                    result = engine.feed(msg["bytes"])
-                    if result:
-                        seg_id, pcm = result
-                        asyncio.create_task(emit_local(seg_id, pcm))
+                    for kind, seg_id, pcm in engine.feed(msg["bytes"]):
+                        schedule_local(
+                            seg_id,
+                            pcm,
+                            final=(kind == "final"),
+                        )
 
     except WebSocketDisconnect:
         mark_dead()
     finally:
         mark_dead()
+        revise.clear()
+        for seg_id in list(local_tasks):
+            cancel_local_task(seg_id)
         if tencent:
             tail = framer.flush()
             if tail:
@@ -272,10 +260,9 @@ async def websocket_pcm(ws: WebSocket):
                     pass
             await tencent.close()
         if engine:
-            flushed = engine.flush()
-            if flushed and alive:
-                seg_id, pcm = flushed
-                await emit_local(seg_id, pcm)
+            for kind, seg_id, pcm in engine.flush():
+                if alive:
+                    await run_local(seg_id, pcm, final=(kind == "final"))
         log.info("client disconnected")
 
 
