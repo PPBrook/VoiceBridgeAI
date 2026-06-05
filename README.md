@@ -32,29 +32,6 @@ Chrome PCM → WebSocket /ws → VAD 静音分句 → Whisper tiny.en
   → 英文 → Google 翻译 → 双语字幕
 ```
 
-## 从 GitHub 获取代码
-
-**首次克隆：**
-
-```bash
-git clone https://github.com/PPBrook/VoiceBridgeAI.git
-cd VoiceBridgeAI
-cp .env.example .env
-chmod +x run.sh
-./run.sh
-```
-
-**已有本地仓库，同步最新代码：**
-
-```bash
-cd VoiceBridgeAI
-git pull origin main
-cp .env.example .env   # 首次拉取后若尚无 .env
-./run.sh
-```
-
-仓库地址：[https://github.com/PPBrook/VoiceBridgeAI](https://github.com/PPBrook/VoiceBridgeAI)
-
 ## 快速启动
 
 ### 方式 A：仅本地 Whisper（最简单）
