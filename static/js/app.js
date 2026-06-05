@@ -45,6 +45,9 @@ function applyAsrStatus(d) {
     asrSettingsNoteEl.classList.add("warn");
     asrSettingsNoteEl.textContent += " · 未配置腾讯云密钥，仅可用本地模式";
   }
+  if (d.translatePartial || d.translateFinal) {
+    asrSettingsNoteEl.textContent += ` · 译 partial=${d.translatePartial || "?"} final=${d.translateFinal || "?"}`;
+  }
 }
 
 fetch("/api/health")
@@ -86,6 +89,7 @@ function wsUrl() {
 function applySegment(msg) {
   const id = String(msg.segmentId ?? segmentsEl.children.length);
   let li = segmentsEl.querySelector(`li[data-segment-id="${id}"]`);
+  const isNew = !li;
   if (!li) {
     li = document.createElement("li");
     li.dataset.segmentId = id;
@@ -96,17 +100,26 @@ function applySegment(msg) {
     li.append(en, zh);
     segmentsEl.appendChild(li);
   }
-  li.querySelector(".seg-en").textContent = msg.text;
+  if (msg.text) {
+    li.querySelector(".seg-en").textContent = msg.text;
+  }
   const zhEl = li.querySelector(".seg-zh");
   if (msg.translation) {
     zhEl.textContent = msg.translation;
     zhEl.classList.remove("placeholder");
   } else if (!msg.final) {
-    zhEl.textContent = "翻译中…";
-    zhEl.classList.add("placeholder");
+    if (!zhEl.textContent || zhEl.classList.contains("placeholder")) {
+      zhEl.textContent = "…";
+      zhEl.classList.add("placeholder");
+    }
   }
   li.classList.toggle("partial", !!msg.partial && !msg.final);
   li.classList.toggle("final", !!msg.final);
+  if (msg.revise && !isNew) {
+    li.classList.remove("revise-flash");
+    void li.offsetWidth;
+    li.classList.add("revise-flash");
+  }
 }
 
 function connectWs(sampleRate) {

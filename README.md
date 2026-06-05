@@ -12,9 +12,9 @@ AI 同声传译助手 — 实时将英文音频翻译为中文双语字幕。
 - **双 ASR 引擎**（页面可切换）：
   - **腾讯云实时 ASR** — 流式英文，`16k_en`
   - **本地 Whisper** — `tiny.en`，VAD 分句，无需腾讯云
-- 腾讯云模式：英文 partial 边说边出，句末出中文
-- 本地模式：按句识别 + 翻译
-- 英译中（Google Translate，`deep-translator`）
+- 腾讯云模式：英文 partial 边说边出，句末定稿；识别/翻译变化时**原地修正**（`revise`）
+- 本地模式：句中每 0.8s 重识别 + 翻译修正，静音后定稿
+- 英译中：**partial 腾讯 TMT**（快）→ **final 七牛 LLM**（润色）；未配置时回退 Google
 
 ## 架构
 
@@ -116,6 +116,15 @@ curl -X POST http://127.0.0.1:8765/api/asr/settings \
   -H "Content-Type: application/json" \
   -d '{"asrMode":"local"}'
 ```
+
+## 翻译双引擎
+
+| 阶段 | 引擎 | 环境变量 |
+|------|------|----------|
+| partial（句中草稿） | 腾讯 TMT | 与 ASR 共用 `TENCENT_ASR_SECRET_*` |
+| final（句末定稿） | 七牛 LLM | `QINIU_AI_API_KEY`、`QINIU_AI_MODEL` |
+
+未配置时自动回退 Google（`deep-translator`）。`/api/health` 可见 `translatePartial` / `translateFinal`。
 
 ## 手动启动
 
