@@ -3,6 +3,8 @@ const statusEl = document.getElementById("status");
 const segmentsEl = document.getElementById("segments");
 const hintEl = document.getElementById("hint");
 const captureBtn = document.getElementById("capture");
+const asrModeEl = document.getElementById("asr-mode");
+const asrSettingsNoteEl = document.getElementById("asr-settings-note");
 
 let stream = null;
 let audioCtx = null;
@@ -14,9 +16,41 @@ let lastLevel = 0;
 let pumpTask = null;
 let active = false;
 
+function asrConfig() {
+  return { asrMode: asrModeEl.value };
+}
+
+function setSettingsEnabled(enabled) {
+  asrModeEl.disabled = !enabled;
+}
+
+function applyAsrStatus(d) {
+  if (!d.asrModes?.length) return;
+  asrModeEl.replaceChildren(
+    ...d.asrModes.map((m) => {
+      const opt = document.createElement("option");
+      opt.value = m.id;
+      opt.textContent = m.label;
+      return opt;
+    })
+  );
+  asrModeEl.value = d.asrMode || asrModeEl.options[0]?.value || "local";
+  asrSettingsNoteEl.classList.remove("warn");
+  if (d.asrMode === "tencent") {
+    asrSettingsNoteEl.textContent = `当前：腾讯云 ${d.asrEngine || "16k_en"}`;
+  } else {
+    asrSettingsNoteEl.textContent = `当前：本地 Whisper ${d.whisperModel || "tiny.en"}（无需腾讯云）`;
+  }
+  if (!d.tencentConfigured) {
+    asrSettingsNoteEl.classList.add("warn");
+    asrSettingsNoteEl.textContent += " · 未配置腾讯云密钥，仅可用本地模式";
+  }
+}
+
 fetch("/api/health")
   .then((r) => r.json())
   .then((d) => {
+    applyAsrStatus(d);
     healthEl.textContent = JSON.stringify(d);
     healthEl.classList.add("ok");
   })
@@ -49,40 +83,71 @@ function wsUrl() {
   return `${proto}//${location.host}/ws`;
 }
 
+function applySegment(msg) {
+  const id = String(msg.segmentId ?? segmentsEl.children.length);
+  let li = segmentsEl.querySelector(`li[data-segment-id="${id}"]`);
+  if (!li) {
+    li = document.createElement("li");
+    li.dataset.segmentId = id;
+    const en = document.createElement("div");
+    en.className = "seg-en";
+    const zh = document.createElement("div");
+    zh.className = "seg-zh";
+    li.append(en, zh);
+    segmentsEl.appendChild(li);
+  }
+  li.querySelector(".seg-en").textContent = msg.text;
+  const zhEl = li.querySelector(".seg-zh");
+  if (msg.translation) {
+    zhEl.textContent = msg.translation;
+    zhEl.classList.remove("placeholder");
+  } else if (!msg.final) {
+    zhEl.textContent = "翻译中…";
+    zhEl.classList.add("placeholder");
+  }
+  li.classList.toggle("partial", !!msg.partial && !msg.final);
+  li.classList.toggle("final", !!msg.final);
+}
+
 function connectWs(sampleRate) {
   return new Promise((resolve, reject) => {
+    let settled = false;
     ws = new WebSocket(wsUrl());
     ws.binaryType = "arraybuffer";
     ws.onmessage = (ev) => {
       if (typeof ev.data !== "string") return;
       try {
         const msg = JSON.parse(ev.data);
+        if (msg.type === "error") {
+          if (!settled) {
+            settled = true;
+            reject(new Error(msg.message || "server error"));
+          }
+          return;
+        }
+        if (msg.type === "asrReady") {
+          if (!settled) {
+            settled = true;
+            resolve();
+          }
+          return;
+        }
         if (msg.type === "asr" && msg.text) {
-          const li = document.createElement("li");
-          if (msg.segmentId != null) {
-            li.dataset.segmentId = String(msg.segmentId);
-          }
-          const en = document.createElement("div");
-          en.className = "seg-en";
-          en.textContent = msg.text;
-          li.appendChild(en);
-          if (msg.translation) {
-            const zh = document.createElement("div");
-            zh.className = "seg-zh";
-            zh.textContent = msg.translation;
-            li.appendChild(zh);
-          }
-          segmentsEl.appendChild(li);
+          applySegment(msg);
         }
       } catch {
         /* ignore */
       }
     };
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "config", sampleRate }));
-      resolve();
+      ws.send(JSON.stringify({ type: "config", sampleRate, ...asrConfig() }));
     };
-    ws.onerror = () => reject(new Error("websocket failed"));
+    ws.onerror = () => {
+      if (!settled) {
+        settled = true;
+        reject(new Error("websocket failed"));
+      }
+    };
   });
 }
 
@@ -203,12 +268,14 @@ function stopCapture() {
   captureBtn.disabled = false;
   captureBtn.textContent = "捕获音频";
   segmentsEl.replaceChildren();
+  setSettingsEnabled(true);
   setStatus("idle");
 }
 
 async function startCapture() {
   captureBtn.disabled = true;
-  setStatus("requesting…");
+  setSettingsEnabled(false);
+  setStatus("loading asr…");
 
   try {
     stream = await navigator.mediaDevices.getDisplayMedia(Capture.constraints());
@@ -218,6 +285,7 @@ async function startCapture() {
       stream = null;
       captureBtn.disabled = false;
       captureBtn.textContent = "重试";
+      setSettingsEnabled(true);
       setStatus(`error: ${Capture.noAudioMessage()}`);
       return;
     }
@@ -247,6 +315,7 @@ async function startCapture() {
       stopCapture();
     }
     captureBtn.disabled = false;
+    setSettingsEnabled(true);
     if (err.name === "NotAllowedError") {
       setStatus("cancelled");
     } else if (err.name === "NotSupportedError") {
@@ -256,6 +325,20 @@ async function startCapture() {
     }
   }
 }
+
+asrModeEl.addEventListener("change", async () => {
+  if (active) return;
+  try {
+    const r = await fetch("/api/asr/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(asrConfig()),
+    });
+    applyAsrStatus(await r.json());
+  } catch {
+    /* ignore */
+  }
+});
 
 captureBtn.addEventListener("click", () => {
   if (stream) {

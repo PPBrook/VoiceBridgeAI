@@ -19,6 +19,48 @@ button {
 
 button:disabled { opacity: 0.6; cursor: wait; }
 
+.settings {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid #2a2f3a;
+  border-radius: 6px;
+  background: #12151c;
+}
+
+.settings legend {
+  padding: 0 0.35rem;
+  font-size: 0.8125rem;
+  color: #9aa0a6;
+}
+
+.setting {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.35rem 0;
+  font-size: 0.875rem;
+}
+
+.setting span {
+  min-width: 5rem;
+  color: #9aa0a6;
+}
+
+.setting select {
+  flex: 1;
+  max-width: 22rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.875rem;
+  color: #e8eaed;
+  background: #0a0c10;
+  border: 1px solid #2a2f3a;
+  border-radius: 4px;
+}
+
+.setting select:disabled {
+  opacity: 0.6;
+}
+
 .hint {
   margin: 0.5rem 0 0;
   font-size: 0.8125rem;
@@ -61,6 +103,15 @@ button:disabled { opacity: 0.6; cursor: wait; }
   border-bottom: none;
 }
 
+.segments li.partial {
+  opacity: 0.85;
+}
+
+.segments li.partial .seg-en::after {
+  content: " …";
+  color: #5f6368;
+}
+
 .seg-en {
   font-size: 0.9375rem;
   color: #9aa0a6;
@@ -70,6 +121,11 @@ button:disabled { opacity: 0.6; cursor: wait; }
   margin-top: 0.25rem;
   font-size: 1.0625rem;
   color: #e8eaed;
+}
+
+.seg-zh.placeholder {
+  color: #5f6368;
+  font-size: 0.875rem;
 }
 
 .segments:empty::before {
