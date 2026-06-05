@@ -1,0 +1,21 @@
+body {
+  margin: 2rem;
+  font-family: system-ui, sans-serif;
+  background: #0a0c10;
+  color: #e8eaed;
+}
+
+h1 { font-size: 1.25rem; font-weight: 600; }
+
+pre {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: #12151c;
+  border: 1px solid #2a2f3a;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  overflow-x: auto;
+}
+
+pre.ok { border-color: #34a853; color: #81c995; }
+pre.err { border-color: #ea4335; color: #f28b82; }
