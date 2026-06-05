@@ -14,6 +14,7 @@ app = FastAPI(title="VoiceBridgeAI", version="0.1.0")
 FEATURES = [
     "static-page",
     "health-api",
+    "tab-capture",
 ]
 
 
@@ -22,7 +23,7 @@ def health():
     return {
         "status": "ok",
         "version": "0.1.0",
-        "pr": 1,
+        "pr": 2,
         "features": FEATURES,
     }
 
@@ -38,6 +39,6 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 if __name__ == "__main__":
     import uvicorn
 
-    print("VoiceBridgeAI PR#1 — http://localhost:8765")
+    print("VoiceBridgeAI — http://127.0.0.1:8765")
     print("Health check — http://localhost:8765/api/health")
     uvicorn.run("main:app", host="0.0.0.0", port=8765, reload=False)
