@@ -21,6 +21,78 @@
         <select id="translate-mode"></select>
       </label>
       <p id="engine-settings-note" class="hint"></p>
+      <button type="button" id="toggle-cloud" class="btn-secondary">
+        API 配置 ▾
+      </button>
+    </fieldset>
+    <fieldset id="cloud-settings" class="settings cloud-panel" hidden>
+      <legend>API 配置</legend>
+      <div class="cloud-guide">
+        <p class="cloud-guide-title">何时需要填写</p>
+        <ul>
+          <li><strong>演示推荐</strong>（腾讯云识别 + 双引擎翻译）：填写腾讯云 + 七牛</li>
+          <li><strong>全本地</strong>（Whisper + Argos）：无需填写</li>
+        </ul>
+        <p class="cloud-guide-title">获取腾讯云密钥</p>
+        <ol>
+          <li>登录 <a href="https://console.cloud.tencent.com/cam/capi" target="_blank" rel="noopener">访问管理 → API 密钥</a>，创建 SecretId / SecretKey</li>
+          <li>在 <a href="https://console.cloud.tencent.com/asr" target="_blank" rel="noopener">语音识别控制台</a> 查看应用 AppId</li>
+          <li>Secret 同时用于 ASR 识别与 TMT 翻译草稿，粘贴后保存即可</li>
+        </ol>
+        <p class="cloud-guide-title">获取七牛 Key</p>
+        <ol>
+          <li>登录 <a href="https://developer.qiniu.com/aitokenapi" target="_blank" rel="noopener">七牛 AI 控制台</a>，创建 API Key</li>
+          <li>用于双引擎句末润色；重启后仍生效请写入 <code>.env</code></li>
+        </ol>
+      </div>
+      <h3 class="settings-sub">腾讯云（ASR + TMT）</h3>
+      <label class="setting">
+        <span>AppId</span>
+        <input id="tencent-app-id" type="text" inputmode="numeric" autocomplete="off" placeholder="1250000000" />
+      </label>
+      <label class="setting">
+        <span>SecretId</span>
+        <input id="tencent-secret-id" type="password" autocomplete="off" placeholder="AKID…" />
+      </label>
+      <label class="setting">
+        <span>SecretKey</span>
+        <input id="tencent-secret-key" type="password" autocomplete="off" placeholder="…" />
+      </label>
+      <h3 class="settings-sub">七牛（句末润色）</h3>
+      <label class="setting">
+        <span>API Key</span>
+        <input id="qiniu-api-key" type="password" autocomplete="off" placeholder="sk-…" />
+      </label>
+      <button type="button" id="toggle-cloud-advanced" class="btn-link">
+        高级选项 ▾
+      </button>
+      <div id="cloud-advanced" class="cloud-advanced" hidden>
+        <p class="cloud-guide-title">腾讯云</p>
+        <label class="setting">
+          <span>识别引擎</span>
+          <input id="tencent-engine" type="text" placeholder="16k_en（默认）" />
+        </label>
+        <label class="setting">
+          <span>TMT 区域</span>
+          <input id="tencent-tmt-region" type="text" placeholder="ap-guangzhou（默认）" />
+        </label>
+        <label class="setting">
+          <span>TMT ProjectId</span>
+          <input id="tencent-tmt-project-id" type="text" inputmode="numeric" placeholder="0（默认）" />
+        </label>
+        <p class="cloud-guide-title">七牛</p>
+        <label class="setting">
+          <span>接口地址</span>
+          <input id="qiniu-base-url" type="url" placeholder="https://api.qnaigc.com/v1" />
+        </label>
+        <p class="hint cloud-advanced-hint">默认官方地址即可；使用自建网关或代理时填写，可含端口，例如 <code>http://127.0.0.1:8080/v1</code></p>
+        <label class="setting">
+          <span>模型</span>
+          <input id="qiniu-model" type="text" placeholder="qwen-turbo（默认）" />
+        </label>
+      </div>
+      <button type="button" id="save-cloud" class="btn-secondary">保存</button>
+      <p id="cloud-settings-note" class="hint"></p>
     </fieldset>
     <button type="button" id="capture">捕获音频</button>
     <p id="hint" class="hint"></p>

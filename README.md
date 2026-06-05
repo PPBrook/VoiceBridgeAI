@@ -1,140 +1,72 @@
 # VoiceBridgeAI
 
-AI 同声传译助手 — 实时将英文音频翻译为中文双语字幕。
+AI 同声传译助手 — 捕获 Chrome 标签页英文音频，实时识别并输出中文双语字幕。
 
-**议题：** 七牛云 × XEngineer 暑期实训营 · 题目二 · AI 同声传译助手
+**议题：** 七牛云 × XEngineer 暑期实训营 · 题目二
 
-## 功能
-
-- FastAPI 服务 + `/api/health`
-- Chrome / Edge 标签页音频捕获（`getDisplayMedia`）
-- WebSocket 实时传输 PCM
-- **识别引擎（2 项）**：腾讯云流式 ASR / 本地 Whisper
-- **翻译引擎（3 项）**：双引擎（TMT+七牛）/ Argos 离线 / Google 在线
-- 整句 **revise**：同一句识别/翻译变化时字幕原地更新
-
-## 推荐演示路径
-
-| 路径 | 识别 | 翻译 | 适用 |
-|------|------|------|------|
-| **A 云端（推荐）** | 腾讯云 ASR | 双引擎 | 有 Key，流式 + 润色 |
-| **B 全本地** | 本地 Whisper | Argos 离线 | 无 Key，完全离线 |
-| **C 兜底** | 本地 Whisper | Google 在线 | 仅联网，无 Key |
-
-## 架构
-
-**路径 A — 腾讯云 + 双引擎翻译**
-
-```
-Chrome PCM → 腾讯云 ASR（流式 partial/final）
-  → 腾讯 TMT（句中草稿）→ 七牛 LLM（句末润色）→ 双语字幕 revise
-```
-
-**路径 B — 全本地**
-
-```
-Chrome PCM → VAD → Whisper tiny.en → Argos 离线翻译 → 双语字幕 revise
-```
-
-## 快速启动
+## 快速体验
 
 ```bash
-cp .env.example .env
 chmod +x run.sh && ./run.sh
 ```
 
-浏览器（**Chrome**）：[http://127.0.0.1:8765](http://127.0.0.1:8765)
+浏览器打开 **[http://127.0.0.1:8765](http://127.0.0.1:8765)**（请用 **Chrome / Edge** 桌面版）。
 
-### 路径 A（评委演示）
+1. 按需展开 **「API 配置」** 填写密钥并保存（见下）
+2. **「引擎设置」** 选择识别 / 翻译组合
+3. 点击 **「捕获音频」**，在弹窗中选中含英文声音的标签页
 
-`.env` 填入腾讯云 ASR/TMT 与七牛 LLM 密钥：
+## 演示路径
 
-```env
-ASR_MODE=tencent
-TRANSLATE_MODE=dual
+| 路径 | 识别 | 翻译 | 需要 Key |
+|------|------|------|----------|
+| **A 云端（推荐）** | 腾讯云 ASR | 双引擎（TMT + 七牛润色） | 腾讯云 + 七牛 |
+| **B 全本地** | 本地 Whisper | Argos 离线 | 否 |
+| **C 兜底** | 本地 Whisper | Google 在线 | 否（需联网） |
+
+**路径 A：** 页面 **API 配置** → 填腾讯云 AppId / SecretId / SecretKey 与七牛 API Key → 保存 → 识别选「腾讯云」、翻译选「双引擎」。
+
+**路径 B / C：** 无需 API 配置；识别选「本地 Whisper」，翻译选 Argos 或 Google。首次运行会自动下载 Whisper / Argos 模型。
+
+> 页面保存的密钥**当前进程有效**；重启后仍生效请写入 `.env`（可复制 `.env.example`）。
+
+## 架构
+
+**路径 A**
+
+```
+标签页 PCM → 腾讯云 ASR（流式）
+  → 腾讯 TMT（句中草稿）→ 七牛 LLM（句末润色）→ 字幕 revise
 ```
 
-### 路径 B（全本地）
+**路径 B**
 
-```env
-ASR_MODE=local
-TRANSLATE_MODE=argos
+```
+标签页 PCM → VAD → Whisper → Argos 离线翻译 → 字幕 revise
 ```
 
-首次会下载 Whisper 与 Argos 语言包。
+**Revise：** 同一句识别或翻译更新时，字幕原地刷新而非追加新行。
 
-### 验证
+## 页面说明
 
-```bash
-curl -s http://127.0.0.1:8765/api/health | python3 -m json.tool
-```
-
-## 引擎设置
-
-页面 **「引擎设置」** 两个下拉框（捕获前可选，捕获中锁定）：
-
-**识别**
-
-| ID | 说明 |
-|----|------|
-| `tencent` | 腾讯云流式 ASR，低延迟 |
-| `local` | 本地 Whisper tiny.en |
-
-**翻译**
-
-| ID | partial | final |
-|----|---------|-------|
-| `dual` | 腾讯 TMT | 七牛 LLM |
-| `argos` | Argos 离线 | Argos 离线 |
-| `local` | Google | Google |
-
-切换：
-
-```bash
-curl -X POST http://127.0.0.1:8765/api/engine/settings \
-  -H "Content-Type: application/json" \
-  -d '{"asrMode":"local","translateMode":"argos"}'
-```
-
-## 手动启动
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cd server && python main.py
-```
-
-## 第三方依赖
-
-| 依赖 | 用途 |
+| 区域 | 作用 |
 |------|------|
-| FastAPI / Uvicorn | 服务 |
-| faster-whisper | 本地 ASR |
-| 腾讯云 ASR / TMT | 流式识别与机器翻译 |
-| 七牛 AI API | LLM 句末润色 |
-| argostranslate | Argos 离线翻译 |
-| deep-translator | Google 在线兜底 |
-
-## 原创部分
-
-- 标签页音频捕获（`static/js/capture.js`）
-- 双引擎选择与 WebSocket 协议（`static/js/app.js`、`server/main.py`）
-- Revise 调度（`server/revise.py`）
-- 腾讯云 ASR 流式转发（`server/tencent_asr.py`）
-- 本地 Whisper + VAD（`server/whisper_asr.py`、`server/vad.py`）
-- 翻译路由（`server/translate_config.py`、`server/translate*.py`）
+| 引擎设置 | 捕获前切换 ASR / 翻译；捕获中锁定 |
+| API 配置 | 腾讯云（ASR + TMT）与七牛 Key；高级项可改接口地址（含端口）、模型 |
+| 捕获音频 | 共享标签页音频经 WebSocket 送服务端处理 |
 
 ## 常见问题
 
-**必须用 Chrome 吗？** 标签页音频请用 Chrome / Edge 桌面版。
+**无 Key 怎么演示？** 路径 B 或 C，页面不用填 API。
 
-**地址** 请用 [http://127.0.0.1:8765](http://127.0.0.1:8765)。
+**双引擎选项不出现？** 先在 API 配置保存腾讯云 Secret 与七牛 Key，再选引擎。
 
-**无 Key 怎么演示？** 识别选本地 Whisper，翻译选 Argos 或 Google。
+**腾讯云 ASR 失败？** 核对 AppId / Secret，确认语音识别服务已开通。
 
-**双引擎不显示？** 需同时配置腾讯云 Secret 与 `QINIU_AI_API_KEY`。
+**代理报错？** 执行 `unset ALL_PROXY HTTPS_PROXY HTTP_PROXY` 后重启，或改走路径 B。
 
-**腾讯云 ASR 握手失败？** 检查 AppId、SecretId、SecretKey 及语音识别是否已开通。
+**健康检查：** `curl -s http://127.0.0.1:8765/api/health | python3 -m json.tool`
 
-**SOCKS proxy 报错？** `unset ALL_PROXY HTTPS_PROXY HTTP_PROXY` 后重启，或改用全本地路径。
+## 技术栈
+
+FastAPI · WebSocket · faster-whisper · 腾讯云 ASR/TMT · 七牛 AI · Argos · deep-translator

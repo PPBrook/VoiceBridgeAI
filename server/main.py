@@ -10,6 +10,7 @@ from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from cloud_config import apply_cloud, cloud_status
 from asr_config import default_mode, get_status as get_asr_status, normalize_mode
 from pcm import PcmFramer, resample_to_16k
 from revise import ReviseScheduler
@@ -73,6 +74,7 @@ FEATURES = [
     "translate-dual-engine",
     "translate-settings",
     "translate-offline",
+    "cloud-config",
     "subtitle-revise",
 ]
 
@@ -98,6 +100,25 @@ def health():
         "features": FEATURES,
         **get_asr_status(),
         **get_translate_config_status(),
+        **cloud_status(),
+    }
+
+
+@app.get("/api/cloud/settings")
+def get_cloud_settings():
+    return {"ok": True, **cloud_status()}
+
+
+@app.post("/api/cloud/settings")
+async def post_cloud_settings(payload: dict = Body(...)):
+    apply_cloud(payload)
+    asr_mode = normalize_mode(payload.get("asrMode"))
+    tr_mode = normalize_translate_mode(payload.get("translateMode"))
+    return {
+        "ok": True,
+        **get_asr_status(asr_mode),
+        **get_translate_config_status(tr_mode),
+        **cloud_status(),
     }
 
 

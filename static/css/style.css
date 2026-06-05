@@ -61,6 +61,133 @@ button:disabled { opacity: 0.6; cursor: wait; }
   opacity: 0.6;
 }
 
+.setting input[type="text"],
+.setting input[type="url"],
+.setting input[type="password"] {
+  flex: 1;
+  max-width: 22rem;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.875rem;
+  color: #e8eaed;
+  background: #0a0c10;
+  border: 1px solid #2a2f3a;
+  border-radius: 4px;
+}
+
+.setting input:disabled {
+  opacity: 0.6;
+}
+
+.settings-intro {
+  margin: 0 0 0.5rem;
+}
+
+.settings-intro code {
+  font-size: 0.75rem;
+  color: #9aa0a6;
+}
+
+.settings-sub {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #9aa0a6;
+}
+
+.btn-secondary {
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+  color: #e8eaed;
+  background: #1e2430;
+  border: 1px solid #2a2f3a;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: #5f6368;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.cloud-panel[hidden] {
+  display: none;
+}
+
+.cloud-guide {
+  margin: 0 0 0.75rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #bdc1c6;
+  background: #12151c;
+  border: 1px solid #2a2f3a;
+  border-radius: 6px;
+}
+
+.cloud-guide-title {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #9aa0a6;
+}
+
+.cloud-guide-title:first-child {
+  margin-top: 0;
+}
+
+.cloud-guide ul,
+.cloud-guide ol {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.cloud-guide li + li {
+  margin-top: 0.25rem;
+}
+
+.cloud-guide code {
+  font-size: 0.75rem;
+  color: #9aa0a6;
+}
+
+.cloud-guide a {
+  color: #8ab4f8;
+}
+
+.cloud-advanced[hidden] {
+  display: none;
+}
+
+.cloud-advanced-hint {
+  margin: -0.25rem 0 0.5rem;
+}
+
+.btn-link {
+  display: block;
+  margin: 0.35rem 0 0.5rem;
+  padding: 0;
+  font-size: 0.8125rem;
+  color: #8ab4f8;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.btn-link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.btn-link:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
 .hint {
   margin: 0.5rem 0 0;
   font-size: 0.8125rem;
