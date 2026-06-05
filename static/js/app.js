@@ -4,7 +4,8 @@ const segmentsEl = document.getElementById("segments");
 const hintEl = document.getElementById("hint");
 const captureBtn = document.getElementById("capture");
 const asrModeEl = document.getElementById("asr-mode");
-const asrSettingsNoteEl = document.getElementById("asr-settings-note");
+const translateModeEl = document.getElementById("translate-mode");
+const engineSettingsNoteEl = document.getElementById("engine-settings-note");
 
 let stream = null;
 let audioCtx = null;
@@ -16,44 +17,72 @@ let lastLevel = 0;
 let pumpTask = null;
 let active = false;
 
-function asrConfig() {
-  return { asrMode: asrModeEl.value };
+function engineConfig() {
+  return { asrMode: asrModeEl.value, translateMode: translateModeEl.value };
 }
 
 function setSettingsEnabled(enabled) {
   asrModeEl.disabled = !enabled;
+  translateModeEl.disabled = !enabled;
 }
 
-function applyAsrStatus(d) {
-  if (!d.asrModes?.length) return;
-  asrModeEl.replaceChildren(
-    ...d.asrModes.map((m) => {
-      const opt = document.createElement("option");
-      opt.value = m.id;
-      opt.textContent = m.label;
-      return opt;
-    })
-  );
-  asrModeEl.value = d.asrMode || asrModeEl.options[0]?.value || "local";
-  asrSettingsNoteEl.classList.remove("warn");
+function applyEngineStatus(d) {
+  if (d.asrModes?.length) {
+    asrModeEl.replaceChildren(
+      ...d.asrModes.map((m) => {
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = m.label;
+        return opt;
+      })
+    );
+    asrModeEl.value = d.asrMode || asrModeEl.options[0]?.value || "local";
+  }
+  if (d.translateModes?.length) {
+    translateModeEl.replaceChildren(
+      ...d.translateModes.map((m) => {
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = m.label;
+        return opt;
+      })
+    );
+    translateModeEl.value =
+      d.translateMode || translateModeEl.options[0]?.value || "local";
+  }
+  engineSettingsNoteEl.classList.remove("warn");
+  const parts = [];
   if (d.asrMode === "tencent") {
-    asrSettingsNoteEl.textContent = `当前：腾讯云 ${d.asrEngine || "16k_en"}`;
+    parts.push(`识别：腾讯云 ${d.asrEngine || "16k_en"}`);
   } else {
-    asrSettingsNoteEl.textContent = `当前：本地 Whisper ${d.whisperModel || "tiny.en"}（无需腾讯云）`;
+    parts.push(`识别：本地 Whisper ${d.whisperModel || "tiny.en"}`);
   }
-  if (!d.tencentConfigured) {
-    asrSettingsNoteEl.classList.add("warn");
-    asrSettingsNoteEl.textContent += " · 未配置腾讯云密钥，仅可用本地模式";
+  parts.push(
+    `翻译：${d.translatePartial || "?"} → ${d.translateFinal || "?"}`
+  );
+  engineSettingsNoteEl.textContent = parts.join(" · ");
+  if (!d.tencentConfigured && d.asrMode !== "tencent") {
+    /* local asr only — ok */
+  } else if (!d.tencentConfigured) {
+    engineSettingsNoteEl.classList.add("warn");
+    engineSettingsNoteEl.textContent += " · 未配置腾讯云 ASR";
   }
-  if (d.translatePartial || d.translateFinal) {
-    asrSettingsNoteEl.textContent += ` · 译 partial=${d.translatePartial || "?"} final=${d.translateFinal || "?"}`;
+  if (d.translateMode === "local") {
+    engineSettingsNoteEl.textContent += " · 翻译需联网";
+  } else if (d.offlineTranslate) {
+    engineSettingsNoteEl.textContent += " · 离线翻译";
+  }
+  if (d.asrMode === "local" && d.offlineTranslate) {
+    engineSettingsNoteEl.textContent += " · ✅ 全本地（识别+翻译）";
+  } else if (d.translateMode === "dual" && (!d.tmtConfigured || !d.qiniuConfigured)) {
+    engineSettingsNoteEl.classList.add("warn");
   }
 }
 
 fetch("/api/health")
   .then((r) => r.json())
   .then((d) => {
-    applyAsrStatus(d);
+    applyEngineStatus(d);
     healthEl.textContent = JSON.stringify(d);
     healthEl.classList.add("ok");
   })
@@ -153,7 +182,7 @@ function connectWs(sampleRate) {
       }
     };
     ws.onopen = () => {
-      ws.send(JSON.stringify({ type: "config", sampleRate, ...asrConfig() }));
+      ws.send(JSON.stringify({ type: "config", sampleRate, ...engineConfig() }));
     };
     ws.onerror = () => {
       if (!settled) {
@@ -339,18 +368,23 @@ async function startCapture() {
   }
 }
 
-asrModeEl.addEventListener("change", async () => {
+async function postEngineSettings() {
+  const r = await fetch("/api/engine/settings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(engineConfig()),
+  });
+  applyEngineStatus(await r.json());
+}
+
+asrModeEl.addEventListener("change", () => {
   if (active) return;
-  try {
-    const r = await fetch("/api/asr/settings", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(asrConfig()),
-    });
-    applyAsrStatus(await r.json());
-  } catch {
-    /* ignore */
-  }
+  postEngineSettings().catch(() => {});
+});
+
+translateModeEl.addEventListener("change", () => {
+  if (active) return;
+  postEngineSettings().catch(() => {});
 });
 
 captureBtn.addEventListener("click", () => {

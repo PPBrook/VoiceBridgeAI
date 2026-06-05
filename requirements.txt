@@ -6,3 +6,7 @@ websockets>=14.0
 faster-whisper>=1.0.0
 tencentcloud-sdk-python-common>=3.0.1000
 tencentcloud-sdk-python-tmt>=3.0.1000
+argostranslate>=1.9.6
+transformers>=4.40.0
+sentencepiece>=0.2.0
+torch>=2.0.0
