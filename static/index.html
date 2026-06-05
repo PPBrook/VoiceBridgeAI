@@ -13,12 +13,34 @@
     <fieldset id="engine-settings" class="settings">
       <legend>引擎设置</legend>
       <label class="setting">
-        <span>识别引擎</span>
-        <select id="asr-mode"></select>
+        <span>语音识别</span>
+        <div class="setting-control">
+          <select id="asr-mode"></select>
+          <span class="hint-anchor">
+            <button type="button" class="hint-trigger" id="asr-hint" aria-label="语音识别说明">?</button>
+            <span class="hint-popover" id="asr-hint-pop" role="tooltip"></span>
+          </span>
+        </div>
       </label>
       <label class="setting">
-        <span>翻译引擎</span>
-        <select id="translate-mode"></select>
+        <span>翻译方式</span>
+        <div class="setting-control">
+          <select id="translate-mode"></select>
+          <span class="hint-anchor">
+            <button type="button" class="hint-trigger" id="translate-hint" aria-label="翻译方式说明">?</button>
+            <span class="hint-popover" id="translate-hint-pop" role="tooltip"></span>
+          </span>
+        </div>
+      </label>
+      <label class="setting">
+        <span>纠正模式</span>
+        <div class="setting-control">
+          <select id="revise-mode"></select>
+          <span class="hint-anchor">
+            <button type="button" class="hint-trigger" id="revise-hint" aria-label="纠正模式说明">?</button>
+            <span class="hint-popover" id="revise-hint-pop" role="tooltip"></span>
+          </span>
+        </div>
       </label>
       <p id="engine-settings-note" class="hint"></p>
       <button type="button" id="toggle-cloud" class="btn-secondary">
@@ -30,8 +52,8 @@
       <div class="cloud-guide">
         <p class="cloud-guide-title">何时需要填写</p>
         <ul>
-          <li><strong>演示推荐</strong>（腾讯云识别 + 双引擎翻译）：填写腾讯云 + 七牛</li>
-          <li><strong>全本地</strong>（Whisper + Argos）：无需填写</li>
+          <li><strong>演示推荐</strong>：云端流式识别 + 云端双擎翻译，需填写腾讯云与七牛 Key</li>
+          <li><strong>全本地</strong>：本地离线识别 + 本地离线翻译，无需填写</li>
         </ul>
         <p class="cloud-guide-title">获取腾讯云密钥</p>
         <ol>
@@ -98,7 +120,7 @@
     <p id="hint" class="hint"></p>
     <p id="status">idle</p>
     <ol id="segments" class="segments"></ol>
-    <pre id="health">…</pre>
+    <div id="health" class="health-panel" hidden></div>
   </main>
   <script src="/static/js/capture.js"></script>
   <script src="/static/js/app.js"></script>

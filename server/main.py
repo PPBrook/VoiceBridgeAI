@@ -14,6 +14,10 @@ from cloud_config import apply_cloud, cloud_status
 from asr_config import default_mode, get_status as get_asr_status, normalize_mode
 from pcm import PcmFramer, resample_to_16k
 from revise import ReviseScheduler
+from revise_config import default_mode as default_revise_mode
+from revise_config import get_params as get_revise_params
+from revise_config import get_status as get_revise_status
+from revise_config import normalize_mode as normalize_revise_mode
 from tencent_asr import TencentAsrStream, configured as tencent_configured
 from translate import translate_final, translate_partial
 from translate_config import default_mode as default_translate_mode
@@ -76,6 +80,7 @@ FEATURES = [
     "translate-offline",
     "cloud-config",
     "subtitle-revise",
+    "revise-modes",
 ]
 
 
@@ -100,6 +105,7 @@ def health():
         "features": FEATURES,
         **get_asr_status(),
         **get_translate_config_status(),
+        **get_revise_status(),
         **cloud_status(),
     }
 
@@ -114,10 +120,12 @@ async def post_cloud_settings(payload: dict = Body(...)):
     apply_cloud(payload)
     asr_mode = normalize_mode(payload.get("asrMode"))
     tr_mode = normalize_translate_mode(payload.get("translateMode"))
+    rv_mode = normalize_revise_mode(payload.get("reviseMode"))
     return {
         "ok": True,
         **get_asr_status(asr_mode),
         **get_translate_config_status(tr_mode),
+        **get_revise_status(rv_mode),
         **cloud_status(),
     }
 
@@ -126,6 +134,7 @@ async def post_cloud_settings(payload: dict = Body(...)):
 async def engine_settings(payload: dict = Body(...)):
     asr_mode = normalize_mode(payload.get("asrMode"))
     tr_mode = normalize_translate_mode(payload.get("translateMode"))
+    rv_mode = normalize_revise_mode(payload.get("reviseMode"))
     if asr_mode == "local":
         await asyncio.to_thread(load_whisper)
     await _preload_translate(tr_mode)
@@ -133,6 +142,7 @@ async def engine_settings(payload: dict = Body(...)):
         "ok": True,
         **get_asr_status(asr_mode),
         **get_translate_config_status(tr_mode),
+        **get_revise_status(rv_mode),
     }
 
 
@@ -157,6 +167,8 @@ async def websocket_pcm(ws: WebSocket):
     sample_rate = 48000
     asr_mode = default_mode()
     translate_mode = default_translate_mode()
+    revise_mode = default_revise_mode()
+    revise_params = get_revise_params(revise_mode)
     alive = True
     tencent: TencentAsrStream | None = None
     engine: ReviseEngine | None = None
@@ -178,8 +190,8 @@ async def websocket_pcm(ws: WebSocket):
             mark_dead()
             return False
 
-    def bind_revise(mode: str) -> ReviseScheduler:
-        m = normalize_translate_mode(mode)
+    def bind_revise(tr_mode: str, params) -> ReviseScheduler:
+        m = normalize_translate_mode(tr_mode)
 
         def partial_fn(text: str) -> str:
             return translate_partial(text, m)
@@ -187,9 +199,9 @@ async def websocket_pcm(ws: WebSocket):
         def final_fn(text: str, draft: str | None) -> str:
             return translate_final(text, draft, m)
 
-        return ReviseScheduler(partial_fn, final_fn, send_json)
+        return ReviseScheduler(partial_fn, final_fn, send_json, params)
 
-    revise = bind_revise(translate_mode)
+    revise = bind_revise(translate_mode, revise_params)
 
     def cancel_local_task(seg_id: int) -> None:
         task = local_tasks.pop(seg_id, None)
@@ -206,9 +218,12 @@ async def websocket_pcm(ws: WebSocket):
             if not text or not alive:
                 return
             if final:
+                revise.attach_pcm(seg_id, pcm, sample_rate)
                 await revise.finalize(seg_id, text)
+                await revise.run_lookback(seg_id)
                 log.info("segment %d [local final]: %s", seg_id, text)
             else:
+                revise.attach_pcm(seg_id, pcm, sample_rate)
                 await revise.emit_english(seg_id, text, partial=True, final=False)
                 await revise.schedule_partial_translation(seg_id, text)
                 log.info("segment %d [local refine]: %s", seg_id, text)
@@ -231,14 +246,21 @@ async def websocket_pcm(ws: WebSocket):
             await revise.emit_english(index, text, partial=True, final=False)
             await revise.schedule_partial_translation(index, text)
 
-    async def start_asr(mode: str, tr_mode: str | None = None) -> bool:
-        nonlocal tencent, engine, framer, asr_mode, translate_mode, revise
+    async def start_asr(
+        mode: str,
+        tr_mode: str | None = None,
+        rv_mode: str | None = None,
+    ) -> bool:
+        nonlocal tencent, engine, framer, asr_mode, translate_mode, revise_mode, revise_params, revise
         asr_mode = normalize_mode(mode)
         if tr_mode is not None:
             translate_mode = normalize_translate_mode(tr_mode)
+        if rv_mode is not None:
+            revise_mode = normalize_revise_mode(rv_mode)
+        revise_params = get_revise_params(revise_mode)
         framer = PcmFramer()
         revise.clear()
-        revise = bind_revise(translate_mode)
+        revise = bind_revise(translate_mode, revise_params)
         for seg_id in list(local_tasks):
             cancel_local_task(seg_id)
         if tencent:
@@ -251,7 +273,7 @@ async def websocket_pcm(ws: WebSocket):
                 await send_json(
                     {
                         "type": "error",
-                        "message": "腾讯云 ASR 未配置，请选「本地 Whisper」或在 .env 填入密钥",
+                        "message": "云端流式识别未配置，请选「本地离线识别」或在 .env 填入密钥",
                     }
                 )
                 return False
@@ -271,19 +293,21 @@ async def websocket_pcm(ws: WebSocket):
                 return False
         else:
             await asyncio.to_thread(load_whisper)
-            engine = ReviseEngine(sample_rate)
+            engine = ReviseEngine(sample_rate, revise_params.refine_interval_s)
         await _preload_translate(translate_mode)
         await send_json(
             {
                 "type": "asrReady",
                 **get_asr_status(asr_mode),
                 **get_translate_config_status(translate_mode),
+                **get_revise_status(revise_mode),
             }
         )
         log.info(
-            "asr ready mode=%s translate=%s sampleRate=%s",
+            "asr ready mode=%s translate=%s revise=%s sampleRate=%s",
             asr_mode,
             translate_mode,
+            revise_mode,
             sample_rate,
         )
         return True
@@ -301,9 +325,11 @@ async def websocket_pcm(ws: WebSocket):
                     sample_rate = int(data.get("sampleRate", 48000))
                     mode = data.get("asrMode", asr_mode)
                     tr_mode = data.get("translateMode", translate_mode)
+                    rv_mode = data.get("reviseMode", revise_mode)
+                    pending = get_revise_params(rv_mode)
                     if engine:
-                        engine.reset(sample_rate)
-                    ok = await start_asr(mode, tr_mode)
+                        engine.reset(sample_rate, pending.refine_interval_s)
+                    ok = await start_asr(mode, tr_mode, rv_mode)
                     if not ok:
                         mark_dead()
                         break

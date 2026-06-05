@@ -9,8 +9,8 @@ from tencent_asr import configured as tencent_configured, engine_model
 from whisper_asr import MODEL_NAME as WHISPER_MODEL
 
 ASR_MODES = (
-    {"id": "tencent", "label": "腾讯云实时 ASR（流式，低延迟）"},
-    {"id": "local", "label": "本地 Whisper（无需腾讯云）"},
+    {"id": "tencent", "label": "云端流式识别 · 低延迟"},
+    {"id": "local", "label": "本地离线识别 · 无需密钥"},
 )
 
 
@@ -36,7 +36,7 @@ def get_status(mode: str | None = None) -> dict[str, Any]:
     modes = list(ASR_MODES)
     if not tencent_configured():
         modes = [m for m in modes if m["id"] != "tencent"] or [
-            {"id": "local", "label": "本地 Whisper（无需腾讯云）"}
+            {"id": "local", "label": "本地离线识别 · 无需密钥"}
         ]
         if current == "tencent":
             current = "local"
