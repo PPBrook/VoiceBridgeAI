@@ -1,6 +1,6 @@
 const healthEl = document.getElementById("health");
 const statusEl = document.getElementById("status");
-const subtitleEl = document.getElementById("subtitle");
+const segmentsEl = document.getElementById("segments");
 const hintEl = document.getElementById("hint");
 const captureBtn = document.getElementById("capture");
 
@@ -57,8 +57,13 @@ function connectWs(sampleRate) {
       if (typeof ev.data !== "string") return;
       try {
         const msg = JSON.parse(ev.data);
-        if (msg.type === "asr") {
-          subtitleEl.textContent = msg.text || "";
+        if (msg.type === "asr" && msg.text) {
+          const li = document.createElement("li");
+          li.textContent = msg.text;
+          if (msg.segmentId != null) {
+            li.dataset.segmentId = String(msg.segmentId);
+          }
+          segmentsEl.appendChild(li);
         }
       } catch {
         /* ignore */
@@ -188,7 +193,7 @@ function stopCapture() {
   audioCtx = null;
   captureBtn.disabled = false;
   captureBtn.textContent = "捕获音频";
-  subtitleEl.textContent = "";
+  segmentsEl.replaceChildren();
   setStatus("idle");
 }
 
@@ -216,7 +221,7 @@ async function startCapture() {
     const sampleRate = settings.sampleRate || 48000;
     await connectWs(sampleRate);
     active = true;
-    subtitleEl.textContent = "";
+    segmentsEl.replaceChildren();
 
     if (typeof MediaStreamTrackProcessor !== "undefined") {
       startLevelMonitor();
