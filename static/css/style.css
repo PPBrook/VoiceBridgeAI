@@ -43,21 +43,38 @@ button:disabled { opacity: 0.6; cursor: wait; }
 
 .segments {
   margin: 1rem 0 0;
-  padding: 0.75rem 1rem 0.75rem 2rem;
+  padding: 0.75rem 1rem;
   min-height: 3rem;
-  font-size: 1rem;
-  line-height: 1.6;
+  list-style: none;
   background: #12151c;
   border: 1px solid #2a2f3a;
   border-radius: 6px;
   color: #e8eaed;
 }
 
+.segments li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #2a2f3a;
+}
+
+.segments li:last-child {
+  border-bottom: none;
+}
+
+.seg-en {
+  font-size: 0.9375rem;
+  color: #9aa0a6;
+}
+
+.seg-zh {
+  margin-top: 0.25rem;
+  font-size: 1.0625rem;
+  color: #e8eaed;
+}
+
 .segments:empty::before {
   content: "…";
-  margin-left: -1.25rem;
   color: #5f6368;
-  list-style: none;
 }
 
 pre {

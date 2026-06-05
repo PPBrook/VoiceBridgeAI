@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from asr import load_model, transcribe
+from translate import translate as translate_zh
 from vad import UtteranceEngine
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -26,6 +27,7 @@ FEATURES = [
     "websocket-pcm",
     "asr-whisper-en",
     "utterance-vad",
+    "translate-zh",
 ]
 
 
@@ -43,7 +45,7 @@ def health():
     return {
         "status": "ok",
         "version": "0.1.0",
-        "pr": 5,
+        "pr": 6,
         "features": FEATURES,
     }
 
@@ -66,15 +68,17 @@ async def websocket_pcm(ws: WebSocket):
             try:
                 text = await asyncio.to_thread(transcribe, pcm, sample_rate)
                 if text:
+                    zh = await asyncio.to_thread(translate_zh, text)
                     await ws.send_json(
                         {
                             "type": "asr",
                             "segmentId": seg_id,
                             "text": text,
+                            "translation": zh,
                             "final": True,
                         }
                     )
-                    log.info("segment %d: %s", seg_id, text)
+                    log.info("segment %d: %s → %s", seg_id, text, zh)
             except Exception as exc:
                 log.exception("asr failed segment %d: %s", seg_id, exc)
 
