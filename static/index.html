@@ -10,6 +10,14 @@
 <body>
   <main>
     <h1>VoiceBridgeAI</h1>
+    <fieldset id="asr-settings" class="settings">
+      <legend>ASR 设置</legend>
+      <label class="setting">
+        <span>识别引擎</span>
+        <select id="asr-mode"></select>
+      </label>
+      <p id="asr-settings-note" class="hint"></p>
+    </fieldset>
     <button type="button" id="capture">捕获音频</button>
     <p id="hint" class="hint"></p>
     <p id="status">idle</p>

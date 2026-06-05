@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from asr import PcmBuffer
+from pcm import PcmBuffer
 
 SILENCE_RMS = 0.012
 SILENCE_MS = 600
