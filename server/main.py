@@ -1,4 +1,4 @@
-"""VoiceBridgeAI — tab capture, WebSocket PCM, Whisper ASR."""
+"""VoiceBridgeAI — tab capture, WebSocket PCM, VAD, Whisper ASR."""
 
 import asyncio
 import json
@@ -10,7 +10,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from asr import PcmBuffer, load_model, transcribe
+from asr import load_model, transcribe
+from vad import UtteranceEngine
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT / "static"
@@ -18,14 +19,13 @@ STATIC = ROOT / "static"
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-CHUNK_SECONDS = 2.5
-
 FEATURES = [
     "static-page",
     "health-api",
     "tab-capture",
     "websocket-pcm",
     "asr-whisper-en",
+    "utterance-vad",
 ]
 
 
@@ -43,7 +43,7 @@ def health():
     return {
         "status": "ok",
         "version": "0.1.0",
-        "pr": 4,
+        "pr": 5,
         "features": FEATURES,
     }
 
@@ -57,25 +57,26 @@ def index():
 async def websocket_pcm(ws: WebSocket):
     await ws.accept()
     sample_rate = 48000
-    buffer = PcmBuffer()
-    transcribing = False
+    engine = UtteranceEngine(sample_rate)
+    transcribe_lock = asyncio.Lock()
     log.info("client connected")
 
-    async def run_asr() -> None:
-        nonlocal transcribing
-        if transcribing or buffer.duration(sample_rate) < CHUNK_SECONDS:
-            return
-        transcribing = True
-        pcm = buffer.drain()
-        try:
-            text = await asyncio.to_thread(transcribe, pcm, sample_rate)
-            if text:
-                await ws.send_json({"type": "asr", "text": text})
-                log.info("asr: %s", text)
-        except Exception as exc:
-            log.exception("asr failed: %s", exc)
-        finally:
-            transcribing = False
+    async def send_segment(seg_id: int, pcm: bytes) -> None:
+        async with transcribe_lock:
+            try:
+                text = await asyncio.to_thread(transcribe, pcm, sample_rate)
+                if text:
+                    await ws.send_json(
+                        {
+                            "type": "asr",
+                            "segmentId": seg_id,
+                            "text": text,
+                            "final": True,
+                        }
+                    )
+                    log.info("segment %d: %s", seg_id, text)
+            except Exception as exc:
+                log.exception("asr failed segment %d: %s", seg_id, exc)
 
     try:
         while True:
@@ -87,15 +88,22 @@ async def websocket_pcm(ws: WebSocket):
                 data = json.loads(msg["text"])
                 if data.get("type") == "config":
                     sample_rate = int(data.get("sampleRate", 48000))
+                    engine.reset(sample_rate)
                     log.info("config sampleRate=%s", sample_rate)
 
             if "bytes" in msg and msg["bytes"]:
-                buffer.append(msg["bytes"])
-                await run_asr()
+                result = engine.feed(msg["bytes"])
+                if result:
+                    seg_id, pcm = result
+                    asyncio.create_task(send_segment(seg_id, pcm))
 
     except WebSocketDisconnect:
         pass
     finally:
+        flushed = engine.flush()
+        if flushed:
+            seg_id, pcm = flushed
+            await send_segment(seg_id, pcm)
         log.info("client disconnected")
 
 

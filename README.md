@@ -9,7 +9,7 @@ AI 同声传译助手 — 实时将英文音频翻译为中文（字幕 / 语音
 - FastAPI 服务 + `/api/health`
 - Chrome 标签页音频捕获
 - WebSocket 实时传输 PCM
-- 英文语音识别（Whisper base.en）→ 页面字幕
+- 英文语音识别（Whisper base.en）→ 按句字幕（VAD 静音分句）
 
 ## 快速启动
 
@@ -54,5 +54,6 @@ cd server && python main.py
 - 标签页音频捕获与 Chrome 适配（`static/js/capture.js`）
 - PCM 采集与 WebSocket 传输（`static/js/app.js`、`server/main.py`）
 - 音频缓冲、重采样与 ASR 调度（`server/asr.py`）
+- RMS 静音检测与按句切分（`server/vad.py`）
 - 字幕展示与状态 UI（`static/`）
 

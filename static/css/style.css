@@ -41,21 +41,23 @@ button:disabled { opacity: 0.6; cursor: wait; }
   font-family: ui-monospace, monospace;
 }
 
-.subtitle {
+.segments {
   margin: 1rem 0 0;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 1rem 0.75rem 2rem;
   min-height: 3rem;
-  font-size: 1.125rem;
-  line-height: 1.5;
+  font-size: 1rem;
+  line-height: 1.6;
   background: #12151c;
   border: 1px solid #2a2f3a;
   border-radius: 6px;
   color: #e8eaed;
 }
 
-.subtitle:empty::before {
+.segments:empty::before {
   content: "…";
+  margin-left: -1.25rem;
   color: #5f6368;
+  list-style: none;
 }
 
 pre {
