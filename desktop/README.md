@@ -1,83 +1,123 @@
-# VoiceBridgeAI 桌面客户端（macOS 原生）
+# VoiceBridgeAI macOS 桌面客户端
 
-Swift + AppKit + ScreenCaptureKit。无需 Node / Electron。
+Swift + AppKit + ScreenCaptureKit 原生客户端（无 Electron / Node）。
 
-- 自动拉起现有 Python 服务（`../../run.sh`）
-- **App 内设置**：引擎选择 + 云端密钥（对应 Web `/` 与 `/config`）
-- **系统音频** → WebSocket → 与扩展 **同一套** `server/`
-- 置顶悬浮字幕窗 + 控制面板
+**定位**：本机 **UI + 系统音频采集**；**ASR / 翻译 / 纠正** 仍由仓库根目录的 Python `server/` 处理（与 Web、Chromium 扩展共用同一套服务与 API）。桌面端不是「替代服务端」，而是第四种入口。
 
-## 设置（App 内）
+## 功能
 
-主窗口点 **设置…**：
+| 能力 | 说明 |
+|------|------|
+| 系统音频采集 | ScreenCaptureKit，mono int16 PCM → WebSocket |
+| 悬浮字幕 | 置顶面板：双行、partial、纠正闪色、背景透明度、EN 开关 |
+| 控制面板 | 连接状态、开始/停止、引擎摘要 |
+| App 内设置 | 引擎（ASR / 句中 / 句末 / 纠正）+ 云端密钥，API 同 Web `/config` |
+| 菜单栏 | 可收起到菜单栏；关主窗口不退出 |
+| 自动拉起服务 | 若 `http://127.0.0.1:8765/api/health` 不可达，执行仓库根 `run.sh` |
 
-| 标签 | 内容 |
-|---|---|
-| **引擎** | 语音识别 / 句中翻译 / 句末润色 / 纠正模式 → 保存到服务端 |
-| **接口密钥** | 腾讯、七牛、阿里、百度、DeepL、DeepSeek、OpenAI → 保存到 `.env`、单项测试、一键测试 |
+## 要求
 
-与 Web 控制台、`/config` 共用同一套 API，无需再开浏览器（可选）。
-
-- **macOS 13+**
-- Swift 6（Xcode 或 Command Line Tools）
-- 仓库根目录 Python 环境可用（`./run.sh` 能跑）
+- macOS **13+**
+- Xcode 或 Apple **Command Line Tools**（`swift build`）
+- 仓库根目录 Python 环境可用（在根目录手动 `./run.sh` 能成功）
+- **屏幕录制**权限（采系统声，非摄像头）
 
 ## 运行
+
+推荐：
 
 ```bash
 cd desktop/macos
 ./run.sh
 ```
 
-或：
+`desktop/macos/run.sh` 会：设置 `VOICEBRIDGE_ROOT` → `swift build -c release` → 启动可执行文件。
+
+手动：
 
 ```bash
 cd desktop/macos
 swift build -c release
-VOICEBRIDGE_ROOT=/path/to/VoiceBridgeAI .build/release/VoiceBridgeAI
+export VOICEBRIDGE_ROOT=/path/to/VoiceBridgeAI   # 含 run.sh 的仓库根
+.build/release/VoiceBridgeAI
 ```
 
-首次使用：**系统设置 → 隐私与安全性 → 屏幕录制**，允许 `VoiceBridgeAI`（ScreenCaptureKit 采系统声需要）。
+可选环境变量：
 
-## 架构
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `VOICEBRIDGE_ROOT` | 自动推断 | 仓库根（必须含 `run.sh`） |
+| `VOICEBRIDGE_PORT` | `8765` | 与 Python 服务端口一致 |
+
+首次使用：**系统设置 → 隐私与安全性 → 屏幕录制**，允许 `VoiceBridgeAI`（或当前可执行文件名）。  
+当前为 **SPM 可执行文件**，非 `.app`；`swift build` 后路径变化可能导致 TCC 权限需重新授权。
+
+## 源码结构
 
 ```
-desktop/macos/Sources/VoiceBridgeAI/
-├── VoiceBridgeAIMain.swift      入口
-├── AppDelegate.swift            应用生命周期
-├── ControlWindowController.swift  控制面板
-├── OverlayPanelController.swift   悬浮字幕
-├── SettingsWindowController.swift  设置窗（引擎 + 密钥）
-├── EnginePanelView.swift / CloudPanelView.swift
-├── SettingsStore.swift / EngineConfig.swift（含 APIClient）
-├── SystemAudioCapture.swift     ScreenCaptureKit 音频
-├── WebSocketSession.swift       与 server/ws 协议一致
-├── ServerManager.swift          拉起 run.sh、读 /api/health
-└── SubtitleStore.swift          字幕状态
-
-server/ + static/                 未改，Web / 扩展 / 桌面共用
-extension/                        未动
+desktop/
+├── README.md
+└── macos/
+    ├── Package.swift
+    ├── run.sh
+    └── Sources/VoiceBridgeAI/
+        ├── VoiceBridgeAIMain.swift       # @main
+        ├── AppDelegate.swift
+        ├── ControlWindowController.swift # 主控制窗
+        ├── SettingsWindowController.swift
+        ├── EnginePanelView.swift         # 引擎 Tab
+        ├── CloudPanelView.swift          # 密钥 Tab
+        ├── EngineSelectGroups.swift      # 下拉分组（对齐 Web engine-select.js）
+        ├── CloudProviderGuides.swift
+        ├── FormBuilder.swift
+        ├── SettingsStore.swift
+        ├── EngineConfig.swift            # 引擎模型 + APIClient（HTTP）
+        ├── SessionController.swift       # 会话：服务 → WS → 采集
+        ├── WebSocketSession.swift
+        ├── ServerManager.swift           # 拉起根 run.sh、health 检查
+        ├── RepoRoot.swift                # VOICEBRIDGE_ROOT 解析
+        ├── SystemAudioCapture.swift
+        ├── ScreenCaptureAccess.swift     # 屏幕录制权限
+        ├── SubtitleStore.swift
+        ├── OverlayPanelController.swift
+        ├── OverlayPreferences.swift      # UserDefaults：透明度、EN
+        └── MenuBarController.swift
 ```
 
-## 与扩展
+编译产物：`desktop/macos/.build/`（已在根 `.gitignore` 忽略）。
 
-| | Chromium 扩展 | macOS 原生 |
+## 与 Chromium 扩展
+
+| | 扩展 | macOS 桌面 |
 |---|---|---|
-| 音频 | 当前标签页 | 系统音频 |
-| 字幕 | 网页内 | 屏幕置顶窗 |
-| YouTube CC | ✅ | ❌ 未做 |
-| Node | 不需要 | 不需要 |
+| 音频来源 | 当前标签页 | 系统音频 |
+| 字幕展示 | 网页内 overlay | 屏幕置顶窗 |
+| YouTube 英文字幕 | ✅ | ❌ 未实现 |
+| 服务端 | 共用 `server/` | 共用 `server/` |
+| 可配置远程 serverUrl | ✅ | ❌ 仅 `127.0.0.1` |
+
+修改引擎/纠正模式后需 **停止并重新开始字幕** 才会生效（WebSocket 握手时一次性下发配置）。
+
+## 已知限制（MVP）
+
+- 无 `.app` 打包 / 代码签名 / 公证
+- 无 YouTube caption 模式
+- 服务端地址写死本机；无 `wss://` 远程反代
+- 每次冷启动仍依赖仓库根 Python（`run.sh`、venv、Whisper 等）
 
 ## 后续
 
-- [ ] `.app` 打包与代码签名
-- [ ] 云端-only 瘦身 Python 侧车
-- [ ] Windows 版（WASAPI loopback）
+- [ ] `.app` 打包（内置或隐藏 Python 侧车，实现「只装一个 App」）
+- [ ] 云端-only 瘦身侧车
+- [ ] Windows（WASAPI loopback）
 
-## 说明
+## 故障排查
 
-当前为 **可运行的 MVP**。若找不到 `run.sh`，设置环境变量：
+| 现象 | 处理 |
+|------|------|
+| 找不到 `run.sh` | 设置 `VOICEBRIDGE_ROOT` 指向仓库根 |
+| 启动超时 / 退出码 1 | 检查端口 8765 是否被占用；根目录手动 `./run.sh` 看报错 |
+| 无声音 / 采集失败 | 检查屏幕录制权限；重启 App 后再试 |
+| 改设置不生效 | 停止字幕后重新开始 |
 
-```bash
-export VOICEBRIDGE_ROOT=/Users/you/VoiceBridgeAI
-```
+更多项目说明见仓库根 [README.md](../README.md)。
