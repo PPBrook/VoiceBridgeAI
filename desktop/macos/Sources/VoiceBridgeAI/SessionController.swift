@@ -6,6 +6,7 @@ final class SessionController {
 
     let store = SubtitleStore()
     private(set) var isRunning = false
+    private(set) var isStarting = false
 
     private let webSocket = WebSocketSession()
     private var capture: SystemAudioCapture?
@@ -32,7 +33,14 @@ final class SessionController {
     }
 
     func start() async -> String? {
-        if isRunning { return nil }
+        if isRunning || isStarting { return nil }
+
+        isStarting = true
+        AppDelegate.shared?.refreshControlUI()
+        defer {
+            isStarting = false
+            AppDelegate.shared?.refreshControlUI()
+        }
 
         let serverErr = await ServerManager.shared.ensureRunning()
         if let serverErr {
@@ -55,8 +63,14 @@ final class SessionController {
         if #available(macOS 13.0, *) {
             let cap = SystemAudioCapture()
             cap.onPCM = { [weak self] data in
-                Task {
-                    try? await self?.webSocket.send(pcm: data)
+                Task { @MainActor in
+                    guard let self, self.isRunning else { return }
+                    do {
+                        try await self.webSocket.send(pcm: data)
+                    } catch {
+                        self.store.showError("音频发送失败：\(error.localizedDescription)")
+                        self.stop()
+                    }
                 }
             }
             cap.onFailure = { [weak self] message in
@@ -80,7 +94,6 @@ final class SessionController {
         isRunning = true
         store.reset()
         AppDelegate.shared?.overlay.update(with: store)
-        AppDelegate.shared?.refreshControlUI()
         return nil
     }
 
@@ -91,6 +104,7 @@ final class SessionController {
         capture = nil
         webSocket.disconnect()
         isRunning = false
+        isStarting = false
         store.hide()
         AppDelegate.shared?.overlay.update(with: store)
         AppDelegate.shared?.refreshControlUI()

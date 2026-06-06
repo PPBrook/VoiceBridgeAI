@@ -30,6 +30,10 @@ final class ServerManager {
         }
 
         let runSh = root.appendingPathComponent("run.sh")
+        guard FileManager.default.isExecutableFile(atPath: runSh.path) else {
+            return "找不到可执行的 run.sh：\(runSh.path)"
+        }
+
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/bin/bash")
         proc.arguments = [runSh.path]
@@ -37,10 +41,8 @@ final class ServerManager {
         var env = ProcessInfo.processInfo.environment
         env["VOICEBRIDGE_PORT"] = String(AppSettings.port)
         proc.environment = env
-
-        let pipe = Pipe()
-        proc.standardOutput = pipe
-        proc.standardError = pipe
+        proc.standardOutput = FileHandle.nullDevice
+        proc.standardError = FileHandle.nullDevice
 
         do {
             try proc.run()
@@ -51,9 +53,30 @@ final class ServerManager {
 
         for _ in 0..<120 {
             if await ping() { return nil }
+
+            if let process, !process.isRunning {
+                let exitCode = process.terminationStatus
+                self.process = nil
+                if await ping() { return nil }
+                return startupFailureMessage(exitCode: exitCode)
+            }
+
             try? await Task.sleep(nanoseconds: 800_000_000)
         }
+
         return "服务端启动超时（Whisper 首次加载可能较慢，请稍后重试）"
+    }
+
+    private func startupFailureMessage(exitCode: Int32) -> String {
+        let port = AppSettings.port
+        if exitCode == 1 {
+            return """
+            服务端启动失败（退出码 1）。常见原因：
+            · 端口 \(port) 已被占用 — 关闭其他 VoiceBridgeAI 实例或执行 kill $(lsof -t -iTCP:\(port))
+            · 仓库根 run.sh 无法启动 — 请在终端手动运行 ./run.sh 查看错误
+            """
+        }
+        return "服务端启动失败（退出码 \(exitCode)）。请在终端于仓库根目录运行 ./run.sh 查看详情。"
     }
 
     func stopIfOwned() {

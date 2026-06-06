@@ -7,6 +7,7 @@ final class WebSocketSession {
     private var task: URLSessionWebSocketTask?
     private var receiveTask: Task<Void, Never>?
     private let encoder = JSONSerialization.self
+    private let readyTimeout: TimeInterval = 120
 
     func connect(config: EngineConfig) async throws {
         disconnect()
@@ -27,6 +28,26 @@ final class WebSocketSession {
     }
 
     private func waitForReady() async throws {
+        try await withThrowingTaskGroup(of: Void.self) { group in
+            group.addTask { [self] in
+                try await self.receiveUntilReady()
+            }
+            group.addTask { [readyTimeout] in
+                try await Task.sleep(nanoseconds: UInt64(readyTimeout * 1_000_000_000))
+                throw NSError(
+                    domain: "VoiceBridgeAI",
+                    code: 2,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "等待服务端就绪超时（Whisper 首次加载可能较慢，请稍后重试）",
+                    ]
+                )
+            }
+            try await group.next()
+            group.cancelAll()
+        }
+    }
+
+    private func receiveUntilReady() async throws {
         guard let task else { throw URLError(.notConnectedToInternet) }
 
         while true {
@@ -89,7 +110,9 @@ final class WebSocketSession {
     }
 
     func send(pcm: Data) async throws {
-        guard let task else { return }
+        guard let task else {
+            throw URLError(.networkConnectionLost)
+        }
         try await task.send(.data(pcm))
     }
 
