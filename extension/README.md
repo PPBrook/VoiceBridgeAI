@@ -1,17 +1,23 @@
-# VoiceBridgeAI Chrome 扩展
+# VoiceBridgeAI 浏览器扩展
 
-本仓库内的 Chrome MV3 扩展：在任意网页上显示 **VoiceBridgeAI 中文悬浮字幕**。支持两种英文输入来源。
+本仓库内的 **Manifest V3** 扩展：在任意网页上显示 **VoiceBridgeAI 中文悬浮字幕**。支持 **Google Chrome**、**Microsoft Edge** 及其它 Chromium 内核浏览器（需 Offscreen Document，一般 Chrome/Edge 109+）。
 
-**与本仓库的关系：** 扩展在 `extension/`，服务端在 `server/` + `static/`。克隆本仓库后 `./run.sh` + 加载扩展即可。
+**与服务端：** 扩展在 `extension/`，服务端在 `server/` + `static/`。同一仓库，`./run.sh` 后加载扩展即可。
 
 ## 安装
 
 1. 仓库根目录：`./run.sh`
-2. `chrome://extensions` → **开发者模式** → **加载已解压的扩展程序** → 选 **`extension/`**
+2. 加载扩展（**Chrome 与 Edge 使用同一 `extension/` 目录，无需改代码**）：
+
+   | 浏览器 | 地址 | 操作 |
+   |---|---|---|
+   | **Chrome** | `chrome://extensions` | 开启「开发者模式」→「加载已解压的扩展程序」→ 选 `extension/` |
+   | **Edge** | `edge://extensions` | 开启「开发人员模式」→「加载扩展」→ 选 `extension/` |
+
 3. 弹窗确认 **服务端地址**（默认 `http://127.0.0.1:8765`）
 4. 选输入方式与引擎 → **开始悬浮字幕**
 
-修改代码后请 **重新加载** 扩展。
+修改代码后请在扩展管理页 **重新加载** 扩展。
 
 ## 两种输入方式
 
@@ -20,17 +26,16 @@
 | **语音识别（音频）** | `ON` | 采集标签页音频 → 服务端 ASR → 翻译 |
 | **YouTube 英文字幕** | `CC` | 读取 YouTube CC DOM → **跳过 ASR** → 只翻译 |
 
-### YouTube 字幕模式（推荐有英文字幕时）
+### YouTube 字幕模式
 
-1. 打开 **youtube.com** 视频页
-2. 播放器开启 **CC**，语言选 **English**
-3. 弹窗 **英文来源** → `YouTube 英文字幕`
-4. **开始** → 终端应出现 `caption ready`，**不应**出现 `faster_whisper`
-5. 约 6 秒内无字幕时，悬浮层会提示检查 CC
+1. 在 Chrome 或 Edge 打开 **youtube.com** 视频页
+2. 播放器开启 **CC → English**
+3. 弹窗 **英文来源** → `YouTube 英文字幕` → **开始**
+4. 终端应出现 `caption ready`，不应出现 `faster_whisper`
 
 ### 语音识别模式
 
-适用于无字幕的视频页。会占用 tab 音频通道；YouTube 上若已有 CC，优先用字幕模式。
+适用于无字幕或 B 站等站点。会占用 tab 音频通道；YouTube 有英文字幕时优先用 CC 模式。
 
 ## 配置
 
@@ -38,45 +43,29 @@
 |---|---|
 | 服务端地址 | 弹窗顶部；非 localhost 需浏览器授权 |
 | 英文来源 | 语音识别 / YouTube 英文字幕 |
-| 句中 / 句末 | 与 Web 控制台同步；**可用云端**（不限于离线 Argos） |
-| 纠正 | 实时优先 / 标准 / 精准 |
+| 句中 / 句末 | 与 Web 控制台同步；可用云端（不限于 Argos） |
 | 云端密钥 | 扩展不存 Key → 弹窗 **接口配置** → `/config` |
-
-### 云端翻译（字幕模式同样适用）
-
-1. 浏览器打开 `/config` → 填 Key → 保存 → 测试句中/句末
-2. 扩展弹窗改 **句中翻译**、**句末润色**（如 TMT + 七牛 LLM）
-3. 保存后自动 `POST /api/engine/settings`
-
-测试通过的接口才会出现在下拉框。
 
 ## 与服务端通信
 
-详见 [API.md](./API.md)。
+详见 [API.md](./API.md)：`GET /api/health`、`POST /api/engine/settings`、`WebSocket /ws`。
 
-| 接口 | 用途 |
-|---|---|
-| `GET /api/health` | 连接检测、引擎选项 |
-| `POST /api/engine/settings` | 同步引擎 |
-| `WebSocket /ws` | 音频 PCM 或 `{ type: "caption", ... }` 字幕文本 |
+## 兼容性说明
+
+- **已验证目标：** Chrome、Edge（Chromium）
+- **原理：** 二者共用 Chromium 扩展 API（`tabCapture`、`offscreen`、`scripting` 等），本扩展直接调用 `chrome.*` 命名空间，Edge 同样可用
+- **未支持：** Firefox（Offscreen 架构不同）、Safari（需单独打包）
+- **Web 控制台：** 在 Chrome 或 Edge 打开 `http://127.0.0.1:8765` 同样可用
 
 ## 目录结构
 
 ```
 extension/
-├── background.js              # 编排：音频 / 字幕两路
-├── offscreen.js               # WebSocket 客户端
-├── content/
-│   ├── subtitle-overlay.js    # 悬浮字幕 UI
-│   └── youtube-captions.js    # YouTube CC 监听
-├── popup/                     # 弹窗：输入源 + 引擎
+├── manifest.json
+├── background.js / offscreen.js
+├── content/          # 悬浮字幕 + YouTube CC
+├── popup/
 ├── pcm-processor.js
 ├── API.md
 └── README.md
 ```
-
-## 开发说明
-
-- `pcm-processor.js`、`popup/engine-select.js` 为扩展内自有副本（与 `static/js/` 分开维护）
-- YouTube 字幕通过 `MutationObserver` + 轮询读取 `.ytp-caption-segment`（含 Shadow DOM 深度查询）
-- 纯 Web 控制台无法跨站读字幕；字幕模式为扩展专有
