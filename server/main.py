@@ -87,6 +87,7 @@ FEATURES = [
     "startup-test-all",
     "subtitle-revise",
     "revise-modes",
+    "caption-mode",
 ]
 
 
@@ -298,6 +299,7 @@ async def websocket_pcm(ws: WebSocket):
     asr_mode = default_mode()
     revise_mode = default_revise_mode()
     revise_params = get_revise_params(revise_mode)
+    input_mode = "audio"
     alive = True
     tencent: TencentAsrStream | None = None
     engine: ReviseEngine | None = None
@@ -454,6 +456,62 @@ async def websocket_pcm(ws: WebSocket):
         )
         return True
 
+    async def start_caption_mode(
+        payload: dict | None,
+        rv_mode: str | None = None,
+    ) -> bool:
+        nonlocal tencent, engine, framer, asr_mode, revise_mode, revise_params, revise, input_mode
+        input_mode = "caption"
+        asr_mode = "caption"
+        if rv_mode is not None:
+            revise_mode = normalize_revise_mode(rv_mode)
+        revise_params = get_revise_params(revise_mode)
+        framer = PcmFramer()
+        revise.clear()
+        revise = bind_revise(revise_params)
+        for seg_id in list(local_tasks):
+            cancel_local_task(seg_id)
+        if tencent:
+            await tencent.close()
+            tencent = None
+        engine = None
+        await _preload_translate(payload)
+        await send_json(
+            {
+                "type": "asrReady",
+                "inputMode": "caption",
+                **get_engine_status(),
+                **get_revise_status(revise_mode),
+                "asrMode": "caption",
+                "asrProvider": "caption",
+            }
+        )
+        from partial_config import normalize_provider as np
+        from final_config import normalize_provider as nf
+
+        log.info(
+            "caption ready partial=%s final=%s revise=%s",
+            np(payload.get("partialProvider") if payload else None),
+            nf(payload.get("finalProvider") if payload else None),
+            revise_mode,
+        )
+        return True
+
+    async def handle_caption(data: dict) -> None:
+        if input_mode != "caption" or not alive:
+            return
+        seg_id = int(data.get("segmentId", 0))
+        text = (data.get("text") or "").strip()
+        is_final = bool(data.get("final"))
+        if not text:
+            return
+        if is_final:
+            await revise.finalize(seg_id, text)
+            log.info("segment %d [caption final]: %s", seg_id, text)
+        else:
+            await revise.emit_english(seg_id, text, partial=True, final=False)
+            await revise.schedule_partial_translation(seg_id, text)
+
     try:
         while True:
             msg = await ws.receive()
@@ -468,16 +526,22 @@ async def websocket_pcm(ws: WebSocket):
                     sample_rate = int(data.get("sampleRate", 48000))
                     mode = data.get("asrProvider") or data.get("asrMode", asr_mode)
                     rv_mode = data.get("reviseMode", revise_mode)
+                    caption = data.get("inputMode") == "caption" or mode == "caption"
                     pending = get_revise_params(rv_mode)
                     if engine:
                         engine.reset(sample_rate, pending.refine_interval_s)
-                    ok = await start_asr(mode, rv_mode)
+                    if caption:
+                        ok = await start_caption_mode(data, rv_mode)
+                    else:
+                        ok = await start_asr(mode, rv_mode)
                     if not ok:
                         mark_dead()
                         break
+                elif data.get("type") == "caption":
+                    await handle_caption(data)
 
             if "bytes" in msg and msg["bytes"]:
-                if not alive:
+                if not alive or input_mode == "caption":
                     continue
                 if asr_mode == "tencent":
                     if tencent is None:

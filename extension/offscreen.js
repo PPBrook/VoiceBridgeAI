@@ -59,6 +59,7 @@ function connectWs(sampleRate, config) {
           sampleRate,
           asrMode: config.asrProvider || config.asrMode,
           asrProvider: config.asrProvider || config.asrMode,
+          inputMode: config.inputMode || "audio",
           partialProvider: config.partialProvider,
           finalProvider: config.finalProvider,
           reviseMode: config.reviseMode,
@@ -126,6 +127,25 @@ async function pumpWithWorklet(sourceNode) {
   sink.connect(audioCtx.destination);
 }
 
+async function startCaption({ tabId, config }) {
+  await stopCapture(false);
+  captureTabId = tabId;
+  await connectWs(48000, config);
+  chrome.runtime.sendMessage({ type: "CAPTURE_STARTED", tabId });
+}
+
+function forwardCaption(payload) {
+  if (ws?.readyState !== WebSocket.OPEN) return;
+  ws.send(
+    JSON.stringify({
+      type: "caption",
+      segmentId: payload.segmentId,
+      text: payload.text,
+      final: payload.final,
+    })
+  );
+}
+
 async function startCapture({ streamId, tabId, config }) {
   await stopCapture(false);
   captureTabId = tabId;
@@ -181,6 +201,19 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     startCapture(msg)
       .then(() => sendResponse({ ok: true }))
       .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
+
+  if (msg.type === "START_CAPTION") {
+    startCaption(msg)
+      .then(() => sendResponse({ ok: true }))
+      .catch((err) => sendResponse({ ok: false, error: err.message }));
+    return true;
+  }
+
+  if (msg.type === "FORWARD_CAPTION") {
+    forwardCaption(msg);
+    sendResponse({ ok: true });
     return true;
   }
 

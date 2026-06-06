@@ -4,6 +4,9 @@ const btnStop = document.getElementById("btn-stop");
 const hintEl = document.getElementById("hint");
 const errorEl = document.getElementById("error");
 const serverUrlEl = document.getElementById("server-url");
+const inputModeEl = document.getElementById("input-mode");
+const inputHintEl = document.getElementById("input-hint");
+const asrLabelEl = document.getElementById("asr-label");
 const asrModeEl = document.getElementById("asr-mode");
 const partialProviderEl = document.getElementById("partial-provider");
 const finalProviderEl = document.getElementById("final-provider");
@@ -11,7 +14,22 @@ const reviseModeEl = document.getElementById("revise-mode");
 const openConsoleEl = document.getElementById("open-console");
 const openConfigEl = document.getElementById("open-config");
 
-const engineEls = [asrModeEl, partialProviderEl, finalProviderEl, reviseModeEl];
+function isCaptionMode() {
+  return inputModeEl?.value === "caption";
+}
+
+function syncInputModeUi() {
+  const caption = isCaptionMode();
+  if (asrLabelEl) asrLabelEl.hidden = caption;
+  if (inputHintEl) {
+    inputHintEl.textContent = caption
+      ? "在 YouTube 视频页开启 CC 英文字幕；跳过语音识别，只翻译字幕。"
+      : "";
+  }
+}
+
+const engineEls = [partialProviderEl, finalProviderEl, reviseModeEl];
+if (asrModeEl) engineEls.unshift(asrModeEl);
 
 const DEFAULT_SERVER_URL = "http://127.0.0.1:8765";
 
@@ -131,6 +149,7 @@ async function saveSettings() {
   await chrome.storage.sync.set({ serverUrl: base });
 
   const config = {
+    inputMode: inputModeEl?.value || "audio",
     asrMode: asrModeEl.value,
     asrProvider: asrModeEl.value,
     partialProvider: partialProviderEl.value,
@@ -139,10 +158,19 @@ async function saveSettings() {
   };
   await chrome.storage.sync.set(config);
   try {
+    const body =
+      config.inputMode === "caption"
+        ? {
+            inputMode: "caption",
+            partialProvider: config.partialProvider,
+            finalProvider: config.finalProvider,
+            reviseMode: config.reviseMode,
+          }
+        : config;
     await fetch(`${base}/api/engine/settings`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(config),
+      body: JSON.stringify(body),
     });
   } catch {
     /* server offline — local extension prefs still saved */
@@ -153,6 +181,7 @@ async function saveSettings() {
 async function loadSettings() {
   const stored = await chrome.storage.sync.get([
     "serverUrl",
+    "inputMode",
     "asrMode",
     "asrProvider",
     "partialProvider",
@@ -162,6 +191,8 @@ async function loadSettings() {
   const base = normalizeServerUrl(stored.serverUrl);
   if (serverUrlEl) serverUrlEl.value = base;
   updateServerLinks(base);
+  if (stored.inputMode && inputModeEl) inputModeEl.value = stored.inputMode;
+  syncInputModeUi();
   if (stored.reviseMode) reviseModeEl.value = stored.reviseMode;
   return { ...stored, serverUrl: base };
 }
@@ -211,9 +242,13 @@ async function refreshStatus() {
   setCapturing(status.capturing);
 
   if (status.capturing) {
-    hintEl.textContent = "正在当前标签页显示悬浮字幕…";
+    hintEl.textContent = status.config?.inputMode === "caption"
+      ? "正在读取 YouTube 字幕并显示中文悬浮字幕…"
+      : "正在当前标签页显示悬浮字幕…";
   } else if (status.serverOk && health) {
-    hintEl.textContent = "离线默认可用；云端接口请先在控制台「接口配置」测试通过。";
+    hintEl.textContent = isCaptionMode()
+      ? "YouTube 字幕模式：请打开视频页并开启英文字幕 CC，再点开始。"
+      : "离线默认可用；云端接口请先在控制台「接口配置」测试通过。";
   } else if (status.serverOk) {
     hintEl.textContent = "控制台引擎选项加载失败，请刷新扩展或打开控制台。";
   } else {
@@ -229,6 +264,9 @@ async function refreshStatus() {
 
 btnStart.addEventListener("click", async () => {
   showError("");
+  if (inputModeEl) {
+    await chrome.storage.sync.set({ inputMode: inputModeEl.value || "audio" });
+  }
   await saveSettings();
   btnStart.disabled = true;
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -272,8 +310,13 @@ finalProviderEl?.addEventListener("change", () => {
 });
 
 for (const el of [asrModeEl, reviseModeEl]) {
-  el.addEventListener("change", () => saveSettings());
+  el?.addEventListener("change", () => saveSettings());
 }
+
+inputModeEl?.addEventListener("change", () => {
+  syncInputModeUi();
+  saveSettings();
+});
 
 serverUrlEl?.addEventListener("change", async () => {
   showError("");
@@ -293,3 +336,4 @@ serverUrlEl?.addEventListener("change", async () => {
 });
 
 refreshStatus();
+syncInputModeUi();
