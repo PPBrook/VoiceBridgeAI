@@ -6,6 +6,8 @@ struct SubtitleSegment: Identifiable, Equatable {
     var translation: String
     var partial: Bool
     var final: Bool
+    var revised: Bool
+    var lookback: Bool
 }
 
 @MainActor
@@ -19,10 +21,28 @@ final class SubtitleStore {
 
     private var map: [String: SubtitleSegment] = [:]
     private let maxLines = 2
+    private var partialNotifyTask: Task<Void, Never>?
 
     private func notify() { onChange?() }
 
+    private func scheduleNotify(isFinal: Bool) {
+        if isFinal {
+            partialNotifyTask?.cancel()
+            partialNotifyTask = nil
+            notify()
+            return
+        }
+        partialNotifyTask?.cancel()
+        partialNotifyTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 180_000_000)
+            guard !Task.isCancelled else { return }
+            notify()
+        }
+    }
+
     func reset() {
+        partialNotifyTask?.cancel()
+        partialNotifyTask = nil
         map.removeAll()
         segments = []
         errorMessage = nil
@@ -32,6 +52,8 @@ final class SubtitleStore {
     }
 
     func hide() {
+        partialNotifyTask?.cancel()
+        partialNotifyTask = nil
         map.removeAll()
         segments = []
         errorMessage = nil
@@ -58,19 +80,23 @@ final class SubtitleStore {
         }
         let isFinal = (payload["final"] as? Bool) ?? false
         let isPartial = (payload["partial"] as? Bool) ?? false
+        let revised = (payload["revise"] as? Bool) ?? false
+        let lookback = (payload["lookback"] as? Bool) ?? false
 
         let seg = SubtitleSegment(
             id: id,
             text: text,
             translation: translation,
             partial: isPartial && !isFinal,
-            final: isFinal
+            final: isFinal,
+            revised: revised && prev != nil,
+            lookback: lookback
         )
         map[id] = seg
 
         let ordered = map.values.sorted { Int($0.id) ?? 0 < Int($1.id) ?? 0 }
         segments = Array(ordered.suffix(maxLines))
         statusMessage = ""
-        notify()
+        scheduleNotify(isFinal: isFinal || prev == nil)
     }
 }

@@ -49,7 +49,7 @@ desktop/macos/Sources/VoiceBridgeAI/
 ├── OverlayPanelController.swift   悬浮字幕
 ├── SettingsWindowController.swift  设置窗（引擎 + 密钥）
 ├── EnginePanelView.swift / CloudPanelView.swift
-├── SettingsStore.swift / APIClient.swift
+├── SettingsStore.swift / EngineConfig.swift（含 APIClient）
 ├── SystemAudioCapture.swift     ScreenCaptureKit 音频
 ├── WebSocketSession.swift       与 server/ws 协议一致
 ├── ServerManager.swift          拉起 run.sh、读 /api/health

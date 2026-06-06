@@ -7,6 +7,7 @@ final class SettingsWindowController: NSWindowController {
     private let tabView = NSTabView()
     private let enginePanel = EnginePanelView(frame: .zero)
     private let cloudPanel = CloudPanelView(frame: .zero)
+    private var startupPollTask: Task<Void, Never>?
 
     init() {
         let window = NSWindow(
@@ -60,16 +61,41 @@ final class SettingsWindowController: NSWindowController {
         showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
         Task { @MainActor in
-            do {
-                try await SettingsStore.shared.refresh()
+            await reloadSettings()
+        }
+    }
+
+    private func reloadSettings() async {
+        do {
+            try await SettingsStore.shared.refresh()
+            enginePanel.reload()
+            cloudPanel.reload()
+            scheduleStartupPollIfNeeded()
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "无法加载设置"
+            alert.informativeText = error.localizedDescription
+            alert.runModal()
+        }
+    }
+
+    private func scheduleStartupPollIfNeeded() {
+        startupPollTask?.cancel()
+        startupPollTask = nil
+        guard let st = SettingsStore.shared.health["startupTest"] as? [String: Any],
+              st["running"] as? Bool == true else { return }
+
+        startupPollTask = Task { @MainActor in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                guard !Task.isCancelled else { return }
+                try? await SettingsStore.shared.refresh()
                 enginePanel.reload()
                 cloudPanel.reload()
-            } catch {
-                let alert = NSAlert()
-                alert.messageText = "无法加载设置"
-                alert.informativeText = error.localizedDescription
-                alert.runModal()
+                let running = (SettingsStore.shared.health["startupTest"] as? [String: Any])?["running"] as? Bool == true
+                if !running { break }
             }
+            startupPollTask = nil
         }
     }
 }
