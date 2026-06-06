@@ -2,6 +2,7 @@
 
 const DEFAULT_CONFIG = {
   serverUrl: "http://127.0.0.1:8765",
+  inputMode: "audio",
   asrMode: "local",
   asrProvider: "local",
   partialProvider: "argos",
@@ -108,6 +109,44 @@ async function injectOverlay(tabId) {
   await waitForContentScript(tabId);
 }
 
+function isYouTubeUrl(url) {
+  if (!url) return false;
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, "");
+    return host === "youtube.com" || host === "m.youtube.com" || host === "youtu.be";
+  } catch {
+    return false;
+  }
+}
+
+function waitForCaptionScript(tabId, timeoutMs = 2000) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (ok) => {
+      if (done) return;
+      done = true;
+      chrome.runtime.onMessage.removeListener(onReady);
+      clearTimeout(timer);
+      resolve(ok);
+    };
+    const onReady = (msg, sender) => {
+      if (msg.type !== "CAPTION_READY") return;
+      if (sender.tab?.id != null && sender.tab.id !== tabId) return;
+      finish(true);
+    };
+    chrome.runtime.onMessage.addListener(onReady);
+    const timer = setTimeout(() => finish(false), timeoutMs);
+  });
+}
+
+async function injectYouTubeCaptions(tabId) {
+  await chrome.scripting.executeScript({
+    target: { tabId },
+    files: ["content/youtube-captions.js"],
+  });
+  await waitForCaptionScript(tabId);
+}
+
 function isCapturableUrl(url) {
   if (!url) return false;
   return !(
@@ -132,6 +171,55 @@ function relaySubtitle(tabId, payload) {
   sendToTab(tabId, { type: "subtitle", ...segment });
 }
 
+async function startCaptionCapture(tabId) {
+  if (capturingTabId != null && capturingTabId !== tabId) {
+    throw new Error("已在其他标签页捕获中，请先停止");
+  }
+
+  const tab = await chrome.tabs.get(tabId);
+  if (!isCapturableUrl(tab.url)) {
+    throw new Error("无法在此页面捕获，请打开 YouTube 视频页后再试");
+  }
+  if (!isYouTubeUrl(tab.url)) {
+    throw new Error("字幕模式目前仅支持 YouTube，请打开 youtube.com 视频页");
+  }
+
+  const config = await getConfig();
+  const health = await fetch(`${config.serverUrl}/api/health`, {
+    cache: "no-store",
+  }).catch(() => null);
+  if (!health?.ok) {
+    throw new Error("无法连接 VoiceBridgeAI 服务端，请确认服务已启动且地址正确");
+  }
+
+  const previousTabId = capturingTabId;
+  capturingTabId = null;
+  await releaseCaptureLock(previousTabId);
+
+  await injectOverlay(tabId);
+  await injectYouTubeCaptions(tabId);
+  await sendToTab(tabId, { type: "subtitle-reset" });
+
+  await ensureOffscreen();
+  const res = await chrome.runtime.sendMessage({
+    target: "offscreen",
+    type: "START_CAPTION",
+    tabId,
+    config: { ...config, inputMode: "caption", asrMode: "caption", asrProvider: "caption" },
+  });
+
+  if (!res?.ok) {
+    throw new Error(res?.error || "启动字幕模式失败");
+  }
+
+  await sendToTab(tabId, { type: "caption-start" });
+
+  capturingTabId = tabId;
+  await chrome.action.setBadgeText({ text: "CC", tabId });
+  await chrome.action.setBadgeBackgroundColor({ color: "#1a73e8", tabId });
+  return { ok: true, tabId };
+}
+
 async function startCapture(tabId) {
   if (capturingTabId != null && capturingTabId !== tabId) {
     throw new Error("已在其他标签页捕获中，请先停止");
@@ -143,6 +231,10 @@ async function startCapture(tabId) {
   }
 
   const config = await getConfig();
+  if (config.inputMode === "caption") {
+    return startCaptionCapture(tabId);
+  }
+
   const health = await fetch(`${config.serverUrl}/api/health`, {
     cache: "no-store",
   }).catch(() => null);
@@ -183,6 +275,7 @@ async function stopCapture() {
   capturingTabId = null;
 
   if (tabId != null) {
+    await sendToTab(tabId, { type: "caption-stop" });
     await sendToTab(tabId, { type: "subtitle-hide" });
   }
 
@@ -235,6 +328,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === "ASR_SEGMENT" && msg.tabId != null) {
     relaySubtitle(msg.tabId, msg.payload);
+    return;
+  }
+  if (msg.type === "CAPTION_SEGMENT" && capturingTabId != null) {
+    chrome.runtime.sendMessage({
+      target: "offscreen",
+      type: "FORWARD_CAPTION",
+      segmentId: msg.segmentId,
+      text: msg.text,
+      final: msg.final,
+    });
+    return;
+  }
+  if (msg.type === "CAPTION_NO_SIGNAL" && capturingTabId != null) {
+    sendToTab(capturingTabId, {
+      type: "subtitle-error",
+      message: msg.message || "未检测到 YouTube 字幕",
+    });
     return;
   }
   if (msg.type === "CAPTURE_STARTED" && msg.tabId != null) {

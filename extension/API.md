@@ -58,10 +58,13 @@
 
 **首条文本消息（连接后）：**
 
+音频模式：
+
 ```json
 {
   "type": "config",
   "sampleRate": 48000,
+  "inputMode": "audio",
   "asrMode": "local",
   "asrProvider": "local",
   "partialProvider": "argos",
@@ -70,7 +73,36 @@
 }
 ```
 
-**后续：** 二进制帧，Int16 PCM mono（由 `pcm-processor.js` AudioWorklet 产生）。
+字幕模式（跳过 ASR，`inputMode: "caption"`）：
+
+```json
+{
+  "type": "config",
+  "sampleRate": 48000,
+  "inputMode": "caption",
+  "asrMode": "caption",
+  "asrProvider": "caption",
+  "partialProvider": "argos",
+  "finalProvider": "argos",
+  "reviseMode": "balanced"
+}
+```
+
+**字幕模式后续文本消息：**
+
+```json
+{
+  "type": "caption",
+  "segmentId": 0,
+  "text": "So today we'll talk about machine learning.",
+  "final": false
+}
+```
+
+- `final: false` — 句中草稿，触发 partial 翻译  
+- `final: true` — 定稿，触发 final 润色  
+
+**后续（音频模式）：** 二进制帧，Int16 PCM mono（由 `pcm-processor.js` AudioWorklet 产生）。
 
 ### 服务端 → 客户端
 

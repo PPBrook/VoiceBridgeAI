@@ -26,8 +26,20 @@
   </label>
 
   <fieldset class="settings">
-    <legend>引擎（与控制台同步）</legend>
+    <legend>输入</legend>
     <label>
+      英文来源
+      <select id="input-mode">
+        <option value="audio">语音识别（音频）</option>
+        <option value="caption">YouTube 英文字幕</option>
+      </select>
+    </label>
+    <p id="input-hint" class="input-hint"></p>
+  </fieldset>
+
+  <fieldset class="settings" id="engine-settings">
+    <legend>引擎（与控制台同步）</legend>
+    <label id="asr-label">
       语音识别
       <select id="asr-mode"></select>
     </label>
