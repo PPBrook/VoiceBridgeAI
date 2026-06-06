@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "VoiceBridgeAI 悬浮字幕",
   "version": "0.1.0",
-  "description": "捕获当前标签页音频，在页面上显示实时中英悬浮字幕（需本地 VoiceBridgeAI 服务）",
+  "description": "捕获当前标签页音频，在页面上显示实时中英悬浮字幕（需本地 VoiceBridgeAI 服务；支持 Chrome / Edge 等 Chromium 浏览器）",
   "permissions": ["tabCapture", "offscreen", "storage", "activeTab", "scripting"],
   "host_permissions": ["http://127.0.0.1/*", "http://localhost/*"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],

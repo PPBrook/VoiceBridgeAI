@@ -1,6 +1,6 @@
 # VoiceBridgeAI
 
-Chrome 标签页英文内容 → 实时中文悬浮字幕。支持 **语音识别** 与 **YouTube 英文字幕** 两条输入路径。Web 控制台 + Chrome 扩展。
+Chrome / Edge 标签页英文内容 → 实时中文悬浮字幕。支持 **语音识别** 与 **YouTube 英文字幕** 两条输入路径。Web 控制台 + 浏览器扩展（Chromium 系）。
 
 ## 快速开始
 
@@ -25,7 +25,7 @@ cp .env.example .env    # 可选；全本地可不填 Key
 ```
 
 - **纯 Web 控制台**无法读取其他网站的字幕 DOM，只能走语音识别。
-- **Chrome 扩展**可在 YouTube 上抓取 CC 文本，分句更准、延迟更低、不占用 Whisper。
+- **浏览器扩展**（Chrome / Edge 等 Chromium）可在 YouTube 上抓取 CC 文本，分句更准、延迟更低、不占用 Whisper。
 
 ## 页面
 
@@ -44,7 +44,7 @@ cp .env.example .env    # 可选；全本地可不填 Key
 
 ### B. YouTube 字幕模式（扩展，推荐有 CC 时）
 
-1. `./run.sh` → `chrome://extensions` 加载 `extension/`
+1. `./run.sh` → 在 Chrome 或 Edge 中加载 `extension/`（见下方说明）
 2. 打开 YouTube 视频，开启 **CC → English**
 3. 扩展弹窗：**英文来源** → `YouTube 英文字幕` → **开始**（徽章 **CC**）
 4. 句中/句末可改为云端接口（见下），不必离线
@@ -78,7 +78,7 @@ server/
 static/
   index.html, config.html
   js/app.js, config.js, engine-select.js, capture.js
-extension/                Chrome 扩展（见 extension/README.md）
+extension/                浏览器扩展 Chrome/Edge（见 extension/README.md）
   content/youtube-captions.js   YouTube CC 抓取
 ```
 
@@ -106,12 +106,14 @@ extension/                Chrome 扩展（见 extension/README.md）
 
 WebSocket 字幕模式：`config` 带 `inputMode: "caption"`，后续发 `{ type: "caption", text, segmentId, final }`。
 
-## Chrome 扩展
+## 浏览器扩展（Chrome / Edge）
 
-扩展位于本仓库 **`extension/`** 目录（与服务端同一仓库）。
+扩展位于本仓库 **`extension/`** 目录，与 **Chrome、Microsoft Edge** 等 Chromium 浏览器兼容（Manifest V3；需 Offscreen Document，Edge 109+ / Chrome 109+）。
 
 1. `./run.sh`
-2. `chrome://extensions` → 加载 **`extension/`**（详见 [extension/README.md](extension/README.md)）
+2. 加载扩展（二选一）：
+   - **Chrome**：`chrome://extensions` → 开发者模式 → 加载已解压的扩展程序 → 选 **`extension/`**
+   - **Edge**：`edge://extensions` → 开发人员模式 → 加载扩展 → 选 **`extension/`**
 3. 选 **英文来源** + 句中/句末引擎 → **开始悬浮字幕**
 
 | 模式 | 徽章 | 说明 |
@@ -119,4 +121,4 @@ WebSocket 字幕模式：`config` 带 `inputMode: "caption"`，后续发 `{ type
 | 语音识别 | `ON` | 采集标签页音频，走 ASR |
 | YouTube 字幕 | `CC` | 读 CC 文本，不抓音频、不跑 Whisper |
 
-默认引擎：`local + argos + argos`（可改为云端翻译）。API 契约：[extension/API.md](extension/API.md)。
+默认引擎：`local + argos + argos`（可改为云端翻译）。详见 [extension/README.md](extension/README.md)、[extension/API.md](extension/API.md)。
