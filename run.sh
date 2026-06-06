@@ -19,11 +19,12 @@ PORT="${VOICEBRIDGE_PORT:-8765}"
 if command -v lsof >/dev/null 2>&1; then
   OLD_PID="$(lsof -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true)"
   if [[ -n "$OLD_PID" ]]; then
-    echo "端口 $PORT 已被占用 (PID $OLD_PID)，可能是其他终端或 Cursor 后台任务。"
+    echo "端口 $PORT 已被占用 (PID $OLD_PID)，可能是其他终端或后台任务。"
     echo "释放端口: kill $OLD_PID"
     echo "或直接访问: http://127.0.0.1:$PORT"
     exit 1
   fi
 fi
 echo "VoiceBridgeAI — http://127.0.0.1:$PORT"
+echo "启动后将自动测试 .env 中已配置的接口（AUTO_TEST_ON_START=0 可关闭）"
 cd "$ROOT/server" && python main.py

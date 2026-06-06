@@ -70,7 +70,9 @@ def chat_translate(
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
         log.error("llm http %s: %s", exc.code, detail[:500])
-        raise RuntimeError(f"LLM HTTP {exc.code}") from exc
+        from http_errors import format_http_error
+
+        raise RuntimeError(format_http_error("LLM", exc.code, detail)) from exc
     except Exception as exc:
         log.exception("llm request failed")
         raise RuntimeError(f"LLM error: {exc}") from exc

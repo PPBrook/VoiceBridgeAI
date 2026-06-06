@@ -17,21 +17,27 @@
     <button type="button" id="btn-stop" class="btn-secondary" hidden>停止</button>
   </section>
 
-  <p id="hint" class="hint">在当前标签页捕获音频，字幕悬浮显示在视频上方。</p>
+  <p id="hint" class="hint">在当前标签页捕获音频，字幕悬浮显示在视频上方。离线默认可用；云端请先在控制台测试通过。</p>
   <p id="error" class="error" hidden></p>
 
   <fieldset class="settings">
-    <legend>引擎（已配置接口）</legend>
+    <legend>引擎（与控制台同步）</legend>
     <label>
       语音识别
       <select id="asr-mode"></select>
     </label>
     <label>
-      句中翻译
+      <span class="field-label">
+        句中翻译
+        <small class="field-recommend">推荐 MT</small>
+      </span>
       <select id="partial-provider"></select>
     </label>
     <label>
-      句末润色
+      <span class="field-label">
+        句末润色
+        <small class="field-recommend">推荐 LLM</small>
+      </span>
       <select id="final-provider"></select>
     </label>
     <label>
@@ -44,9 +50,12 @@
     </label>
   </fieldset>
 
-  <footer>
-    <a id="open-console" href="http://127.0.0.1:8765" target="_blank" rel="noopener">打开控制台 · API 配置</a>
+  <footer class="popup-footer">
+    <a id="open-console" href="http://127.0.0.1:8765" target="_blank" rel="noopener">控制台</a>
+    <span class="footer-sep">·</span>
+    <a id="open-config" href="http://127.0.0.1:8765/config" target="_blank" rel="noopener">接口配置</a>
   </footer>
+  <script src="engine-select.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

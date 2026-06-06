@@ -111,6 +111,20 @@ label {
   font-size: 12px;
 }
 
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.3;
+  flex-shrink: 0;
+}
+
+.field-recommend {
+  font-size: 10px;
+  font-weight: 500;
+  color: #8ab4f8;
+}
+
 select {
   min-width: 120px;
   padding: 4px 6px;
@@ -123,6 +137,12 @@ select {
 footer {
   margin-top: 12px;
   text-align: center;
+}
+
+footer .footer-sep {
+  margin: 0 0.35rem;
+  color: #5f6368;
+  font-size: 12px;
 }
 
 footer a {

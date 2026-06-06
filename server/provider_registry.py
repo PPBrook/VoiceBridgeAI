@@ -21,6 +21,7 @@ PARTIAL_PROVIDERS = (
 )
 
 FINAL_PROVIDERS = (
+    {"id": "none", "label": "不翻译（沿用句中）"},
     {"id": "qiniu", "label": "七牛 AI · 国内 LLM"},
     {"id": "aliyun", "label": "阿里云 DashScope · 国内 LLM"},
     {"id": "deepseek", "label": "DeepSeek · 国内 LLM"},
@@ -30,7 +31,6 @@ FINAL_PROVIDERS = (
     {"id": "openai", "label": "OpenAI · 海外 LLM"},
     {"id": "google", "label": "Google · 海外"},
     {"id": "argos", "label": "Argos · 离线"},
-    {"id": "none", "label": "不润色（沿用句中）"},
 )
 
 LAYER_PROVIDERS: dict[str, tuple[str, ...]] = {
@@ -41,23 +41,33 @@ LAYER_PROVIDERS: dict[str, tuple[str, ...]] = {
 
 NO_KEY_PROVIDERS = frozenset({"local", "argos", "google", "none"})
 
-# LLM providers may appear on both layers (draft vs polish); MT should differ.
+# Always in engine dropdowns — no keys or config-panel test required.
+DEFAULT_AVAILABLE: dict[str, frozenset[str]] = {
+    "asr": frozenset({"local"}),
+    "partial": frozenset({"argos"}),
+    "final": frozenset({"argos", "none"}),
+}
+
+# LLM providers may appear on both layers (draft vs polish).
+# Argos offline may repeat on both layers (draft + finalize pass).
 LLM_PROVIDERS = frozenset({"qiniu", "aliyun", "deepseek", "openai"})
+REPEAT_MT_PROVIDERS = frozenset({"argos"})
 
 
 def allows_same_layer_provider(provider_id: str) -> bool:
-    return provider_id in LLM_PROVIDERS
+    return provider_id in LLM_PROVIDERS or provider_id in REPEAT_MT_PROVIDERS
 
 
 def filter_final_providers(
     providers: tuple[dict[str, str], ...] | list[dict[str, str]],
     partial_id: str,
 ) -> list[dict[str, str]]:
+    providers = [dict(p) for p in providers]
     if not partial_id or allows_same_layer_provider(partial_id):
-        return [dict(p) for p in providers]
-    skip = {partial_id, "none"}
-    others = [dict(p) for p in providers if p["id"] not in skip]
-    return others if others else [dict(p) for p in providers]
+        return providers
+    skip = {partial_id}
+    others = [p for p in providers if p["id"] not in skip]
+    return others if others else providers
 
 
 def filter_partial_providers(
@@ -101,8 +111,10 @@ def engine_pair_note(partial_id: str, final_id: str) -> str | None:
         return None
     if partial_id == final_id:
         if allows_same_layer_provider(partial_id):
+            if partial_id == "argos":
+                return "句中 Argos 草稿 + 句末 Argos 再译（全离线）。"
             return "句中快译 + 句末润色（同一 LLM，模式不同）。"
         return "仅该接口可用，句末与句中相同，不会做额外润色。"
     if final_id == "none":
-        return "句末不润色，沿用句中译文。"
+        return "句末不翻译，沿用句中译文。"
     return None

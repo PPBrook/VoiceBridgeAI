@@ -14,6 +14,7 @@ from partial_config import set_provider as set_partial
 
 
 def apply_settings(payload: dict[str, Any]) -> None:
+    from env_persist import persist_engine_config
     from final_config import available_providers as final_available
     from partial_config import normalize_provider as norm_partial
     from provider_registry import resolve_final_provider
@@ -31,6 +32,7 @@ def apply_settings(payload: dict[str, Any]) -> None:
         resolved = resolve_final_provider(partial, final, available)
         if resolved:
             set_final(resolved)
+    persist_engine_config(payload)
 
 
 def get_engine_status(asr_mode: str | None = None) -> dict[str, Any]:
@@ -41,10 +43,23 @@ def get_engine_status(asr_mode: str | None = None) -> dict[str, Any]:
     partial = partial_status()
     final = final_status()
 
-    from provider_registry import LLM_PROVIDERS, engine_pair_note, filter_final_providers
+    from provider_registry import LLM_PROVIDERS, REPEAT_MT_PROVIDERS, engine_pair_note, filter_final_providers, resolve_final_provider
+    from final_config import provider_label
 
     partial_id = partial["partialProvider"]
     final_id = final["finalProvider"]
+    available_final = {p["id"] for p in final["finalProviders"]}
+    resolved_final = resolve_final_provider(partial_id, final_id, available_final)
+    if resolved_final != final_id:
+        final_id = resolved_final
+        from final_config import engine_label
+
+        final = {
+            **final,
+            "finalProvider": resolved_final,
+            "finalProviderLabel": provider_label(resolved_final),
+            "finalEngine": engine_label(resolved_final),
+        }
     return {
         **asr,
         **partial,
@@ -65,6 +80,7 @@ def get_engine_status(asr_mode: str | None = None) -> dict[str, Any]:
         "offlineTranslate": partial["partialProvider"] == "argos",
         "engineRules": {
             "llmProviders": sorted(LLM_PROVIDERS),
+            "repeatMtProviders": sorted(REPEAT_MT_PROVIDERS),
             "pairNote": engine_pair_note(partial_id, final_id),
         },
     }

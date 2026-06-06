@@ -30,6 +30,8 @@ def default_provider() -> str:
         return "google"
     if "tmt" in available:
         return "tmt"
+    if "argos" in available:
+        return "argos"
     return available[0]["id"] if available else ""
 
 

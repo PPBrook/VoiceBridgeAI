@@ -13,116 +13,35 @@ const translateHintBtn = document.getElementById("translate-hint");
 const translateHintPop = document.getElementById("translate-hint-pop");
 const reviseHintBtn = document.getElementById("revise-hint");
 const reviseHintPop = document.getElementById("revise-hint-pop");
+const finalHintBtn = document.getElementById("final-hint");
+const finalHintPop = document.getElementById("final-hint-pop");
 const engineSettingsNoteEl = document.getElementById("engine-settings-note");
-const tencentAppIdEl = document.getElementById("tencent-app-id");
-const tencentSecretIdEl = document.getElementById("tencent-secret-id");
-const tencentSecretKeyEl = document.getElementById("tencent-secret-key");
-const tencentEngineEl = document.getElementById("tencent-engine");
-const tencentTmtRegionEl = document.getElementById("tencent-tmt-region");
-const tencentTmtProjectIdEl = document.getElementById("tencent-tmt-project-id");
-const qiniuApiKeyEl = document.getElementById("qiniu-api-key");
-const qiniuBaseUrlEl = document.getElementById("qiniu-base-url");
-const qiniuModelEl = document.getElementById("qiniu-model");
-const aliyunApiKeyEl = document.getElementById("aliyun-api-key");
-const aliyunBaseUrlEl = document.getElementById("aliyun-base-url");
-const aliyunModelEl = document.getElementById("aliyun-model");
-const baiduAppIdEl = document.getElementById("baidu-app-id");
-const baiduSecretKeyEl = document.getElementById("baidu-secret-key");
-const deeplApiKeyEl = document.getElementById("deepl-api-key");
-const deepseekApiKeyEl = document.getElementById("deepseek-api-key");
-const deepseekBaseUrlEl = document.getElementById("deepseek-base-url");
-const deepseekModelEl = document.getElementById("deepseek-model");
-const openaiApiKeyEl = document.getElementById("openai-api-key");
-const openaiBaseUrlEl = document.getElementById("openai-base-url");
-const openaiModelEl = document.getElementById("openai-model");
-const openaiAsrModelEl = document.getElementById("openai-asr-model");
-const saveCloudBtn = document.getElementById("save-cloud");
-const cloudSettingsNoteEl = document.getElementById("cloud-settings-note");
-const capRows = () => Array.from(document.querySelectorAll(".cap-row"));
-const testButtons = () => Array.from(document.querySelectorAll(".btn-test"));
-
-const cloudInputs = [
-  tencentAppIdEl,
-  tencentSecretIdEl,
-  tencentSecretKeyEl,
-  tencentEngineEl,
-  tencentTmtRegionEl,
-  tencentTmtProjectIdEl,
-  qiniuApiKeyEl,
-  qiniuBaseUrlEl,
-  qiniuModelEl,
-  aliyunApiKeyEl,
-  aliyunBaseUrlEl,
-  aliyunModelEl,
-  baiduAppIdEl,
-  baiduSecretKeyEl,
-  deeplApiKeyEl,
-  deepseekApiKeyEl,
-  deepseekBaseUrlEl,
-  deepseekModelEl,
-  openaiApiKeyEl,
-  openaiBaseUrlEl,
-  openaiModelEl,
-  openaiAsrModelEl,
-  saveCloudBtn,
-];
-
-function applyVerifiedStatus(verified = {}) {
-  for (const row of capRows()) {
-    const layer = row.dataset.layer;
-    const id = row.dataset.id;
-    const statusEl = row.querySelector(".cap-status");
-    if (!statusEl || statusEl.dataset.pending) continue;
-    const passed = Boolean(layer && id && verified[layer]?.includes(id));
-    if (passed) {
-      statusEl.classList.remove("err");
-      statusEl.classList.add("ok");
-      if (!statusEl.dataset.custom) {
-        statusEl.textContent = "已通过";
-      }
-    } else if (!statusEl.classList.contains("err") && !statusEl.dataset.custom) {
-      statusEl.classList.remove("ok");
-      statusEl.textContent = "";
-    }
-  }
-}
-
-function expandVerifiedFolds() {
-  for (const row of capRows()) {
-    const statusEl = row.querySelector(".cap-status");
-    if (!statusEl?.classList.contains("ok")) continue;
-    let el = row.closest("details");
-    while (el) {
-      el.open = true;
-      el = el.parentElement?.closest("details") ?? null;
-    }
-  }
-}
 
 function engineProviders(d = {}) {
   return {
     asr: d.asrProvider || d.asrMode || asrModeEl?.value || "local",
     partial:
-      d.partialProvider || partialProviderEl?.value || "google",
-    final: d.finalProvider || finalProviderEl?.value || "google",
+      d.partialProvider || partialProviderEl?.value || "argos",
+    final: d.finalProvider || finalProviderEl?.value || "argos",
   };
 }
 
 let syncingEngineSelects = false;
 
 const LLM_PROVIDER_IDS = new Set(["qiniu", "aliyun", "deepseek", "openai"]);
+const REPEAT_MT_PROVIDER_IDS = new Set(["argos"]);
 
 function llmProvidersFrom(d) {
   return new Set(d?.engineRules?.llmProviders || LLM_PROVIDER_IDS);
 }
 
 function allowsSameLayer(id, llmIds) {
-  return llmIds.has(id);
+  return llmIds.has(id) || REPEAT_MT_PROVIDER_IDS.has(id);
 }
 
 function filterFinalProviders(providers, partialId, llmIds) {
   if (!partialId || allowsSameLayer(partialId, llmIds)) return providers || [];
-  const others = (providers || []).filter((p) => p.id !== partialId && p.id !== "none");
+  const others = (providers || []).filter((p) => p.id !== partialId);
   return others.length ? others : providers || [];
 }
 
@@ -185,6 +104,18 @@ function syncSelectOptions(selectEl, providers, value) {
   }
 }
 
+function syncPartialSelect(selectEl, providers, value) {
+  syncProviderSelect(selectEl, providers, value, "partial", (v) => {
+    syncingEngineSelects = v;
+  });
+}
+
+function syncFinalSelect(selectEl, providers, value) {
+  syncProviderSelect(selectEl, providers, value, "final", (v) => {
+    syncingEngineSelects = v;
+  });
+}
+
 let stream = null;
 let audioCtx = null;
 let analyser = null;
@@ -203,14 +134,27 @@ const ASR_MODE_SHORT = {
 
 const PARTIAL_DETAIL = {
   tmt: () => ["腾讯机器翻译，低延迟草稿", "与 ASR 共用腾讯云 Secret"],
-  baidu: () => ["百度通用翻译 API", "需在 API 配置填写 AppId + Secret"],
+  baidu: () => ["百度通用翻译 API", "需在接口配置页填写 AppId + Secret"],
   google: () => ["Google 在线翻译", "免费兜底，需能访问 Google"],
   deepl: () => ["DeepL 机器翻译", "海外高质量 MT，需 DeepL Key"],
   argos: () => ["本机离线英译中", "无需 Key，首次需下载语言包"],
-  qiniu: () => ["七牛 AI LLM 快译", "需在 API 配置填写七牛 API Key"],
-  aliyun: () => ["阿里云 DashScope LLM 快译", "需在 API 配置填写 DashScope Key"],
+  qiniu: () => ["七牛 AI LLM 快译", "需在接口配置页填写七牛 API Key"],
+  aliyun: () => ["阿里云 DashScope LLM 快译", "需在接口配置页填写 DashScope Key"],
   deepseek: () => ["DeepSeek LLM 快译", "国内 OpenAI 兼容接口"],
   openai: () => ["OpenAI LLM 快译", "海外 OpenAI 兼容接口"],
+};
+
+const FINAL_DETAIL = {
+  tmt: () => ["腾讯机器翻译句末定稿", "与 ASR 共用腾讯云 Secret"],
+  baidu: () => ["百度通用翻译句末定稿", "需在接口配置页填写 AppId + Secret"],
+  google: () => ["Google 在线翻译句末定稿", "免费兜底，需能访问 Google"],
+  deepl: () => ["DeepL 机器翻译句末定稿", "海外高质量 MT，需 DeepL Key"],
+  argos: () => ["本机离线英译中句末定稿", "无需 Key，首次需下载语言包"],
+  qiniu: () => ["七牛 AI LLM 句末润色", "需在接口配置页填写七牛 API Key"],
+  aliyun: () => ["阿里云 DashScope LLM 句末润色", "需在接口配置页填写 DashScope Key"],
+  deepseek: () => ["DeepSeek LLM 句末润色", "国内 OpenAI 兼容接口"],
+  openai: () => ["OpenAI LLM 句末润色", "海外 OpenAI 兼容接口"],
+  none: () => ["句末不再翻译", "定稿时直接沿用句中译文，省 API 调用"],
 };
 
 const REVISE_MODE_SHORT = {
@@ -223,13 +167,13 @@ const ASR_DETAIL = {
   tencent: () => [
     "腾讯云流式识别，延迟最低",
     "边说边出字，停顿后定稿",
-    "需在 API 配置填写 AppId、Secret",
+    "需在接口配置页填写 AppId、Secret",
     "适合英文标签页音频",
   ],
   openai: () => [
     "OpenAI Whisper 云端识别",
     "VAD 分句后上传，按句计费",
-    "需填写 OpenAI API Key",
+    "需在接口配置页填写 OpenAI API Key",
     "适合海外网络环境",
   ],
   local: (d) => [
@@ -273,16 +217,16 @@ function setHintLines(popEl, lines) {
 }
 
 function closeAllHintPopovers() {
-  for (const btn of [asrHintBtn, translateHintBtn, reviseHintBtn]) {
+  for (const btn of [asrHintBtn, translateHintBtn, finalHintBtn, reviseHintBtn]) {
     btn?.setAttribute("aria-expanded", "false");
   }
-  for (const pop of [asrHintPop, translateHintPop, reviseHintPop]) {
+  for (const pop of [asrHintPop, translateHintPop, finalHintPop, reviseHintPop]) {
     pop?.classList.remove("open", "pinned");
   }
 }
 
 function bindHintTriggers() {
-  for (const btn of [asrHintBtn, translateHintBtn, reviseHintBtn]) {
+  for (const btn of [asrHintBtn, translateHintBtn, finalHintBtn, reviseHintBtn]) {
     if (!btn) continue;
     btn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -308,7 +252,24 @@ function updateFieldHints(d) {
     setHintLines(asrHintPop, ASR_DETAIL[p.asr](d));
   }
   if (translateHintPop && PARTIAL_DETAIL[p.partial]) {
-    setHintLines(translateHintPop, PARTIAL_DETAIL[p.partial](d));
+    const lines = [...PARTIAL_DETAIL[p.partial](d)];
+    if (isMtProvider(p.partial)) {
+      lines.unshift("推荐句中用 MT：响应快、成本低。");
+    } else if (LLM_PROVIDER_IDS.has(p.partial)) {
+      lines.unshift("LLM 亦可用句中快译；更推荐 MT + 句末 LLM 组合。");
+    }
+    setHintLines(translateHintPop, lines);
+  }
+  if (finalHintPop && FINAL_DETAIL[p.final]) {
+    const lines = [...FINAL_DETAIL[p.final](d)];
+    if (p.final === "none") {
+      lines.unshift("离线默认：定稿沿用句中译文。");
+    } else if (LLM_PROVIDER_IDS.has(p.final)) {
+      lines.unshift("推荐句末用 LLM：结合句中草稿润色，更自然。");
+    } else if (isMtProvider(p.final)) {
+      lines.unshift("句末 MT 适合无 LLM 时；有 LLM 时更推荐句末润色。");
+    }
+    setHintLines(finalHintPop, lines);
   }
   if (reviseHintPop && REVISE_DETAIL[rv]) {
     const lines = [...REVISE_DETAIL[rv](d)];
@@ -338,27 +299,38 @@ function providerReady(d, layer, id) {
   return layerProviderIds(d, layer).includes(id);
 }
 
+function providerLabel(d, layer, id) {
+  const key =
+    layer === "asr"
+      ? "asrModes"
+      : layer === "partial"
+        ? "partialProviders"
+        : "finalProviders";
+  const found = (d[key] || []).find((m) => m.id === id);
+  return found?.label || ASR_MODE_SHORT[id] || id;
+}
+
 function collectDiagnostics(d) {
   const issues = [];
   const p = engineProviders(d);
 
   if (p.asr && !providerReady(d, "asr", p.asr)) {
-    issues.push({ type: "error", text: "语音识别：请先在接口配置中测试通过。" });
+    issues.push({
+      type: "error",
+      text: `语音识别「${providerLabel(d, "asr", p.asr)}」未测试通过，请先到接口配置页填写密钥并测试。`,
+    });
   }
   if (p.partial && !providerReady(d, "partial", p.partial)) {
-    issues.push({ type: "error", text: "句中翻译：请先在接口配置中测试通过。" });
+    issues.push({
+      type: "error",
+      text: `句中翻译「${providerLabel(d, "partial", p.partial)}」未测试通过，请先到接口配置页填写密钥并测试。`,
+    });
   }
   if (p.final && !providerReady(d, "final", p.final)) {
-    issues.push({ type: "error", text: "句末润色：请先在接口配置中测试通过。" });
-  }
-  if (!d.asrModes?.length) {
-    issues.push({ type: "info", text: "尚未测试通过任何语音识别接口。" });
-  }
-  if (!d.partialProviders?.length) {
-    issues.push({ type: "info", text: "尚未测试通过任何句中翻译接口。" });
-  }
-  if (!d.finalProviders?.length) {
-    issues.push({ type: "info", text: "尚未测试通过任何句末润色接口。" });
+    issues.push({
+      type: "error",
+      text: `句末润色「${providerLabel(d, "final", p.final)}」未测试通过，请先到接口配置页填写密钥并测试。`,
+    });
   }
   if (p.partial === "google" || p.final === "google") {
     issues.push({
@@ -475,26 +447,33 @@ function renderEngineNote(d) {
     const tip = document.createElement("p");
     tip.className = "engine-note-path warn";
     tip.textContent =
-      "请先在「接口配置」填写并保存，再点击测试；通过后会出现在此。";
+      "引擎选项加载异常，请刷新页面；离线默认可用本地 Whisper + Argos。";
     engineSettingsNoteEl.append(tip);
     return;
   }
 
   const llmIds = llmProvidersFrom(d);
-  if (p.partial !== p.final || allowsSameLayer(p.partial, llmIds)) {
-    const tip = document.createElement("p");
-    tip.className = "engine-note-path";
+  const tip = document.createElement("p");
+  tip.className = "engine-note-path";
+
+  if (isRecommendedMtLlmPair(p.partial, p.final, llmIds)) {
+    tip.classList.add("ok");
+    tip.textContent = "当前为推荐组合：句中 MT + 句末 LLM。";
+  } else if (p.partial === p.final && p.partial === "argos") {
+    tip.textContent = "当前为全离线组合：句中 Argos 草稿 + 句末 Argos 再译。";
+    tip.classList.add("ok");
+  } else if (p.final === "none") {
     tip.textContent =
-      p.partial === p.final && allowsSameLayer(p.partial, llmIds)
-        ? "句中快译 + 句末润色（同一 LLM，模式不同）。"
-        : "推荐：句中用机器翻译/快译，句末用 LLM 润色。";
-    engineSettingsNoteEl.append(tip);
+      "离线默认；配置云端后推荐句中 MT + 句末 LLM（如下拉分组所示）。";
+  } else if (p.partial === p.final && allowsSameLayer(p.partial, llmIds)) {
+    tip.textContent = "句中快译 + 句末润色（同一 LLM，模式不同）。";
   } else if (d.engineRules?.pairNote) {
-    const tip = document.createElement("p");
-    tip.className = "engine-note-path warn";
+    tip.classList.add("warn");
     tip.textContent = d.engineRules.pairNote;
-    engineSettingsNoteEl.append(tip);
+  } else {
+    tip.textContent = "推荐：句中选 MT，句末选 LLM（两层不同接口）。";
   }
+  engineSettingsNoteEl.append(tip);
 }
 
 function engineConfig() {
@@ -512,70 +491,10 @@ function setSettingsEnabled(enabled) {
   partialProviderEl.disabled = !enabled;
   finalProviderEl.disabled = !enabled;
   reviseModeEl.disabled = !enabled;
-  for (const btn of [asrHintBtn, translateHintBtn, reviseHintBtn]) {
+  for (const btn of [asrHintBtn, translateHintBtn, finalHintBtn, reviseHintBtn]) {
     if (btn) btn.disabled = !enabled;
   }
   if (!enabled) closeAllHintPopovers();
-  cloudInputs.forEach((el) => {
-    if (el) el.disabled = !enabled;
-  });
-  testButtons().forEach((btn) => {
-    btn.disabled = !enabled;
-  });
-}
-
-function applyCloudStatus(d) {
-  const t = d.tencent || {};
-  const q = d.qiniu || {};
-  const a = d.aliyun || {};
-  applyVerifiedStatus(d.verified || {});
-  expandVerifiedFolds();
-
-  if (t.appId) tencentAppIdEl.value = t.appId;
-  if (t.engine) tencentEngineEl.value = t.engine;
-  if (t.tmtRegion) tencentTmtRegionEl.value = t.tmtRegion;
-  if (t.tmtProjectId) tencentTmtProjectIdEl.value = t.tmtProjectId;
-  tencentSecretIdEl.placeholder = t.hasSecretId
-    ? "已配置，留空不修改"
-    : "粘贴 SecretId";
-  tencentSecretKeyEl.placeholder = t.hasSecretKey
-    ? "已配置，留空不修改"
-    : "粘贴 SecretKey";
-  if (q.baseUrl) qiniuBaseUrlEl.value = q.baseUrl;
-  if (q.model) qiniuModelEl.value = q.model;
-  qiniuApiKeyEl.placeholder = q.hasApiKey ? "已配置，留空不修改" : "粘贴 API Key";
-  if (a.baseUrl) aliyunBaseUrlEl.value = a.baseUrl;
-  if (a.model) aliyunModelEl.value = a.model;
-  aliyunApiKeyEl.placeholder = a.hasApiKey ? "已配置，留空不修改" : "粘贴 API Key";
-  if (d.baidu?.appId) baiduAppIdEl.value = d.baidu.appId;
-  baiduSecretKeyEl.placeholder = d.baidu?.hasSecretKey
-    ? "已配置，留空不修改"
-    : "粘贴 Secret Key";
-  deeplApiKeyEl.placeholder = d.deepl?.hasApiKey
-    ? "已配置，留空不修改"
-    : "粘贴 API Key";
-  if (d.deepseek?.baseUrl) deepseekBaseUrlEl.value = d.deepseek.baseUrl;
-  if (d.deepseek?.model) deepseekModelEl.value = d.deepseek.model;
-  deepseekApiKeyEl.placeholder = d.deepseek?.hasApiKey
-    ? "已配置，留空不修改"
-    : "粘贴 API Key";
-  if (d.openai?.baseUrl) openaiBaseUrlEl.value = d.openai.baseUrl;
-  if (d.openai?.model) openaiModelEl.value = d.openai.model;
-  if (d.openai?.asrModel) openaiAsrModelEl.value = d.openai.asrModel;
-  openaiApiKeyEl.placeholder = d.openai?.hasApiKey
-    ? "已配置，留空不修改"
-    : "粘贴 API Key";
-
-  const ready = d.verified || {};
-  const parts = [
-    ...(ready.asr || []).map((id) => `识别·${id}`),
-    ...(ready.partial || []).map((id) => `句中·${id}`),
-    ...(ready.final || []).map((id) => `句末·${id}`),
-  ];
-  cloudSettingsNoteEl.classList.remove("warn");
-  cloudSettingsNoteEl.textContent = parts.length
-    ? `已测试通过：${parts.join("、")}`
-    : "填写密钥后保存，再点击各能力的「测试」";
 }
 
 function applyEngineStatus(d) {
@@ -585,12 +504,11 @@ function applyEngineStatus(d) {
   }
   const pair = reconcileEnginePair(d);
   syncSelectOptions(asrModeEl, d.asrModes, d.asrProvider || d.asrMode);
-  syncSelectOptions(partialProviderEl, pair.partialList, pair.partialId);
-  syncSelectOptions(finalProviderEl, pair.finalList, pair.finalId);
+  syncPartialSelect(partialProviderEl, pair.partialList, pair.partialId);
+  syncFinalSelect(finalProviderEl, pair.finalList, pair.finalId);
   syncSelectOptions(reviseModeEl, d.reviseModes, d.reviseMode || "balanced");
   engineSettingsNoteEl.classList.remove("warn");
   renderEngineNote({ ...d, partialProvider: pair.partialId, finalProvider: pair.finalId });
-  applyCloudStatus(d);
   renderHealthPanel({ ...d, partialProvider: pair.partialId, finalProvider: pair.finalId });
   if (
     !active &&
@@ -632,13 +550,13 @@ if (!Capture.supported()) {
   captureBtn.disabled = true;
   hintEl.classList.add("warn");
   hintEl.textContent = diag.message;
-  setStatus("unsupported: getDisplayMedia");
+  setStatus("不支持：无法捕获标签页音频");
   setRuntimeHealthError(diag.message);
 } else if (!Capture.canCaptureAudio()) {
   captureBtn.disabled = true;
   hintEl.classList.add("warn");
   hintEl.textContent = Capture.unsupportedMessage();
-  setStatus("unsupported: no audio capture");
+  setStatus("不支持：当前浏览器无法捕获音频");
   setRuntimeHealthError(Capture.unsupportedMessage());
 } else {
   hintEl.textContent = Capture.hint();
@@ -763,7 +681,7 @@ function startLevelMonitor() {
     }
     const kbps = Math.round(((sentBytes - tickBytes) * 8) / 1024);
     tickBytes = sentBytes;
-    setStatus(`capturing · level ${lastLevel}% · ↑${kbps} kb/s`);
+    setStatus(`捕获中 · 音量 ${lastLevel}% · 上行 ${kbps} kb/s`);
   }, 1000);
 }
 
@@ -844,21 +762,39 @@ function stopCapture() {
   audioCtx?.close();
   audioCtx = null;
   captureBtn.disabled = false;
-  captureBtn.textContent = "捕获音频";
+  captureBtn.textContent = "开始捕获";
   segmentsEl.replaceChildren();
   setSettingsEnabled(true);
-  setStatus("idle");
+  setStatus("就绪");
 }
 
 async function startCapture() {
+  hintEl.classList.remove("warn");
+  const d = lastHealthData || {};
+  const p = engineProviders(d);
+
   if (!asrModeEl.value || !partialProviderEl.value || !finalProviderEl.value) {
     hintEl.classList.add("warn");
-    hintEl.textContent = "请先在接口配置中保存并测试通过，并在引擎设置中选择三层接口。";
+    hintEl.textContent = "请先完成引擎三层选择。";
     return;
   }
+
+  const checks = [
+    ["asr", p.asr],
+    ["partial", p.partial],
+    ["final", p.final],
+  ];
+  for (const [layer, id] of checks) {
+    if (id && !providerReady(d, layer, id)) {
+      hintEl.classList.add("warn");
+      hintEl.textContent = `「${providerLabel(d, layer, id)}」尚未测试通过，请先到接口配置页填写密钥并测试。`;
+      return;
+    }
+  }
+
   captureBtn.disabled = true;
   setSettingsEnabled(false);
-  setStatus("loading asr…");
+  setStatus("正在连接服务…");
 
   try {
     stream = await navigator.mediaDevices.getDisplayMedia(Capture.constraints());
@@ -869,7 +805,7 @@ async function startCapture() {
       captureBtn.disabled = false;
       captureBtn.textContent = "重试";
       setSettingsEnabled(true);
-      setStatus(`error: ${Capture.noAudioMessage()}`);
+      setStatus(`错误：${Capture.noAudioMessage()}`);
       return;
     }
 
@@ -901,12 +837,12 @@ async function startCapture() {
     captureBtn.disabled = false;
     setSettingsEnabled(true);
     if (err.name === "NotAllowedError") {
-      setStatus("cancelled");
+      setStatus("已取消");
     } else if (err.name === "NotSupportedError") {
-      setStatus("unsupported: " + err.message);
+      setStatus(`不支持：${err.message}`);
       setRuntimeHealthError(err.message);
     } else {
-      setStatus(`error: ${err.message}`);
+      setStatus(`错误：${err.message}`);
       setRuntimeHealthError(err.message);
     }
   }
@@ -943,9 +879,9 @@ partialProviderEl?.addEventListener("change", () => {
       partialProvider: partialProviderEl.value,
       finalProvider: finalProviderEl.value,
     });
-    syncSelectOptions(finalProviderEl, pair.finalList, pair.finalId);
+    syncFinalSelect(finalProviderEl, pair.finalList, pair.finalId);
     if (partialProviderEl.value !== pair.partialId) {
-      syncSelectOptions(partialProviderEl, pair.partialList, pair.partialId);
+      syncPartialSelect(partialProviderEl, pair.partialList, pair.partialId);
     }
   }
   scheduleEngineSettings();
@@ -959,9 +895,9 @@ finalProviderEl?.addEventListener("change", () => {
       partialProvider: partialProviderEl.value,
       finalProvider: finalProviderEl.value,
     });
-    syncSelectOptions(partialProviderEl, pair.partialList, pair.partialId);
+    syncPartialSelect(partialProviderEl, pair.partialList, pair.partialId);
     if (finalProviderEl.value !== pair.finalId) {
-      syncSelectOptions(finalProviderEl, pair.finalList, pair.finalId);
+      syncFinalSelect(finalProviderEl, pair.finalList, pair.finalId);
     }
   }
   scheduleEngineSettings();
@@ -970,179 +906,6 @@ finalProviderEl?.addEventListener("change", () => {
 reviseModeEl.addEventListener("change", () => {
   if (active) return;
   scheduleEngineSettings();
-});
-
-function cloudConfigPayload() {
-  const tencent = {};
-  const appId = tencentAppIdEl.value.trim();
-  const engine = tencentEngineEl.value.trim();
-  const tmtRegion = tencentTmtRegionEl.value.trim();
-  const tmtProjectId = tencentTmtProjectIdEl.value.trim();
-  if (appId) tencent.appId = appId;
-  if (engine) tencent.engine = engine;
-  if (tmtRegion) tencent.tmtRegion = tmtRegion;
-  if (tmtProjectId) tencent.tmtProjectId = tmtProjectId;
-  const secretId = tencentSecretIdEl.value.trim();
-  const secretKey = tencentSecretKeyEl.value.trim();
-  if (secretId) tencent.secretId = secretId;
-  if (secretKey) tencent.secretKey = secretKey;
-
-  const qiniu = {};
-  const baseUrl = qiniuBaseUrlEl.value.trim();
-  const model = qiniuModelEl.value.trim();
-  if (baseUrl) qiniu.baseUrl = baseUrl;
-  if (model) qiniu.model = model;
-  const qKey = qiniuApiKeyEl.value.trim();
-  if (qKey) qiniu.apiKey = qKey;
-
-  const aliyun = {};
-  const aBase = aliyunBaseUrlEl.value.trim();
-  const aModel = aliyunModelEl.value.trim();
-  if (aBase) aliyun.baseUrl = aBase;
-  if (aModel) aliyun.model = aModel;
-  const aKey = aliyunApiKeyEl.value.trim();
-  if (aKey) aliyun.apiKey = aKey;
-
-  const baidu = {};
-  const bAppId = baiduAppIdEl.value.trim();
-  if (bAppId) baidu.appId = bAppId;
-  const bSecret = baiduSecretKeyEl.value.trim();
-  if (bSecret) baidu.secretKey = bSecret;
-
-  const deepl = {};
-  const dKey = deeplApiKeyEl.value.trim();
-  if (dKey) deepl.apiKey = dKey;
-
-  const deepseek = {};
-  const dsBase = deepseekBaseUrlEl.value.trim();
-  const dsModel = deepseekModelEl.value.trim();
-  if (dsBase) deepseek.baseUrl = dsBase;
-  if (dsModel) deepseek.model = dsModel;
-  const dsKey = deepseekApiKeyEl.value.trim();
-  if (dsKey) deepseek.apiKey = dsKey;
-
-  const openai = {};
-  const oBase = openaiBaseUrlEl.value.trim();
-  const oModel = openaiModelEl.value.trim();
-  const oAsr = openaiAsrModelEl.value.trim();
-  if (oBase) openai.baseUrl = oBase;
-  if (oModel) openai.model = oModel;
-  if (oAsr) openai.asrModel = oAsr;
-  const oKey = openaiApiKeyEl.value.trim();
-  if (oKey) openai.apiKey = oKey;
-
-  return {
-    ...engineConfig(),
-    tencent,
-    qiniu,
-    aliyun,
-    baidu,
-    deepl,
-    deepseek,
-    openai,
-  };
-}
-
-async function postProviderTest(layer, id, btn) {
-  const row = btn.closest(".cap-row");
-  const statusEl = row?.querySelector(".cap-status");
-  btn.disabled = true;
-  if (statusEl) {
-    statusEl.dataset.pending = "1";
-    statusEl.classList.remove("ok", "err");
-    statusEl.textContent = "测试中…";
-  }
-  try {
-    const r = await fetch("/api/cloud/test", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...cloudConfigPayload(), layer, providerId: id }),
-    });
-    let d;
-    try {
-      d = await r.json();
-    } catch {
-      if (statusEl) {
-        statusEl.textContent = "测试失败：响应异常";
-        statusEl.classList.add("err");
-      }
-      return;
-    }
-    if (d.ok) {
-      if (statusEl) {
-        delete statusEl.dataset.pending;
-        statusEl.dataset.custom = "1";
-        statusEl.textContent = d.message || "已通过";
-        statusEl.classList.remove("err");
-        statusEl.classList.add("ok");
-      }
-      applyEngineStatus(d);
-      let el = row?.closest("details") ?? row?.closest(".fold-group");
-      while (el) {
-        el.open = true;
-        el = el.parentElement?.closest("details") ?? null;
-      }
-    } else {
-      const msg = d.message || (d.errors || ["测试失败"]).join(" · ");
-      if (statusEl) {
-        delete statusEl.dataset.pending;
-        delete statusEl.dataset.custom;
-        statusEl.textContent = msg;
-        statusEl.classList.remove("ok");
-        statusEl.classList.add("err");
-      }
-      cloudSettingsNoteEl.textContent = msg;
-      cloudSettingsNoteEl.classList.add("warn");
-      applyVerifiedStatus(d.verified || {});
-    }
-  } catch {
-    if (statusEl) {
-      delete statusEl.dataset.pending;
-      statusEl.textContent = "测试失败";
-      statusEl.classList.add("err");
-    }
-  } finally {
-    btn.disabled = active;
-  }
-}
-
-async function postCloudSettings() {
-  const r = await fetch("/api/cloud/settings", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(cloudConfigPayload()),
-  });
-  let d;
-  try {
-    d = await r.json();
-  } catch {
-    cloudSettingsNoteEl.textContent = "保存失败：服务端响应异常";
-    cloudSettingsNoteEl.classList.add("warn");
-    return;
-  }
-  if (!d.ok) {
-    cloudSettingsNoteEl.textContent = (d.errors || ["保存失败"]).join(" · ");
-    cloudSettingsNoteEl.classList.add("warn");
-    return;
-  }
-  applyEngineStatus(d);
-  tencentSecretIdEl.value = "";
-  tencentSecretKeyEl.value = "";
-  qiniuApiKeyEl.value = "";
-  aliyunApiKeyEl.value = "";
-  baiduSecretKeyEl.value = "";
-  deeplApiKeyEl.value = "";
-  deepseekApiKeyEl.value = "";
-  openaiApiKeyEl.value = "";
-  cloudSettingsNoteEl.textContent += " · 已保存";
-}
-
-saveCloudBtn.addEventListener("click", () => {
-  if (active) return;
-  postCloudSettings().catch(() => {
-    cloudSettingsNoteEl.textContent = "保存失败";
-    cloudSettingsNoteEl.classList.add("warn");
-  });
 });
 
 captureBtn.addEventListener("click", () => {
@@ -1154,27 +917,3 @@ captureBtn.addEventListener("click", () => {
 });
 
 bindHintTriggers();
-
-for (const strip of document.querySelectorAll(".cap-strip")) {
-  strip.addEventListener("click", (e) => e.stopPropagation());
-}
-
-for (const btn of testButtons()) {
-  btn.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (active) return;
-    const row = btn.closest(".cap-row");
-    const layer = row?.dataset.layer;
-    const id = row?.dataset.id;
-    if (layer && id) {
-      postProviderTest(layer, id, btn).catch(() => {
-        const statusEl = row.querySelector(".cap-status");
-        if (statusEl) {
-          statusEl.textContent = "测试失败";
-          statusEl.classList.add("err");
-        }
-      });
-    }
-  });
-}

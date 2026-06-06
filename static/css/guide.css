@@ -1,0 +1,327 @@
+/* Readable guide pages — shares palette with style.css */
+
+.guide-page {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+.guide-nav {
+  margin-bottom: 1.5rem;
+  font-size: 0.8125rem;
+}
+
+.guide-nav a {
+  color: #8ab4f8;
+  text-decoration: none;
+}
+
+.guide-nav a:hover {
+  text-decoration: underline;
+}
+
+.guide-header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  letter-spacing: 0.01em;
+}
+
+.guide-lead {
+  margin: 0 0 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: #9aa0a6;
+}
+
+.guide-lead code {
+  font-size: 0.8125rem;
+  color: #bdc1c6;
+  background: #1e2430;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+}
+
+.guide-lead.guide-defaults {
+  padding: 0.65rem 0.85rem;
+  background: #12151c;
+  border: 1px solid #2a2f3a;
+  border-radius: 6px;
+  border-left: 3px solid #8ab4f8;
+}
+
+.guide-toc {
+  margin: 0 0 2rem;
+  padding: 0.85rem 1rem;
+  background: #12151c;
+  border: 1px solid #2a2f3a;
+  border-radius: 8px;
+}
+
+.guide-toc-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #80868b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.guide-toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  columns: 2;
+  column-gap: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .guide-toc ul {
+    columns: 1;
+  }
+}
+
+.guide-toc li {
+  margin: 0.25rem 0;
+  break-inside: avoid;
+}
+
+.guide-toc a {
+  color: #8ab4f8;
+  text-decoration: none;
+  font-size: 0.875rem;
+}
+
+.guide-toc a:hover {
+  text-decoration: underline;
+}
+
+.guide-section {
+  margin-bottom: 2.25rem;
+}
+
+.guide-section > h2 {
+  margin: 0 0 1rem;
+  padding-bottom: 0.4rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #e8eaed;
+  border-bottom: 1px solid #2a2f3a;
+}
+
+.provider-card {
+  margin-bottom: 1rem;
+  background: #12151c;
+  border: 1px solid #2a2f3a;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.provider-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #0f1218;
+  border-bottom: 1px solid #252a33;
+}
+
+.provider-card-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.cap-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.cap-badge {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #8ab4f8;
+  background: #1a2332;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+.cap-badge.muted {
+  color: #80868b;
+  background: #1e2430;
+}
+
+.provider-card-body {
+  padding: 0.85rem 1rem 1rem;
+}
+
+.provider-card-body dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  gap: 0.45rem 0.75rem;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+@media (max-width: 480px) {
+  .provider-card-body dl {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
+  .provider-card-body dt {
+    margin-top: 0.35rem;
+  }
+
+  .provider-card-body dt:first-child {
+    margin-top: 0;
+  }
+}
+
+.provider-card-body dt {
+  margin: 0;
+  color: #80868b;
+  font-weight: 600;
+}
+
+.provider-card-body dd {
+  margin: 0;
+  color: #bdc1c6;
+}
+
+.provider-card-body a {
+  color: #8ab4f8;
+  text-decoration: none;
+}
+
+.provider-card-body a:hover {
+  text-decoration: underline;
+}
+
+.provider-card-body code {
+  font-size: 0.8125rem;
+  color: #e8eaed;
+  background: #1e2430;
+  padding: 0.05rem 0.3rem;
+  border-radius: 3px;
+}
+
+.provider-card-body .link-sep {
+  color: #5f6368;
+  margin: 0 0.2rem;
+}
+
+.guide-table-wrap {
+  overflow-x: auto;
+  margin-top: 0.5rem;
+  border: 1px solid #2a2f3a;
+  border-radius: 8px;
+  background: #12151c;
+}
+
+.guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.guide-table th,
+.guide-table td {
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid #252a33;
+  vertical-align: top;
+}
+
+.guide-table th {
+  font-weight: 600;
+  color: #9aa0a6;
+  background: #0f1218;
+  white-space: nowrap;
+}
+
+.guide-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.guide-table tbody tr:hover td {
+  background: #151922;
+}
+
+.guide-table .yes {
+  color: #81c995;
+}
+
+.guide-table .no {
+  color: #5f6368;
+}
+
+.guide-nav .link-sep {
+  color: #5f6368;
+  margin: 0 0.25rem;
+}
+
+.config-page {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 3rem;
+}
+
+.config-page h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+
+.page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.8125rem;
+}
+
+.page-nav a {
+  color: #8ab4f8;
+  text-decoration: none;
+}
+
+.page-nav a:hover {
+  text-decoration: underline;
+}
+
+.page-tagline {
+  margin: -0.35rem 0 1.25rem;
+  font-size: 0.875rem;
+  color: #9aa0a6;
+  line-height: 1.5;
+}
+
+.config-intro {
+  margin-bottom: 1.25rem;
+}
+
+.status-line {
+  font-size: 0.8125rem;
+  color: #80868b;
+  font-variant-numeric: tabular-nums;
+}
+
+.capture-hint {
+  margin-top: 0.35rem;
+}
+
+.guide-footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid #2a2f3a;
+  font-size: 0.8125rem;
+  color: #80868b;
+}

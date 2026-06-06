@@ -78,11 +78,13 @@ def _test_openai_http(label: str) -> tuple[bool, str]:
         with urllib.request.urlopen(req, timeout=25) as resp:
             json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8", errors="replace")[:200]
-        return False, f"{label} HTTP {exc.code}: {detail}"
+        detail = exc.read().decode("utf-8", errors="replace")
+        from http_errors import format_http_error
+
+        return False, format_http_error(label, exc.code, detail)
     except Exception as exc:
         return False, f"{label} 连接失败: {exc}"
-    return True, f"{label} 连接成功"
+    return True, f"{label} Key 有效（列表接口可达；Whisper/Chat 额度未单独检测）"
 
 
 def _test_translate(provider_id: str, *, partial: bool) -> tuple[bool, str]:
@@ -104,3 +106,31 @@ def _test_translate(provider_id: str, *, partial: bool) -> tuple[bool, str]:
 
 def _test_final_none() -> tuple[bool, str]:
     return True, "句末沿用句中，无需密钥"
+
+
+def iter_test_targets():
+    """Yield (layer, provider_id) for providers that can be tested now."""
+    from provider_enable import credentials_ok, is_default_available
+
+    for layer, ids in LAYER_PROVIDERS.items():
+        for provider_id in ids:
+            if is_default_available(layer, provider_id):
+                continue
+            if credentials_ok(layer, provider_id):
+                yield layer, provider_id
+
+
+def test_all_providers() -> list[dict[str, str | bool]]:
+    """Run live tests for every configured provider."""
+    results: list[dict[str, str | bool]] = []
+    for layer, provider_id in iter_test_targets():
+        ok, message = test_provider(layer, provider_id)
+        results.append(
+            {
+                "layer": layer,
+                "providerId": provider_id,
+                "ok": ok,
+                "message": message,
+            }
+        )
+    return results
