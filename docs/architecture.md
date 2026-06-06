@@ -47,7 +47,7 @@
 
 WebSocket `/ws`：握手 `config` → 二进制 PCM 或 caption JSON → 字幕 JSON 回传。
 
-详见 [extension/API.md](../extension/API.md)（桌面与扩展共用）。
+详见 [docs/websocket-api.md](../docs/websocket-api.md)。
 
 ## 归档组件
 

@@ -1,31 +1,19 @@
-# 浏览器版（归档）
+# 浏览器版（legacy/web-only）
 
-本分支（`main` / `feat/macapp`）以 **macOS App** 为主。`extension/` 与 `static/` 目录仍保留在仓库中，但**不在此线活跃开发**。
+本分支 **已删除** `extension/` 与 `static/`。完整浏览器版仅在：
 
-## 完整浏览器版
+**分支 `legacy/web-only`**
 
-请使用分支 **`legacy/web-only`**：
+包含：
 
-- Web 控制台：`/`、`/config`
-- Chromium 扩展：标签页音频 + **YouTube 英文字幕（CC）**
+- `extension/` — Chromium 扩展（标签页音频 + YouTube CC）
+- `static/` — Web 控制台（`/`、`/config`）
 - 本地模型旧行为：`VOICEBRIDGE_OPTIONAL_LOCAL_MODELS=0`
 
 ```bash
 git checkout legacy/web-only
+cp .env.example .env
 ./run.sh
-# Chrome/Edge 加载 extension/
 ```
 
-## 本分支上的 extension/ / static/
-
-| 目录 | 状态 |
-|------|------|
-| `extension/` | 只读归档；协议仍见 [extension/API.md](../extension/API.md) |
-| `static/` | 开发模式 `./run.sh` 仍可访问；独立 App 不打包 |
-
-桌面 App 与扩展 **共用** `server/` 与 WebSocket 协议，但不实现 YouTube CC 抓取。
-
-## 文档
-
-- [extension/README.md](../extension/README.md)
-- [extension/API.md](../extension/API.md)
+WebSocket 协议在本分支见 [websocket-api.md](websocket-api.md)；legacy 分支见 `extension/API.md`。

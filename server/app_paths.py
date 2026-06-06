@@ -43,11 +43,6 @@ def repo_root() -> Path:
     return SERVER_DIR.parent
 
 
-def static_dir() -> Path | None:
-    static = repo_root() / "static"
-    return static if static.is_dir() else None
-
-
 def docs_dir() -> Path | None:
     docs = repo_root() / "docs"
     return docs if docs.is_dir() else None

@@ -9,7 +9,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from cloud_config import apply_cloud, cloud_status, test_all_and_verify, test_and_verify
@@ -28,9 +27,7 @@ from whisper_asr import load_model as load_whisper
 from local_models import get_status as get_local_models_status
 import local_models
 
-from app_paths import docs_dir, env_file_path, static_dir
-
-STATIC = static_dir()
+from app_paths import docs_dir, env_file_path
 
 
 def _load_env_file() -> None:
@@ -324,23 +321,13 @@ async def translate_settings(payload: dict = Body(...)):
 
 @app.get("/")
 def index():
-    if STATIC is None:
-        return {"ok": True, "message": "VoiceBridgeAI API — use desktop app or legacy web UI"}
-    return FileResponse(STATIC / "index.html")
-
-
-@app.get("/config")
-def config_page():
-    if STATIC is None:
-        return {"ok": False, "message": "Web config UI not bundled"}
-    return FileResponse(STATIC / "config.html")
-
-
-@app.get("/guide/provider-keys")
-def guide_provider_keys():
-    if STATIC is None:
-        return {"ok": False, "message": "Guide not bundled"}
-    return FileResponse(STATIC / "guide" / "provider-keys.html")
+    return {
+        "ok": True,
+        "name": "VoiceBridgeAI",
+        "message": "API server — use macOS desktop app",
+        "health": "/api/health",
+        "ws": "/ws",
+    }
 
 
 @app.websocket("/ws")
@@ -637,9 +624,6 @@ async def websocket_pcm(ws: WebSocket):
                     await run_local(seg_id, pcm, final=(kind == "final"))
         log.info("client disconnected")
 
-
-if STATIC is not None:
-    app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
 _docs = docs_dir()
 if _docs is not None:

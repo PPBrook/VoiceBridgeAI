@@ -49,7 +49,7 @@ cd server && python main.py
 | POST | `/api/cloud/settings` | 保存云端密钥 |
 | WS | `/ws` | PCM 音频流 |
 
-协议细节：[extension/API.md](../extension/API.md)。
+协议细节：[docs/websocket-api.md](../docs/websocket-api.md)。
 
 ## 环境变量
 
