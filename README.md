@@ -25,7 +25,7 @@ cp .env.example .env    # 可选；全本地可不填 Key
 1. **离线试用**：`/` 默认 `Whisper + Argos + Argos`，直接捕获。
 2. **云端**：`/config` 填 Key → **保存** → **测试**（悬停状态看详情）。
 3. **引擎**：`/` 选三层组合；句中推荐 MT，句末推荐 LLM（见 [ENGINE_PAIRING.md](docs/ENGINE_PAIRING.md)）。
-4. **扩展**：`chrome://extensions` 加载 `extension/`，与服务端引擎同步。
+4. **扩展**：见 [extension/README.md](extension/README.md)，可单独加载 `extension/` 目录。
 
 ## 三层引擎
 
@@ -55,7 +55,7 @@ server/
 static/
   index.html, config.html
   js/app.js, config.js, engine-select.js, capture.js
-extension/                Chrome MV3（popup 与 static 共享部分 JS）
+extension/                Chrome 扩展（本仓库 extension/，见 extension/README.md）
 docs/
   ENGINE_PAIRING.md
   PROVIDER_KEYS.md
@@ -90,8 +90,10 @@ docs/
 
 ## Chrome 扩展
 
-1. 加载 `extension/` 目录
-2. 确保 `./run.sh` 已运行
-3. 弹窗选引擎 → **开始悬浮字幕**（引擎会同步到服务端）
+扩展位于本仓库 **`extension/`** 目录（与服务端同一仓库，符合比赛指定仓库要求）。
 
-默认与服务端一致：`local + argos + argos`。
+1. 仓库根目录启动 `./run.sh`
+2. `chrome://extensions` → 加载 **`extension/`** 目录（详见 [extension/README.md](extension/README.md)）
+3. 弹窗配置服务端地址与引擎 → **开始悬浮字幕**
+
+默认引擎：`local + argos + argos`。扩展与服务端 API 见 [extension/API.md](extension/API.md)。
