@@ -16,6 +16,17 @@ def is_default_available(layer: str, provider_id: str) -> bool:
 
 
 def is_verified(layer: str, provider_id: str) -> bool:
+    from local_models import optional_local_models_enabled
+
+    if optional_local_models_enabled():
+        if layer == "asr" and provider_id == "local":
+            from local_models import is_whisper_installed
+
+            return is_whisper_installed()
+        if provider_id == "argos":
+            from local_models import is_argos_installed
+
+            return is_argos_installed()
     if is_default_available(layer, provider_id):
         return True
     return os.getenv(_verified_key(layer, provider_id), "").strip() == "1"

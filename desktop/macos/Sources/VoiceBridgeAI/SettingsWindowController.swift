@@ -7,6 +7,7 @@ final class SettingsWindowController: NSWindowController {
     private let tabView = NSTabView()
     private let enginePanel = EnginePanelView(frame: .zero)
     private let cloudPanel = CloudPanelView(frame: .zero)
+    private let localModelsPanel = LocalModelsPanelView(frame: .zero)
     private var startupPollTask: Task<Void, Never>?
 
     init() {
@@ -42,7 +43,12 @@ final class SettingsWindowController: NSWindowController {
         cloudItem.label = "接口密钥"
         cloudItem.view = cloudPanel
 
+        let modelsItem = NSTabViewItem(identifier: "models")
+        modelsItem.label = "本地模型"
+        modelsItem.view = localModelsPanel
+
         tabView.addTabViewItem(engineItem)
+        tabView.addTabViewItem(modelsItem)
         tabView.addTabViewItem(cloudItem)
 
         NSLayoutConstraint.activate([
@@ -69,6 +75,7 @@ final class SettingsWindowController: NSWindowController {
         do {
             try await SettingsStore.shared.refresh()
             enginePanel.reload()
+            localModelsPanel.reload()
             cloudPanel.reload()
             scheduleStartupPollIfNeeded()
         } catch {
@@ -91,11 +98,16 @@ final class SettingsWindowController: NSWindowController {
                 guard !Task.isCancelled else { return }
                 try? await SettingsStore.shared.refresh()
                 enginePanel.reload()
+                localModelsPanel.reload()
                 cloudPanel.reload()
                 let running = (SettingsStore.shared.health["startupTest"] as? [String: Any])?["running"] as? Bool == true
                 if !running { break }
             }
             startupPollTask = nil
         }
+    }
+
+    func reloadEnginePanel() {
+        enginePanel.reload()
     }
 }

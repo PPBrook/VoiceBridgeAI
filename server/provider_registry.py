@@ -41,7 +41,7 @@ LAYER_PROVIDERS: dict[str, tuple[str, ...]] = {
 
 NO_KEY_PROVIDERS = frozenset({"local", "argos", "google", "none"})
 
-# Always in engine dropdowns — no keys or config-panel test required.
+# Always in engine dropdowns — no keys or config-panel test required (legacy / Web default).
 DEFAULT_AVAILABLE: dict[str, frozenset[str]] = {
     "asr": frozenset({"local"}),
     "partial": frozenset({"argos"}),

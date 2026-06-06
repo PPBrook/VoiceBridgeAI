@@ -7,8 +7,9 @@ import re
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parent.parent
-ENV_PATH = ROOT / ".env"
+from app_paths import env_file_path
+
+SERVER_DIR = Path(__file__).resolve().parent
 
 SECRET_FIELDS = frozenset(
     {
@@ -136,7 +137,7 @@ def merge_env_file(
 
 
 def persist_cloud_config(payload: dict[str, Any]) -> None:
-    merge_env_file(ENV_PATH, payload_env_updates(payload))
+    merge_env_file(env_file_path(), payload_env_updates(payload))
 
 
 ENGINE_ENV_KEYS: dict[str, str] = {
@@ -171,7 +172,7 @@ def persist_engine_config(payload: dict[str, Any]) -> None:
     updates = engine_env_updates(payload)
     if updates:
         merge_env_file(
-            ENV_PATH,
+            env_file_path(),
             updates,
             section_comment="# --- engine settings (console) ---",
         )

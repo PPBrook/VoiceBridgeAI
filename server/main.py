@@ -25,15 +25,18 @@ from tencent_asr import TencentAsrStream, configured as tencent_configured
 from translate import translate_final, translate_partial
 from vad import ReviseEngine
 from whisper_asr import load_model as load_whisper
+from local_models import get_status as get_local_models_status
+import local_models
 
-ROOT = Path(__file__).resolve().parent.parent
-STATIC = ROOT / "static"
+from app_paths import docs_dir, env_file_path, static_dir
+
+STATIC = static_dir()
 
 
 def _load_env_file() -> None:
     import os
 
-    env_path = ROOT / ".env"
+    env_path = env_file_path()
     if not env_path.is_file():
         return
     for raw in env_path.read_text(encoding="utf-8").splitlines():
@@ -62,9 +65,10 @@ async def _preload_translate(payload: dict | None = None) -> None:
     )
     final = normalize_final(payload.get("finalProvider") if payload else None)
     if partial == "argos" or final == "argos":
-        from translate_argos import load_model as load_argos
+        if not local_models.optional_local_models_enabled() or local_models.is_argos_installed():
+            from translate_argos import load_model as load_argos
 
-        await asyncio.to_thread(load_argos)
+            await asyncio.to_thread(load_argos)
 
 
 FEATURES = [
@@ -88,6 +92,7 @@ FEATURES = [
     "subtitle-revise",
     "revise-modes",
     "caption-mode",
+    "local-models-optional",
 ]
 
 
@@ -100,11 +105,14 @@ def startup_test_status() -> dict:
 
 async def _preload_after_provider_test(layer: str, provider_id: str) -> None:
     if layer == "asr" and provider_id == "local":
-        await asyncio.to_thread(load_whisper)
+        if not local_models.optional_local_models_enabled() or local_models.is_whisper_installed():
+            await asyncio.to_thread(load_whisper)
+        return
     if layer in ("partial", "final") and provider_id == "argos":
-        from translate_argos import load_model
+        if not local_models.optional_local_models_enabled() or local_models.is_argos_installed():
+            from translate_argos import load_model
 
-        await asyncio.to_thread(load_model)
+            await asyncio.to_thread(load_model)
 
 
 async def _run_startup_tests() -> None:
@@ -148,7 +156,8 @@ async def lifespan(_app: FastAPI):
     mode = normalize_mode(default_mode())
     log.info("default ASR mode: %s", mode)
     if mode == "local":
-        await asyncio.to_thread(load_whisper)
+        if not local_models.optional_local_models_enabled() or local_models.is_whisper_installed():
+            await asyncio.to_thread(load_whisper)
     startup_task = asyncio.create_task(_run_startup_tests())
     yield
     startup_task.cancel()
@@ -170,8 +179,40 @@ def health():
         **get_engine_status(),
         **get_revise_status(),
         **cloud_status(),
+        **get_local_models_status(),
         "startupTest": startup_test_status(),
     }
+
+
+@app.get("/api/models/local")
+def get_local_models():
+    return {"ok": True, **get_local_models_status()}
+
+
+@app.post("/api/models/local/download")
+async def post_local_model_download(payload: dict = Body(default_factory=dict)):
+    model_id = (payload.get("id") or "").strip()
+    whisper_model = (payload.get("whisperModel") or "").strip() or None
+    if not model_id:
+        return {"ok": False, "message": "缺少 id（whisper 或 argos）", **get_local_models_status()}
+    try:
+        await asyncio.to_thread(
+            local_models.download,
+            model_id,
+            whisper_model=whisper_model,
+        )
+        if model_id == "whisper" and whisper_model:
+            os.environ["WHISPER_MODEL"] = whisper_model
+        return {
+            "ok": True,
+            "message": "下载完成",
+            **get_local_models_status(),
+            **get_asr_status(),
+            **get_engine_status(),
+        }
+    except Exception as exc:
+        log.exception("local model download failed: %s", model_id)
+        return {"ok": False, "message": str(exc), **get_local_models_status()}
 
 
 @app.get("/api/cloud/settings")
@@ -239,7 +280,8 @@ async def post_cloud_settings(payload: dict = Body(...)):
     asr_mode = normalize_mode(payload.get("asrProvider") or payload.get("asrMode"))
     rv_mode = normalize_revise_mode(payload.get("reviseMode"))
     if asr_mode == "local":
-        await asyncio.to_thread(load_whisper)
+        if not local_models.optional_local_models_enabled() or local_models.is_whisper_installed():
+            await asyncio.to_thread(load_whisper)
     await _preload_translate(payload)
     return {
         "ok": True,
@@ -247,6 +289,7 @@ async def post_cloud_settings(payload: dict = Body(...)):
         **get_engine_status(),
         **get_revise_status(rv_mode),
         **cloud_status(),
+        **get_local_models_status(),
     }
 
 
@@ -256,7 +299,8 @@ async def engine_settings(payload: dict = Body(...)):
     asr_mode = normalize_mode(payload.get("asrProvider") or payload.get("asrMode"))
     rv_mode = normalize_revise_mode(payload.get("reviseMode"))
     if asr_mode == "local":
-        await asyncio.to_thread(load_whisper)
+        if not local_models.optional_local_models_enabled() or local_models.is_whisper_installed():
+            await asyncio.to_thread(load_whisper)
     await _preload_translate(payload)
     return {
         "ok": True,
@@ -264,6 +308,7 @@ async def engine_settings(payload: dict = Body(...)):
         **get_engine_status(),
         **get_revise_status(rv_mode),
         **cloud_status(),
+        **get_local_models_status(),
     }
 
 
@@ -279,16 +324,22 @@ async def translate_settings(payload: dict = Body(...)):
 
 @app.get("/")
 def index():
+    if STATIC is None:
+        return {"ok": True, "message": "VoiceBridgeAI API — use desktop app or legacy web UI"}
     return FileResponse(STATIC / "index.html")
 
 
 @app.get("/config")
 def config_page():
+    if STATIC is None:
+        return {"ok": False, "message": "Web config UI not bundled"}
     return FileResponse(STATIC / "config.html")
 
 
 @app.get("/guide/provider-keys")
 def guide_provider_keys():
+    if STATIC is None:
+        return {"ok": False, "message": "Guide not bundled"}
     return FileResponse(STATIC / "guide" / "provider-keys.html")
 
 
@@ -440,6 +491,14 @@ async def websocket_pcm(ws: WebSocket):
                 return False
             engine = ReviseEngine(sample_rate, revise_params.refine_interval_s)
         else:
+            if local_models.optional_local_models_enabled() and not local_models.is_whisper_installed():
+                await send_json(
+                    {
+                        "type": "error",
+                        "message": "Whisper 未安装。请在设置 → 本地模型 中下载，或改用云端 ASR。",
+                    }
+                )
+                return False
             await asyncio.to_thread(load_whisper)
             engine = ReviseEngine(sample_rate, revise_params.refine_interval_s)
         await _preload_translate(None)
@@ -588,11 +647,12 @@ async def websocket_pcm(ws: WebSocket):
         log.info("client disconnected")
 
 
-app.mount("/static", StaticFiles(directory=STATIC), name="static")
+if STATIC is not None:
+    app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
-DOCS = ROOT / "docs"
-if DOCS.is_dir():
-    app.mount("/docs", StaticFiles(directory=DOCS), name="docs")
+_docs = docs_dir()
+if _docs is not None:
+    app.mount("/docs", StaticFiles(directory=_docs), name="docs")
 
 
 if __name__ == "__main__":
