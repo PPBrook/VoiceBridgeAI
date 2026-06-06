@@ -4,7 +4,9 @@ const segmentsEl = document.getElementById("segments");
 const hintEl = document.getElementById("hint");
 const captureBtn = document.getElementById("capture");
 const asrModeEl = document.getElementById("asr-mode");
-const translateModeEl = document.getElementById("translate-mode");
+const translatePresetEl = document.getElementById("translate-preset");
+const partialProviderEl = document.getElementById("partial-provider");
+const finalProviderEl = document.getElementById("final-provider");
 const reviseModeEl = document.getElementById("revise-mode");
 const asrHintBtn = document.getElementById("asr-hint");
 const asrHintPop = document.getElementById("asr-hint-pop");
@@ -22,6 +24,9 @@ const tencentTmtProjectIdEl = document.getElementById("tencent-tmt-project-id");
 const qiniuApiKeyEl = document.getElementById("qiniu-api-key");
 const qiniuBaseUrlEl = document.getElementById("qiniu-base-url");
 const qiniuModelEl = document.getElementById("qiniu-model");
+const aliyunApiKeyEl = document.getElementById("aliyun-api-key");
+const aliyunBaseUrlEl = document.getElementById("aliyun-base-url");
+const aliyunModelEl = document.getElementById("aliyun-model");
 const saveCloudBtn = document.getElementById("save-cloud");
 const cloudSettingsNoteEl = document.getElementById("cloud-settings-note");
 const toggleCloudBtn = document.getElementById("toggle-cloud");
@@ -39,6 +44,9 @@ const cloudInputs = [
   qiniuApiKeyEl,
   qiniuBaseUrlEl,
   qiniuModelEl,
+  aliyunApiKeyEl,
+  aliyunBaseUrlEl,
+  aliyunModelEl,
   saveCloudBtn,
   toggleCloudAdvancedBtn,
 ];
@@ -61,12 +69,55 @@ function setCloudAdvancedOpen(open) {
     : "高级选项 ▾";
 }
 
+const ENGINE_PRESETS = {
+  dual: { asr: "tencent", partial: "tmt", final: "qiniu" },
+  argos: { asr: "local", partial: "argos", final: "argos" },
+  local: { asr: "local", partial: "google", final: "google" },
+};
+
+function engineProviders(d = {}) {
+  return {
+    asr: d.asrProvider || d.asrMode || asrModeEl?.value || "local",
+    partial:
+      d.partialProvider || partialProviderEl?.value || "google",
+    final: d.finalProvider || finalProviderEl?.value || "google",
+  };
+}
+
 function cloudNeedsTencent(d) {
-  return d.asrMode === "tencent" || d.translateMode === "dual";
+  const p = engineProviders(d);
+  return p.asr === "tencent" || p.partial === "tmt" || p.final === "tmt";
 }
 
 function cloudNeedsQiniu(d) {
-  return d.translateMode === "dual";
+  return engineProviders(d).final === "qiniu";
+}
+
+function cloudNeedsAliyun(d) {
+  const p = engineProviders(d);
+  return p.partial === "aliyun" || p.final === "aliyun";
+}
+
+function applyPreset(presetId) {
+  const preset = ENGINE_PRESETS[presetId];
+  if (!preset) return;
+  asrModeEl.value = preset.asr;
+  partialProviderEl.value = preset.partial;
+  finalProviderEl.value = preset.final;
+}
+
+function matchPreset(d) {
+  const p = engineProviders(d);
+  for (const [id, preset] of Object.entries(ENGINE_PRESETS)) {
+    if (
+      preset.asr === p.asr &&
+      preset.partial === p.partial &&
+      preset.final === p.final
+    ) {
+      return id;
+    }
+  }
+  return "";
 }
 
 let stream = null;
@@ -84,10 +135,11 @@ const ASR_MODE_SHORT = {
   local: "本地离线",
 };
 
-const TRANSLATE_MODE_SHORT = {
-  dual: "云端双擎",
-  argos: "本地离线",
-  local: "联网免费",
+const PARTIAL_DETAIL = {
+  tmt: () => ["腾讯机器翻译，低延迟草稿", "与 ASR 共用腾讯云 Secret"],
+  google: () => ["Google 在线翻译", "免费兜底，需能访问 Google"],
+  argos: () => ["本机离线英译中", "无需 Key，首次需下载语言包"],
+  aliyun: () => ["阿里云 DashScope LLM 快译", "需在 API 配置填写 DashScope Key"],
 };
 
 const REVISE_MODE_SHORT = {
@@ -108,24 +160,6 @@ const ASR_DETAIL = {
     "静音自动分句识别",
     "首次运行需下载模型",
     `句内约每 ${d.reviseRefineInterval ?? 0.8} 秒重识别改错`,
-  ],
-};
-
-const TRANSLATE_DETAIL = {
-  dual: () => [
-    "句中：腾讯机器翻译出草稿",
-    "句末：七牛大模型润色定稿",
-    "需腾讯云 Secret + 七牛 Key",
-  ],
-  argos: () => [
-    "本机离线英译中",
-    "数据不出电脑，无需密钥",
-    "首次运行需下载语言包",
-  ],
-  local: () => [
-    "Google 在线翻译",
-    "免费兜底，无需 Key",
-    "需能访问 Google",
   ],
 };
 
@@ -150,12 +184,9 @@ const REVISE_DETAIL = {
 };
 
 const PATH_HINT = {
-  "tencent-dual": "路径 A：云端识别 + 双擎翻译，建议选「实时优先」。",
-  "local-argos": "路径 B：全离线，无需 Key，建议「标准」或「精准」纠正。",
-  "local-local": "路径 C：本地识别 + 联网翻译，仅需网络。",
-  "tencent-argos": "混合：云端识别 + 本地翻译（识别需 Key）。",
-  "tencent-local": "混合：云端识别 + Google 翻译（均需联网）。",
-  "local-dual": "混合：本地识别 + 云端双擎（翻译需 Key）。",
+  "tencent-tmt-qiniu": "路径 A：云端识别 + TMT 草稿 + LLM 润色。",
+  "local-argos-argos": "路径 B：全离线，无需 Key。",
+  "local-google-google": "路径 C：本地识别 + Google 翻译。",
 };
 
 function setHintLines(popEl, lines) {
@@ -199,19 +230,18 @@ function bindHintTriggers() {
 }
 
 function updateFieldHints(d) {
-  const asr = d.asrMode || asrModeEl.value || "local";
-  const tr = d.translateMode || translateModeEl.value || "local";
+  const p = engineProviders(d);
   const rv = d.reviseMode || reviseModeEl.value || "balanced";
 
-  if (asrHintPop && ASR_DETAIL[asr]) {
-    setHintLines(asrHintPop, ASR_DETAIL[asr](d));
+  if (asrHintPop && ASR_DETAIL[p.asr]) {
+    setHintLines(asrHintPop, ASR_DETAIL[p.asr](d));
   }
-  if (translateHintPop && TRANSLATE_DETAIL[tr]) {
-    setHintLines(translateHintPop, TRANSLATE_DETAIL[tr](d));
+  if (translateHintPop && PARTIAL_DETAIL[p.partial]) {
+    setHintLines(translateHintPop, PARTIAL_DETAIL[p.partial](d));
   }
   if (reviseHintPop && REVISE_DETAIL[rv]) {
     const lines = [...REVISE_DETAIL[rv](d)];
-    if (asr === "tencent" && rv !== "speed") {
+    if (p.asr === "tencent" && rv !== "speed") {
       lines.push("句末回溯仅本地识别有效");
     }
     setHintLines(reviseHintPop, lines);
@@ -223,30 +253,48 @@ let runtimeHealthError = null;
 
 function collectDiagnostics(d) {
   const issues = [];
-  const asr = d.asrMode || "local";
-  const tr = d.translateMode || "local";
+  const p = engineProviders(d);
 
-  if (asr === "tencent" && !d.tencentConfigured) {
+  if (p.asr === "tencent" && !d.tencentConfigured) {
     issues.push({
       type: "error",
       text: "语音识别：未配置腾讯云，请展开 API 配置填写 AppId 与 Secret。",
     });
   }
-  if (tr === "dual") {
-    if (!d.tmtConfigured) {
-      issues.push({
-        type: "error",
-        text: "翻译：双擎模式缺少腾讯 TMT（与 ASR 共用 Secret）。",
-      });
-    }
-    if (!d.qiniuConfigured) {
-      issues.push({
-        type: "error",
-        text: "翻译：双擎模式缺少七牛 API Key。",
-      });
-    }
+  if ((p.partial === "tmt" || p.final === "tmt") && !d.tmtConfigured) {
+    issues.push({
+      type: "error",
+      text: "句中/句末 TMT：未配置腾讯云 Secret。",
+    });
   }
-  if (tr === "local") {
+  if (p.final === "qiniu" && !d.qiniuConfigured) {
+    issues.push({
+      type: "error",
+      text: "句末润色：未配置七牛 API Key。",
+    });
+  }
+  if (
+    (p.partial === "aliyun" || p.final === "aliyun") &&
+    !d.aliyunConfigured
+  ) {
+    issues.push({
+      type: "error",
+      text: "阿里云：未配置 DashScope API Key。",
+    });
+  }
+  if (!d.partialConfigured && p.partial !== "google" && p.partial !== "argos") {
+    issues.push({
+      type: "error",
+      text: `句中翻译（${d.partialProviderLabel || p.partial}）未就绪。`,
+    });
+  }
+  if (!d.finalConfigured && p.final !== "none") {
+    issues.push({
+      type: "error",
+      text: `句末润色（${d.finalProviderLabel || p.final}）未就绪。`,
+    });
+  }
+  if (p.partial === "google" || p.final === "google") {
     issues.push({
       type: "info",
       text: "翻译：联网模式需能访问 Google。",
@@ -337,8 +385,7 @@ function clearRuntimeHealthError() {
 }
 
 function renderEngineNote(d) {
-  const asr = d.asrMode || asrModeEl.value || "local";
-  const tr = d.translateMode || translateModeEl.value || "local";
+  const p = engineProviders(d);
   const rv = d.reviseMode || reviseModeEl.value || "balanced";
 
   updateFieldHints(d);
@@ -349,29 +396,33 @@ function renderEngineNote(d) {
 
   const summary = document.createElement("p");
   summary.className = "engine-note-summary";
-  summary.textContent = `当前：${ASR_MODE_SHORT[asr] || asr} · ${TRANSLATE_MODE_SHORT[tr] || tr} · ${REVISE_MODE_SHORT[rv] || rv}`;
+  summary.textContent = `当前：${ASR_MODE_SHORT[p.asr] || p.asr} · 句中 ${d.partialProviderLabel || p.partial} · 句末 ${d.finalProviderLabel || p.final} · ${REVISE_MODE_SHORT[rv] || rv}`;
   engineSettingsNoteEl.append(summary);
 
-  const pathKey = `${asr}-${tr}`;
+  const pathKey = `${p.asr}-${p.partial}-${p.final}`;
   if (PATH_HINT[pathKey]) {
-    const p = document.createElement("p");
-    p.className = "engine-note-path";
-    p.textContent = PATH_HINT[pathKey];
-    engineSettingsNoteEl.append(p);
+    const note = document.createElement("p");
+    note.className = "engine-note-path";
+    note.textContent = PATH_HINT[pathKey];
+    engineSettingsNoteEl.append(note);
   }
 }
 
 function engineConfig() {
   return {
     asrMode: asrModeEl.value,
-    translateMode: translateModeEl.value,
+    asrProvider: asrModeEl.value,
+    partialProvider: partialProviderEl.value,
+    finalProvider: finalProviderEl.value,
     reviseMode: reviseModeEl.value,
   };
 }
 
 function setSettingsEnabled(enabled) {
   asrModeEl.disabled = !enabled;
-  translateModeEl.disabled = !enabled;
+  if (translatePresetEl) translatePresetEl.disabled = !enabled;
+  partialProviderEl.disabled = !enabled;
+  finalProviderEl.disabled = !enabled;
   reviseModeEl.disabled = !enabled;
   for (const btn of [asrHintBtn, translateHintBtn, reviseHintBtn]) {
     if (btn) btn.disabled = !enabled;
@@ -386,6 +437,7 @@ function setSettingsEnabled(enabled) {
 function applyCloudStatus(d) {
   const t = d.tencent || {};
   const q = d.qiniu || {};
+  const a = d.aliyun || {};
   if (t.appId) tencentAppIdEl.value = t.appId;
   if (t.engine) tencentEngineEl.value = t.engine;
   if (t.tmtRegion) tencentTmtRegionEl.value = t.tmtRegion;
@@ -399,18 +451,25 @@ function applyCloudStatus(d) {
   if (q.baseUrl) qiniuBaseUrlEl.value = q.baseUrl;
   if (q.model) qiniuModelEl.value = q.model;
   qiniuApiKeyEl.placeholder = q.hasApiKey ? "已配置，留空不修改" : "粘贴 API Key";
+  if (a.baseUrl) aliyunBaseUrlEl.value = a.baseUrl;
+  if (a.model) aliyunModelEl.value = a.model;
+  aliyunApiKeyEl.placeholder = a.hasApiKey ? "已配置，留空不修改" : "粘贴 API Key";
 
   const issues = [];
+  const p = engineProviders(d);
   if (cloudNeedsTencent(d)) {
-    if (d.asrMode === "tencent" && !t.asrConfigured) {
+    if (p.asr === "tencent" && !t.asrConfigured) {
       issues.push("腾讯云 ASR 未配置（AppId + Secret）");
     }
-    if (cloudNeedsQiniu(d) && !t.tmtConfigured) {
+    if ((p.partial === "tmt" || p.final === "tmt") && !t.tmtConfigured) {
       issues.push("腾讯云 TMT 未配置（SecretId + SecretKey）");
     }
   }
   if (cloudNeedsQiniu(d) && !q.configured) {
     issues.push("七牛 Key 未配置");
+  }
+  if (cloudNeedsAliyun(d) && !a.configured) {
+    issues.push("阿里云 DashScope Key 未配置");
   }
 
   let line = "";
@@ -418,10 +477,12 @@ function applyCloudStatus(d) {
   if (issues.length) {
     line = issues.join(" · ");
     warn = true;
-  } else if (d.asrMode === "tencent" && d.translateMode === "dual") {
-    line = "演示路径就绪：云端流式识别 + 双擎翻译";
-  } else if (cloudNeedsQiniu(d)) {
-    line = "云端双擎翻译已就绪";
+  } else if (matchPreset(d) === "dual") {
+    line = `路径 A 就绪：${d.partialProviderLabel} + ${d.finalProviderLabel}`;
+  } else if (matchPreset(d) === "argos") {
+    line = "路径 B 就绪：全本地离线";
+  } else if (matchPreset(d) === "local") {
+    line = "路径 C 就绪：Google 联网翻译";
   } else if (cloudNeedsTencent(d) && t.asrConfigured) {
     line = "腾讯云 ASR 已配置";
   } else {
@@ -444,19 +505,34 @@ function applyEngineStatus(d) {
         return opt;
       })
     );
-    asrModeEl.value = d.asrMode || asrModeEl.options[0]?.value || "local";
+    asrModeEl.value = d.asrProvider || d.asrMode || asrModeEl.options[0]?.value || "local";
   }
-  if (d.translateModes?.length) {
-    translateModeEl.replaceChildren(
-      ...d.translateModes.map((m) => {
+  if (d.partialProviders?.length && partialProviderEl) {
+    partialProviderEl.replaceChildren(
+      ...d.partialProviders.map((m) => {
         const opt = document.createElement("option");
         opt.value = m.id;
         opt.textContent = m.label;
         return opt;
       })
     );
-    translateModeEl.value =
-      d.translateMode || translateModeEl.options[0]?.value || "local";
+    partialProviderEl.value =
+      d.partialProvider || partialProviderEl.options[0]?.value || "tmt";
+  }
+  if (d.finalProviders?.length && finalProviderEl) {
+    finalProviderEl.replaceChildren(
+      ...d.finalProviders.map((m) => {
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = m.label;
+        return opt;
+      })
+    );
+    finalProviderEl.value =
+      d.finalProvider || finalProviderEl.options[0]?.value || "qiniu";
+  }
+  if (translatePresetEl) {
+    translatePresetEl.value = matchPreset(d);
   }
   if (d.reviseModes?.length) {
     reviseModeEl.replaceChildren(
@@ -781,11 +857,25 @@ async function postEngineSettings() {
 
 asrModeEl.addEventListener("change", () => {
   if (active) return;
+  if (translatePresetEl) translatePresetEl.value = "";
   postEngineSettings().catch(() => {});
 });
 
-translateModeEl.addEventListener("change", () => {
+partialProviderEl?.addEventListener("change", () => {
   if (active) return;
+  if (translatePresetEl) translatePresetEl.value = "";
+  postEngineSettings().catch(() => {});
+});
+
+finalProviderEl?.addEventListener("change", () => {
+  if (active) return;
+  if (translatePresetEl) translatePresetEl.value = "";
+  postEngineSettings().catch(() => {});
+});
+
+translatePresetEl?.addEventListener("change", () => {
+  if (active) return;
+  if (translatePresetEl.value) applyPreset(translatePresetEl.value);
   postEngineSettings().catch(() => {});
 });
 
@@ -816,10 +906,20 @@ function cloudConfigPayload() {
   if (model) qiniu.model = model;
   const qKey = qiniuApiKeyEl.value.trim();
   if (qKey) qiniu.apiKey = qKey;
+
+  const aliyun = {};
+  const aBase = aliyunBaseUrlEl.value.trim();
+  const aModel = aliyunModelEl.value.trim();
+  if (aBase) aliyun.baseUrl = aBase;
+  if (aModel) aliyun.model = aModel;
+  const aKey = aliyunApiKeyEl.value.trim();
+  if (aKey) aliyun.apiKey = aKey;
+
   return {
     ...engineConfig(),
     tencent,
     qiniu,
+    aliyun,
   };
 }
 
@@ -835,6 +935,7 @@ async function postCloudSettings() {
   tencentSecretIdEl.value = "";
   tencentSecretKeyEl.value = "";
   qiniuApiKeyEl.value = "";
+  aliyunApiKeyEl.value = "";
   cloudSettingsNoteEl.textContent += " · 已保存";
 }
 

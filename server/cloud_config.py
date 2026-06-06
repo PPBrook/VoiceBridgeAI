@@ -48,6 +48,9 @@ def apply_cloud(payload: dict[str, Any]) -> None:
     apply_tencent(payload.get("tencent"))
     apply_qiniu(payload.get("qiniu"))
     apply_aliyun(payload.get("aliyun"))
+    from engine_config import apply_settings
+
+    apply_settings(payload)
 
 
 def tencent_status() -> dict[str, Any]:

@@ -4,9 +4,12 @@ const btnStop = document.getElementById("btn-stop");
 const hintEl = document.getElementById("hint");
 const errorEl = document.getElementById("error");
 const asrModeEl = document.getElementById("asr-mode");
-const translateModeEl = document.getElementById("translate-mode");
+const partialProviderEl = document.getElementById("partial-provider");
+const finalProviderEl = document.getElementById("final-provider");
 const reviseModeEl = document.getElementById("revise-mode");
 const openConsoleEl = document.getElementById("open-console");
+
+const engineEls = [asrModeEl, partialProviderEl, finalProviderEl, reviseModeEl];
 
 function showError(text) {
   if (!text) {
@@ -21,7 +24,9 @@ function showError(text) {
 async function saveSettings() {
   const config = {
     asrMode: asrModeEl.value,
-    translateMode: translateModeEl.value,
+    asrProvider: asrModeEl.value,
+    partialProvider: partialProviderEl.value,
+    finalProvider: finalProviderEl.value,
     reviseMode: reviseModeEl.value,
   };
   await chrome.storage.sync.set(config);
@@ -32,11 +37,16 @@ async function loadSettings() {
   const stored = await chrome.storage.sync.get([
     "serverUrl",
     "asrMode",
-    "translateMode",
+    "asrProvider",
+    "partialProvider",
+    "finalProvider",
     "reviseMode",
   ]);
-  if (stored.asrMode) asrModeEl.value = stored.asrMode;
-  if (stored.translateMode) translateModeEl.value = stored.translateMode;
+  if (stored.asrMode || stored.asrProvider) {
+    asrModeEl.value = stored.asrProvider || stored.asrMode;
+  }
+  if (stored.partialProvider) partialProviderEl.value = stored.partialProvider;
+  if (stored.finalProvider) finalProviderEl.value = stored.finalProvider;
   if (stored.reviseMode) reviseModeEl.value = stored.reviseMode;
   const base = stored.serverUrl || "http://127.0.0.1:8765";
   openConsoleEl.href = base;
@@ -45,9 +55,7 @@ async function loadSettings() {
 function setCapturing(active) {
   btnStart.hidden = active;
   btnStop.hidden = !active;
-  asrModeEl.disabled = active;
-  translateModeEl.disabled = active;
-  reviseModeEl.disabled = active;
+  for (const el of engineEls) el.disabled = active;
 }
 
 async function refreshStatus() {
@@ -64,8 +72,9 @@ async function refreshStatus() {
     hintEl.textContent = "请先在项目目录运行 ./run.sh";
   }
   if (status.config) {
-    asrModeEl.value = status.config.asrMode;
-    translateModeEl.value = status.config.translateMode;
+    asrModeEl.value = status.config.asrProvider || status.config.asrMode;
+    partialProviderEl.value = status.config.partialProvider || "tmt";
+    finalProviderEl.value = status.config.finalProvider || "qiniu";
     reviseModeEl.value = status.config.reviseMode;
   }
 }
@@ -92,7 +101,7 @@ btnStop.addEventListener("click", async () => {
   await refreshStatus();
 });
 
-for (const el of [asrModeEl, translateModeEl, reviseModeEl]) {
+for (const el of engineEls) {
   el.addEventListener("change", () => saveSettings());
 }
 

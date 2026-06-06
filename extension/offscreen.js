@@ -57,8 +57,10 @@ function connectWs(sampleRate, config) {
         JSON.stringify({
           type: "config",
           sampleRate,
-          asrMode: config.asrMode,
-          translateMode: config.translateMode,
+          asrMode: config.asrProvider || config.asrMode,
+          asrProvider: config.asrProvider || config.asrMode,
+          partialProvider: config.partialProvider,
+          finalProvider: config.finalProvider,
           reviseMode: config.reviseMode,
         })
       );

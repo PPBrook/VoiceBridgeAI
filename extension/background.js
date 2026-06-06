@@ -3,7 +3,9 @@
 const DEFAULT_CONFIG = {
   serverUrl: "http://127.0.0.1:8765",
   asrMode: "tencent",
-  translateMode: "dual",
+  asrProvider: "tencent",
+  partialProvider: "tmt",
+  finalProvider: "qiniu",
   reviseMode: "balanced",
   showEnglish: true,
 };
