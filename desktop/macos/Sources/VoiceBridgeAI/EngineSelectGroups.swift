@@ -1,6 +1,6 @@
 import AppKit
 
-/// 与 `static/js/engine-select.js` 对齐的分组下拉逻辑。
+/// 引擎下拉分组逻辑（原 Web engine-select.js 对齐）
 enum EngineSelectGroups {
     struct Group {
         let label: String

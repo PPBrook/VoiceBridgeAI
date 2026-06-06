@@ -9,8 +9,6 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 
 from cloud_config import apply_cloud, cloud_status, test_all_and_verify, test_and_verify
 from asr_config import default_mode, get_status as get_asr_status, normalize_mode
@@ -28,9 +26,7 @@ from whisper_asr import load_model as load_whisper
 from local_models import get_status as get_local_models_status
 import local_models
 
-from app_paths import docs_dir, env_file_path, static_dir
-
-STATIC = static_dir()
+from app_paths import env_file_path
 
 
 def _load_env_file() -> None:
@@ -72,27 +68,13 @@ async def _preload_translate(payload: dict | None = None) -> None:
 
 
 FEATURES = [
-    "static-page",
     "health-api",
-    "tab-capture",
     "websocket-pcm",
-    "asr-tencent-stream",
-    "asr-whisper-local",
-    "asr-openai-cloud",
-    "asr-settings",
-    "utterance-vad",
-    "translate-zh",
+    "asr-multi",
     "translate-dual-engine",
-    "translate-settings",
-    "engine-providers",
-    "translate-offline",
     "cloud-config",
-    "provider-test",
-    "startup-test-all",
-    "subtitle-revise",
-    "revise-modes",
-    "caption-mode",
     "local-models-optional",
+    "subtitle-revise",
 ]
 
 
@@ -324,23 +306,13 @@ async def translate_settings(payload: dict = Body(...)):
 
 @app.get("/")
 def index():
-    if STATIC is None:
-        return {"ok": True, "message": "VoiceBridgeAI API — use desktop app or legacy web UI"}
-    return FileResponse(STATIC / "index.html")
-
-
-@app.get("/config")
-def config_page():
-    if STATIC is None:
-        return {"ok": False, "message": "Web config UI not bundled"}
-    return FileResponse(STATIC / "config.html")
-
-
-@app.get("/guide/provider-keys")
-def guide_provider_keys():
-    if STATIC is None:
-        return {"ok": False, "message": "Guide not bundled"}
-    return FileResponse(STATIC / "guide" / "provider-keys.html")
+    return {
+        "ok": True,
+        "name": "VoiceBridgeAI",
+        "message": "API server — use macOS desktop app",
+        "health": "/api/health",
+        "ws": "/ws",
+    }
 
 
 @app.websocket("/ws")
@@ -350,7 +322,6 @@ async def websocket_pcm(ws: WebSocket):
     asr_mode = default_mode()
     revise_mode = default_revise_mode()
     revise_params = get_revise_params(revise_mode)
-    input_mode = "audio"
     alive = True
     tencent: TencentAsrStream | None = None
     engine: ReviseEngine | None = None
@@ -523,62 +494,6 @@ async def websocket_pcm(ws: WebSocket):
         )
         return True
 
-    async def start_caption_mode(
-        payload: dict | None,
-        rv_mode: str | None = None,
-    ) -> bool:
-        nonlocal tencent, engine, framer, asr_mode, revise_mode, revise_params, revise, input_mode
-        input_mode = "caption"
-        asr_mode = "caption"
-        if rv_mode is not None:
-            revise_mode = normalize_revise_mode(rv_mode)
-        revise_params = get_revise_params(revise_mode)
-        framer = PcmFramer()
-        revise.clear()
-        revise = bind_revise(revise_params)
-        for seg_id in list(local_tasks):
-            cancel_local_task(seg_id)
-        if tencent:
-            await tencent.close()
-            tencent = None
-        engine = None
-        await _preload_translate(payload)
-        await send_json(
-            {
-                "type": "asrReady",
-                "inputMode": "caption",
-                **get_engine_status(),
-                **get_revise_status(revise_mode),
-                "asrMode": "caption",
-                "asrProvider": "caption",
-            }
-        )
-        from partial_config import normalize_provider as np
-        from final_config import normalize_provider as nf
-
-        log.info(
-            "caption ready partial=%s final=%s revise=%s",
-            np(payload.get("partialProvider") if payload else None),
-            nf(payload.get("finalProvider") if payload else None),
-            revise_mode,
-        )
-        return True
-
-    async def handle_caption(data: dict) -> None:
-        if input_mode != "caption" or not alive:
-            return
-        seg_id = int(data.get("segmentId", 0))
-        text = (data.get("text") or "").strip()
-        is_final = bool(data.get("final"))
-        if not text:
-            return
-        if is_final:
-            await revise.finalize(seg_id, text)
-            log.info("segment %d [caption final]: %s", seg_id, text)
-        else:
-            await revise.emit_english(seg_id, text, partial=True, final=False)
-            await revise.schedule_partial_translation(seg_id, text)
-
     try:
         while True:
             msg = await ws.receive()
@@ -593,22 +508,16 @@ async def websocket_pcm(ws: WebSocket):
                     sample_rate = int(data.get("sampleRate", 48000))
                     mode = data.get("asrProvider") or data.get("asrMode", asr_mode)
                     rv_mode = data.get("reviseMode", revise_mode)
-                    caption = data.get("inputMode") == "caption" or mode == "caption"
                     pending = get_revise_params(rv_mode)
                     if engine:
                         engine.reset(sample_rate, pending.refine_interval_s)
-                    if caption:
-                        ok = await start_caption_mode(data, rv_mode)
-                    else:
-                        ok = await start_asr(mode, rv_mode)
+                    ok = await start_asr(mode, rv_mode)
                     if not ok:
                         mark_dead()
                         break
-                elif data.get("type") == "caption":
-                    await handle_caption(data)
 
             if "bytes" in msg and msg["bytes"]:
-                if not alive or input_mode == "caption":
+                if not alive:
                     continue
                 if asr_mode == "tencent":
                     if tencent is None:
@@ -645,14 +554,6 @@ async def websocket_pcm(ws: WebSocket):
                 if alive:
                     await run_local(seg_id, pcm, final=(kind == "final"))
         log.info("client disconnected")
-
-
-if STATIC is not None:
-    app.mount("/static", StaticFiles(directory=STATIC), name="static")
-
-_docs = docs_dir()
-if _docs is not None:
-    app.mount("/docs", StaticFiles(directory=_docs), name="docs")
 
 
 if __name__ == "__main__":

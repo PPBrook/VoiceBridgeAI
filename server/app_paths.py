@@ -22,32 +22,13 @@ def data_dir() -> Path:
     raw = os.getenv("VOICEBRIDGE_DATA_DIR", "").strip()
     if raw:
         root = Path(raw).expanduser()
+    elif (dev := _dev_repo_root()) is not None:
+        root = dev
     else:
-        dev = _dev_repo_root()
-        if dev is not None:
-            root = dev
-        else:
-            root = Path.home() / "Library" / "Application Support" / "VoiceBridgeAI"
+        root = Path.home() / "Library" / "Application Support" / "VoiceBridgeAI"
     root.mkdir(parents=True, exist_ok=True)
     return root
 
 
 def env_file_path() -> Path:
     return data_dir() / ".env"
-
-
-def repo_root() -> Path:
-    dev = _dev_repo_root()
-    if dev is not None:
-        return dev
-    return SERVER_DIR.parent
-
-
-def static_dir() -> Path | None:
-    static = repo_root() / "static"
-    return static if static.is_dir() else None
-
-
-def docs_dir() -> Path | None:
-    docs = repo_root() / "docs"
-    return docs if docs.is_dir() else None

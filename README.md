@@ -1,94 +1,70 @@
-# VoiceBridgeAI macOS 桌面客户端
+# VoiceBridgeAI
 
-Swift + AppKit + ScreenCaptureKit 原生客户端。**独立 `.app` 版内置 Python 引擎**，用户无需克隆仓库或手动 `run.sh`。
+macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。Swift UI + 内置 Python 引擎。
 
-浏览器版见分支 **`legacy/web-only`**。
+浏览器版备份分支：`legacy/web-only`
 
-## 功能
-
-| 能力 | 说明 |
-|------|------|
-| 系统音频采集 | ScreenCaptureKit → WebSocket |
-| 悬浮字幕 | 双行、partial、纠正、透明度 |
-| App 内设置 | 引擎 + 云端密钥 + 本地模型下载 |
-| **内置引擎** | Python 侧车打包在 `.app` 内，自动启动 |
-| 配置持久化 | `~/Library/Application Support/VoiceBridgeAI/.env` |
-
-## 要求
-
-- macOS **13+**
-- 打包机需 **Python 3.10+**（仅开发者 `build-app.sh` 时用）
-- 最终用户 **只需安装 `.app`**
-
-## 用户：只装 App
-
-1. 拿到 `VoiceBridgeAI.app`（拖入「应用程序」）
-2. 双击打开（未签名需在「隐私与安全性」允许一次）
-3. **系统设置 → 隐私 → 屏幕录制** → 允许 VoiceBridgeAI
-4. **设置 → 本地模型** 下载 Whisper/Argos，或 **接口密钥** 配云端
-5. **开始字幕**
-
-配置与日志：
-
-```
-~/Library/Application Support/VoiceBridgeAI/
-├── .env          # 引擎 / 密钥（App 内保存）
-├── server.log    # 侧车日志
-└── models/       # 可选下载的 Whisper / Argos
-```
-
-## 开发者：打包独立 App
+## 安装使用
 
 ```bash
 cd desktop/macos
-chmod +x build-app.sh
-./build-app.sh          # 含 pip 安装，约 3–8 分钟
+./build-app.sh
 open dist/VoiceBridgeAI.app
 ```
 
-快速调试 Swift UI（不含 Python，**.app 不能独立运行**）：
+1. **屏幕录制**权限（系统设置 → 隐私与安全性）
+2. App **设置 → 本地模型** 下载 Whisper/Argos，或 **接口密钥** 配云端
+3. **开始悬浮字幕**
+
+配置目录：`~/Library/Application Support/VoiceBridgeAI/`（`.env`、`server.log`、`models/`）
+
+## 开发
 
 ```bash
-SKIP_VENV=1 ./build-app.sh
+cp .env.example .env
+./run.sh                          # 终端 1：Python 引擎
+cd desktop/macos && ./run.sh      # 终端 2：Swift UI
 ```
 
-开发模式（仓库 + `run.sh`，不打包侧车）：
+仅调试 UI：`SKIP_VENV=1 ./build-app.sh`（不能独立运行）
 
-```bash
-./run.sh
+## 结构
+
 ```
+desktop/macos/     Swift App、build-app.sh、scripts/run-server.sh
+server/            FastAPI + WebSocket（ASR / 翻译 / 纠正）
+run.sh             开发时启动引擎
+```
+
+App  bundle：`Contents/Resources/{server, python-venv, run-server.sh}`
 
 ## 架构
 
 ```
-VoiceBridgeAI.app
-├── Contents/MacOS/VoiceBridgeAI     ← Swift UI
-└── Contents/Resources/
-    ├── run-server.sh
-    ├── python-venv/                 ← 内置依赖
-    └── server/                      ← FastAPI 引擎
+ScreenCaptureKit → Swift App → ws://127.0.0.1:8765/ws → server/ → 字幕 overlay
 ```
 
-App 启动 → 检测 `127.0.0.1:8765` → 不可达则执行 `run-server.sh` → WebSocket 会话。
+三层引擎：ASR（Whisper / 腾讯 / OpenAI）→ 句中翻译 → 句末润色。本地模型默认须 App 内下载（`VOICEBRIDGE_OPTIONAL_LOCAL_MODELS=1`）。
 
-## 本地模型
+## API（节选）
 
-默认 **按需下载**（不增大 App 本体内核体积；Whisper/Argos 仍须首次下载）。
-
-## 已知限制
-
-- 未代码签名 / 公证（比赛 demo 可接受）
-- App 体积约 **500MB–1GB**（含 Python + ML 依赖，不含 Whisper 权重）
-- 无 YouTube CC 模式
-- 仅本机 `127.0.0.1`
+| 路径 | 说明 |
+|------|------|
+| GET `/api/health` | 状态、引擎、本地模型 |
+| POST `/api/models/local/download` | 下载 Whisper / Argos |
+| POST `/api/engine/settings` | 保存引擎 |
+| POST `/api/cloud/settings` | 保存密钥 |
+| WS `/ws` | config + PCM → asr / asrReady |
 
 ## 故障排查
 
 | 现象 | 处理 |
 |------|------|
-| 启动失败 | 查看 `~/Library/Application Support/VoiceBridgeAI/server.log` |
-| 无 Whisper/Argos | 设置 → 本地模型 → 下载 |
+| 启动失败 | `~/Library/Application Support/VoiceBridgeAI/server.log` |
+| 无 Whisper/Argos | 设置 → 本地模型 |
 | 无声音 | 屏幕录制权限 |
-| 改设置无效 | 停止字幕后重新开始 |
+| 端口占用 | `kill $(lsof -t -iTCP:8765 -sTCP:LISTEN)` |
 
-根目录 [README.md](../README.md)
+## 限制
+
+未签名、约 0.9GB（含 Python 依赖）、仅本机、无 YouTube CC。
