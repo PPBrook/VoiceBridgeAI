@@ -2,29 +2,17 @@
 set -e
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 cd "$ROOT"
-echo "VoiceBridgeAI — 工作目录: $ROOT"
-if [[ -f "$ROOT/.env" ]]; then
-  set -a
-  # shellcheck disable=SC1091
-  source "$ROOT/.env"
-  set +a
-  echo "已加载 .env"
-else
-  echo "提示: 未找到 .env → 请 cp .env.example .env（全本地可设 ASR_PROVIDER=local）"
-fi
+[[ -f .env ]] && set -a && source .env && set +a
 [[ -d .venv ]] || python3 -m venv .venv
 source .venv/bin/activate
-pip install -q -r "$ROOT/requirements.txt"
+pip install -q -r requirements.txt
 PORT="${VOICEBRIDGE_PORT:-8765}"
 if command -v lsof >/dev/null 2>&1; then
   OLD_PID="$(lsof -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true)"
   if [[ -n "$OLD_PID" ]]; then
-    echo "端口 $PORT 已被占用 (PID $OLD_PID)，可能是其他终端或后台任务。"
-    echo "释放端口: kill $OLD_PID"
-    echo "或直接访问: http://127.0.0.1:$PORT"
+    echo "端口 $PORT 已被占用 (PID $OLD_PID)"
     exit 1
   fi
 fi
-echo "VoiceBridgeAI — http://127.0.0.1:$PORT"
-echo "启动后将自动测试 .env 中已配置的接口（AUTO_TEST_ON_START=0 可关闭）"
-cd "$ROOT/server" && python main.py
+echo "VoiceBridgeAI engine — http://127.0.0.1:$PORT"
+cd server && python main.py
