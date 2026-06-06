@@ -27,6 +27,8 @@ final class EnginePanelView: NSView {
         noteLabel.textColor = .secondaryLabelColor
         noteLabel.font = .systemFont(ofSize: 11)
 
+        statusLabel.maximumNumberOfLines = 0
+        statusLabel.lineBreakMode = .byWordWrapping
         statusLabel.textColor = .secondaryLabelColor
 
         saveButton.target = self
@@ -112,7 +114,13 @@ final class EnginePanelView: NSView {
         )
         fillRevisePopup(from: health, selected: store.engine.reviseMode)
         reconcileAndFillPopups()
-        statusLabel.stringValue = "当前：\(store.engine.summary(from: health))"
+        var status = "当前：\(store.engine.summary(from: health))"
+        if let rules = health["engineRules"] as? [String: Any],
+           let pairNote = rules["pairNote"] as? String,
+           !pairNote.isEmpty {
+            status += "\n\(pairNote)"
+        }
+        statusLabel.stringValue = status
     }
 
     private func fillRevisePopup(from health: [String: Any], selected: String) {

@@ -61,6 +61,12 @@ final class SessionController {
         }
 
         if #available(macOS 13.0, *) {
+            if !ScreenCaptureAccess.ensureAccess() {
+                webSocket.disconnect()
+                ScreenCaptureAccess.openSystemSettings()
+                return "需要屏幕录制权限才能采集系统音频。已尝试打开系统设置，请允许 VoiceBridgeAI 后重试。"
+            }
+
             let cap = SystemAudioCapture()
             cap.onPCM = { [weak self] data in
                 Task { @MainActor in

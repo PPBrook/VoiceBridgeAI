@@ -209,43 +209,73 @@ final class CloudPanelView: NSView {
 
     func reload() {
         let health = SettingsStore.shared.health
+        applyStartupTest(health)
+
         let t = health["tencent"] as? [String: Any] ?? [:]
-        if let v = t["appId"] as? String { tencentAppId.stringValue = v }
-        if let v = t["engine"] as? String { tencentEngine.stringValue = v }
-        if let v = t["tmtRegion"] as? String { tencentRegion.stringValue = v }
-        if let v = t["tmtProjectId"] as? String { tencentProject.stringValue = v }
+        tencentAppId.stringValue = t["appId"] as? String ?? ""
+        tencentEngine.stringValue = t["engine"] as? String ?? ""
+        tencentRegion.stringValue = t["tmtRegion"] as? String ?? ""
+        tencentProject.stringValue = t["tmtProjectId"] as? String ?? ""
+        tencentSecretId.stringValue = ""
+        tencentSecretKey.stringValue = ""
         tencentSecretId.placeholderString = (t["hasSecretId"] as? Bool == true) ? "已配置，留空不修改" : "SecretId"
         tencentSecretKey.placeholderString = (t["hasSecretKey"] as? Bool == true) ? "已配置，留空不修改" : "SecretKey"
 
         let q = health["qiniu"] as? [String: Any] ?? [:]
-        if let v = q["baseUrl"] as? String { qiniuBase.stringValue = v }
-        if let v = q["model"] as? String { qiniuModel.stringValue = v }
+        qiniuBase.stringValue = q["baseUrl"] as? String ?? ""
+        qiniuModel.stringValue = q["model"] as? String ?? ""
+        qiniuKey.stringValue = ""
         qiniuKey.placeholderString = (q["hasApiKey"] as? Bool == true) ? "已配置，留空不修改" : "API Key"
 
         let a = health["aliyun"] as? [String: Any] ?? [:]
-        if let v = a["baseUrl"] as? String { aliyunBase.stringValue = v }
-        if let v = a["model"] as? String { aliyunModel.stringValue = v }
+        aliyunBase.stringValue = a["baseUrl"] as? String ?? ""
+        aliyunModel.stringValue = a["model"] as? String ?? ""
+        aliyunKey.stringValue = ""
         aliyunKey.placeholderString = (a["hasApiKey"] as? Bool == true) ? "已配置，留空不修改" : "API Key"
 
         let b = health["baidu"] as? [String: Any] ?? [:]
-        if let v = b["appId"] as? String { baiduAppId.stringValue = v }
+        baiduAppId.stringValue = b["appId"] as? String ?? ""
+        baiduSecret.stringValue = ""
         baiduSecret.placeholderString = (b["hasSecretKey"] as? Bool == true) ? "已配置，留空不修改" : "Secret Key"
 
         let d = health["deepl"] as? [String: Any] ?? [:]
+        deeplKey.stringValue = ""
         deeplKey.placeholderString = (d["hasApiKey"] as? Bool == true) ? "已配置，留空不修改" : "API Key"
 
         let ds = health["deepseek"] as? [String: Any] ?? [:]
-        if let v = ds["baseUrl"] as? String { deepseekBase.stringValue = v }
-        if let v = ds["model"] as? String { deepseekModel.stringValue = v }
+        deepseekBase.stringValue = ds["baseUrl"] as? String ?? ""
+        deepseekModel.stringValue = ds["model"] as? String ?? ""
+        deepseekKey.stringValue = ""
         deepseekKey.placeholderString = (ds["hasApiKey"] as? Bool == true) ? "已配置，留空不修改" : "API Key"
 
         let o = health["openai"] as? [String: Any] ?? [:]
-        if let v = o["baseUrl"] as? String { openaiBase.stringValue = v }
-        if let v = o["model"] as? String { openaiModel.stringValue = v }
-        if let v = o["asrModel"] as? String { openaiAsrModel.stringValue = v }
+        openaiBase.stringValue = o["baseUrl"] as? String ?? ""
+        openaiModel.stringValue = o["model"] as? String ?? ""
+        openaiAsrModel.stringValue = o["asrModel"] as? String ?? ""
+        openaiKey.stringValue = ""
         openaiKey.placeholderString = (o["hasApiKey"] as? Bool == true) ? "已配置，留空不修改" : "API Key"
 
         refreshTestStatuses()
+    }
+
+    private func applyStartupTest(_ health: [String: Any]) {
+        guard let st = health["startupTest"] as? [String: Any] else { return }
+        if st["running"] as? Bool == true {
+            noteLabel.stringValue = (st["summary"] as? String) ?? "正在启动测试…"
+            noteLabel.textColor = .secondaryLabelColor
+            testAllButton.isEnabled = false
+            return
+        }
+        testAllButton.isEnabled = true
+        if st["done"] as? Bool == true, let summary = st["summary"] as? String, !summary.isEmpty {
+            noteLabel.stringValue = summary
+            if let results = st["results"] as? [[String: Any]],
+               results.contains(where: { ($0["ok"] as? Bool) != true }) {
+                noteLabel.textColor = .systemOrange
+            } else {
+                noteLabel.textColor = .secondaryLabelColor
+            }
+        }
     }
 
     @objc private func openGuideDoc() {

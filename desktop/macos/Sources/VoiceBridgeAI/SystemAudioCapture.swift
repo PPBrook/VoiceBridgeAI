@@ -12,7 +12,7 @@ final class SystemAudioCapture: NSObject, SCStreamDelegate, SCStreamOutput {
     private let queue = DispatchQueue(label: "ai.voicebridge.capture")
 
     func start() async throws {
-        stop()
+        await stopAsync()
 
         let content = try await SCShareableContent.current
         guard let display = content.displays.first else {
@@ -37,6 +37,14 @@ final class SystemAudioCapture: NSObject, SCStreamDelegate, SCStreamOutput {
         stream = nil
         if let active {
             Task { try? await active.stopCapture() }
+        }
+    }
+
+    func stopAsync() async {
+        let active = stream
+        stream = nil
+        if let active {
+            try? await active.stopCapture()
         }
     }
 

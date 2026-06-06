@@ -28,6 +28,8 @@ final class OverlayPanelController {
     private let opacitySlider = NSSlider(value: 0.78, minValue: 0.15, maxValue: 1.0, target: nil, action: nil)
     private let enToggleButton = NSButton(title: "EN", target: nil, action: nil)
     private var showEnglish = OverlayPreferences.showEnglish
+    private let historyZhLabel = NSTextField(wrappingLabelWithString: "")
+    private let historyEnLabel = NSTextField(wrappingLabelWithString: "")
     private let zhLabel = NSTextField(wrappingLabelWithString: "等待字幕…")
     private let enLabel = NSTextField(wrappingLabelWithString: "")
     private let errorLabel = NSTextField(wrappingLabelWithString: "")
@@ -38,7 +40,7 @@ final class OverlayPanelController {
 
     init() {
         panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 720, height: 140),
+            contentRect: NSRect(x: 0, y: 0, width: 720, height: 168),
             styleMask: [.nonactivatingPanel, .borderless, .hudWindow],
             backing: .buffered,
             defer: false
@@ -90,6 +92,13 @@ final class OverlayPanelController {
         enToggleButton.toolTip = "切换英文显示"
         syncEnglishToggleAppearance()
 
+        historyZhLabel.font = .systemFont(ofSize: 15, weight: .medium)
+        historyZhLabel.textColor = NSColor(white: 0.72, alpha: 1)
+        historyZhLabel.alignment = .center
+        historyEnLabel.font = .systemFont(ofSize: 11)
+        historyEnLabel.textColor = NSColor(white: 0.55, alpha: 1)
+        historyEnLabel.alignment = .center
+
         zhLabel.font = .systemFont(ofSize: 22, weight: .semibold)
         zhLabel.textColor = NSColor(white: 0.95, alpha: 1)
         zhLabel.alignment = .center
@@ -99,7 +108,7 @@ final class OverlayPanelController {
         enLabel.alignment = .center
 
         errorLabel.font = .systemFont(ofSize: 12)
-        errorLabel.textColor = NSColor.systemRed
+        errorLabel.textColor = .systemRed
         errorLabel.alignment = .center
 
         let stopButton = NSButton(title: "×", target: nil, action: nil)
@@ -108,9 +117,9 @@ final class OverlayPanelController {
         stopButton.target = stopHandler
         stopButton.action = #selector(StopHandler.clicked)
 
-        let stack = NSStackView(views: [zhLabel, enLabel, errorLabel])
+        let stack = NSStackView(views: [historyZhLabel, historyEnLabel, zhLabel, enLabel, errorLabel])
         stack.orientation = .vertical
-        stack.spacing = 4
+        stack.spacing = 3
         stack.translatesAutoresizingMaskIntoConstraints = false
 
         let header = NSStackView(views: [titleLabel, opacityStack, enToggleButton, NSView(), stopButton])
@@ -165,6 +174,7 @@ final class OverlayPanelController {
             update(with: store)
         } else {
             enLabel.isHidden = !showEnglish
+            historyEnLabel.isHidden = !showEnglish
         }
     }
 
@@ -181,12 +191,18 @@ final class OverlayPanelController {
     }
 
     func positionBottomCenter() {
-        guard let screen = NSScreen.main else { return }
+        let screen = activeScreen() ?? NSScreen.main
+        guard let screen else { return }
         let frame = screen.visibleFrame
         var rect = panel.frame
         rect.origin.x = frame.midX - rect.width / 2
         rect.origin.y = frame.minY + frame.height * 0.12
         panel.setFrame(rect, display: true)
+    }
+
+    private func activeScreen() -> NSScreen? {
+        let point = NSEvent.mouseLocation
+        return NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
     }
 
     func update(with store: SubtitleStore) {
@@ -200,6 +216,10 @@ final class OverlayPanelController {
         if let err = store.errorMessage, !err.isEmpty {
             errorLabel.stringValue = err
             errorLabel.isHidden = false
+            historyZhLabel.stringValue = ""
+            historyEnLabel.stringValue = ""
+            historyZhLabel.isHidden = true
+            historyEnLabel.isHidden = true
             zhLabel.stringValue = ""
             enLabel.stringValue = ""
             return
@@ -207,9 +227,12 @@ final class OverlayPanelController {
         errorLabel.isHidden = true
 
         guard !store.segments.isEmpty else {
+            historyZhLabel.isHidden = true
+            historyEnLabel.isHidden = true
             zhLabel.stringValue = store.statusMessage
+            zhLabel.alphaValue = 0.85
             enLabel.stringValue = ""
-            enLabel.isHidden = !showEnglish
+            enLabel.isHidden = true
             return
         }
 
@@ -217,29 +240,74 @@ final class OverlayPanelController {
         if lines.count >= 2 {
             let prev = lines[lines.count - 2]
             let cur = lines[lines.count - 1]
-            applyLineTexts(cur: cur, prev: prev)
+            applyHistoryLine(prev)
+            applyCurrentLine(cur, prev: prev)
         } else if let cur = lines.last {
-            applyLineTexts(cur: cur, prev: nil)
+            historyZhLabel.isHidden = true
+            historyEnLabel.isHidden = true
+            applyCurrentLine(cur, prev: nil)
         }
     }
 
-    private func applyLineTexts(cur: SubtitleSegment, prev: SubtitleSegment?) {
+    private func applyHistoryLine(_ seg: SubtitleSegment) {
+        let zh = displayZH(seg, fallback: nil)
+        let en = seg.text
+        let hasZh = !zh.isEmpty
+        let hasEn = showEnglish && !en.isEmpty
+        historyZhLabel.stringValue = hasZh ? zh : ""
+        historyEnLabel.stringValue = hasEn ? en : ""
+        historyZhLabel.isHidden = !hasZh
+        historyEnLabel.isHidden = !hasEn
+        historyZhLabel.alphaValue = 0.5
+        historyEnLabel.alphaValue = 0.5
+    }
+
+    private func applyCurrentLine(_ cur: SubtitleSegment, prev: SubtitleSegment?) {
         let en = cur.text
         let zh = displayZH(cur, fallback: prev)
-        zhLabel.stringValue = zh
-        zhLabel.alphaValue = 1
+
+        if zh.isEmpty && cur.partial {
+            zhLabel.stringValue = "…"
+            zhLabel.textColor = NSColor(white: 0.75, alpha: 1)
+        } else {
+            zhLabel.stringValue = zh.isEmpty ? "…" : zh
+            zhLabel.textColor = NSColor(white: 0.95, alpha: 1)
+        }
+
+        zhLabel.alphaValue = cur.partial ? 0.82 : 1
+
         if showEnglish, !en.isEmpty {
             enLabel.stringValue = en
             enLabel.isHidden = false
+            enLabel.alphaValue = cur.partial ? 0.75 : 1
         } else {
             enLabel.stringValue = ""
             enLabel.isHidden = true
+        }
+
+        if cur.revised {
+            flashRevise(lookback: cur.lookback)
+        }
+    }
+
+    private func flashRevise(lookback: Bool) {
+        let accent = lookback ? NSColor.systemOrange : NSColor.systemBlue
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.18
+            zhLabel.animator().textColor = accent
+        } completionHandler: { [weak self] in
+            guard let self else { return }
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.28
+                self.zhLabel.animator().textColor = NSColor(white: 0.95, alpha: 1)
+            }
         }
     }
 
     private func displayZH(_ cur: SubtitleSegment, fallback: SubtitleSegment?) -> String {
         if !cur.translation.isEmpty { return cur.translation }
         if let fallback, !fallback.translation.isEmpty { return fallback.translation }
+        if cur.partial { return "" }
         return cur.text
     }
 }
