@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 .DS_Store
 desktop/macos/.build/
+desktop/macos/dist/

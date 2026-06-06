@@ -28,14 +28,15 @@ from whisper_asr import load_model as load_whisper
 from local_models import get_status as get_local_models_status
 import local_models
 
-ROOT = Path(__file__).resolve().parent.parent
-STATIC = ROOT / "static"
+from app_paths import docs_dir, env_file_path, static_dir
+
+STATIC = static_dir()
 
 
 def _load_env_file() -> None:
     import os
 
-    env_path = ROOT / ".env"
+    env_path = env_file_path()
     if not env_path.is_file():
         return
     for raw in env_path.read_text(encoding="utf-8").splitlines():
@@ -323,16 +324,22 @@ async def translate_settings(payload: dict = Body(...)):
 
 @app.get("/")
 def index():
+    if STATIC is None:
+        return {"ok": True, "message": "VoiceBridgeAI API — use desktop app or legacy web UI"}
     return FileResponse(STATIC / "index.html")
 
 
 @app.get("/config")
 def config_page():
+    if STATIC is None:
+        return {"ok": False, "message": "Web config UI not bundled"}
     return FileResponse(STATIC / "config.html")
 
 
 @app.get("/guide/provider-keys")
 def guide_provider_keys():
+    if STATIC is None:
+        return {"ok": False, "message": "Guide not bundled"}
     return FileResponse(STATIC / "guide" / "provider-keys.html")
 
 
@@ -631,11 +638,12 @@ async def websocket_pcm(ws: WebSocket):
         log.info("client disconnected")
 
 
-app.mount("/static", StaticFiles(directory=STATIC), name="static")
+if STATIC is not None:
+    app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
-DOCS = ROOT / "docs"
-if DOCS.is_dir():
-    app.mount("/docs", StaticFiles(directory=DOCS), name="docs")
+_docs = docs_dir()
+if _docs is not None:
+    app.mount("/docs", StaticFiles(directory=_docs), name="docs")
 
 
 if __name__ == "__main__":

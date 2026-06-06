@@ -1,124 +1,94 @@
-# VoiceBridgeAI
+# VoiceBridgeAI macOS 桌面客户端
 
-Chrome / Edge 标签页英文内容 → 实时中文悬浮字幕。支持 **语音识别** 与 **YouTube 英文字幕** 两条输入路径。Web 控制台 + 浏览器扩展（Chromium 系）。
+Swift + AppKit + ScreenCaptureKit 原生客户端。**独立 `.app` 版内置 Python 引擎**，用户无需克隆仓库或手动 `run.sh`。
 
-## 快速开始
+浏览器版见分支 **`legacy/web-only`**。
+
+## 功能
+
+| 能力 | 说明 |
+|------|------|
+| 系统音频采集 | ScreenCaptureKit → WebSocket |
+| 悬浮字幕 | 双行、partial、纠正、透明度 |
+| App 内设置 | 引擎 + 云端密钥 + 本地模型下载 |
+| **内置引擎** | Python 侧车打包在 `.app` 内，自动启动 |
+| 配置持久化 | `~/Library/Application Support/VoiceBridgeAI/.env` |
+
+## 要求
+
+- macOS **13+**
+- 打包机需 **Python 3.10+**（仅开发者 `build-app.sh` 时用）
+- 最终用户 **只需安装 `.app`**
+
+## 用户：只装 App
+
+1. 拿到 `VoiceBridgeAI.app`（拖入「应用程序」）
+2. 双击打开（未签名需在「隐私与安全性」允许一次）
+3. **系统设置 → 隐私 → 屏幕录制** → 允许 VoiceBridgeAI
+4. **设置 → 本地模型** 下载 Whisper/Argos，或 **接口密钥** 配云端
+5. **开始字幕**
+
+配置与日志：
+
+```
+~/Library/Application Support/VoiceBridgeAI/
+├── .env          # 引擎 / 密钥（App 内保存）
+├── server.log    # 侧车日志
+└── models/       # 可选下载的 Whisper / Argos
+```
+
+## 开发者：打包独立 App
 
 ```bash
-cp .env.example .env    # 可选；全本地可不填 Key
+cd desktop/macos
+chmod +x build-app.sh
+./build-app.sh          # 含 pip 安装，约 3–8 分钟
+open dist/VoiceBridgeAI.app
+```
+
+快速调试 Swift UI（不含 Python，**.app 不能独立运行**）：
+
+```bash
+SKIP_VENV=1 ./build-app.sh
+```
+
+开发模式（仓库 + `run.sh`，不打包侧车）：
+
+```bash
 ./run.sh
 ```
 
-打开 [http://127.0.0.1:8765](http://127.0.0.1:8765)（端口见 `VOICEBRIDGE_PORT`）。
-
-## 两种输入方式
-
-| 方式 | 适用场景 | 入口 |
-|---|---|---|
-| **语音识别** | 任意带英文音频的页面 | Web `/` 或扩展「语音识别（音频）」 |
-| **YouTube 英文字幕** | YouTube 已开 CC 英文字幕 | **仅扩展**「YouTube 英文字幕」 |
+## 架构
 
 ```
-语音识别：  音频 → ASR（Whisper/腾讯云…）→ 句中翻译 → 句末润色 → 字幕
-字幕模式：  YouTube CC 文本 ──────────────→ 句中翻译 → 句末润色 → 字幕
-                                              ↑ 跳过 ASR
+VoiceBridgeAI.app
+├── Contents/MacOS/VoiceBridgeAI     ← Swift UI
+└── Contents/Resources/
+    ├── run-server.sh
+    ├── python-venv/                 ← 内置依赖
+    └── server/                      ← FastAPI 引擎
 ```
 
-- **纯 Web 控制台**无法读取其他网站的字幕 DOM，只能走语音识别。
-- **浏览器扩展**（Chrome / Edge 等 Chromium）可在 YouTube 上抓取 CC 文本，分句更准、延迟更低、不占用 Whisper。
+App 启动 → 检测 `127.0.0.1:8765` → 不可达则执行 `run-server.sh` → WebSocket 会话。
 
-## 页面
+## 本地模型
 
-| 路径 | 用途 |
-|---|---|
-| `/` | 引擎设置 + 标签页音频捕获（语音识别） |
-| `/config` | 云端密钥：保存 → 写入 `.env` → 测试 |
-| `/guide/provider-keys` | 各接口官网与密钥说明（HTML） |
+默认 **按需下载**（不增大 App 本体内核体积；Whisper/Argos 仍须首次下载）。
 
-## 推荐流程
+## 已知限制
 
-### A. 离线试用（语音识别）
+- 未代码签名 / 公证（比赛 demo 可接受）
+- App 体积约 **500MB–1GB**（含 Python + ML 依赖，不含 Whisper 权重）
+- 无 YouTube CC 模式
+- 仅本机 `127.0.0.1`
 
-1. `./run.sh` → 打开 `/`，默认 `Whisper + Argos + Argos`
-2. 捕获标签页音频（需勾选「分享标签页音频」）
+## 故障排查
 
-### B. YouTube 字幕模式（扩展，推荐有 CC 时）
+| 现象 | 处理 |
+|------|------|
+| 启动失败 | 查看 `~/Library/Application Support/VoiceBridgeAI/server.log` |
+| 无 Whisper/Argos | 设置 → 本地模型 → 下载 |
+| 无声音 | 屏幕录制权限 |
+| 改设置无效 | 停止字幕后重新开始 |
 
-1. `./run.sh` → 在 Chrome 或 Edge 中加载 `extension/`（见下方说明）
-2. 打开 YouTube 视频，开启 **CC → English**
-3. 扩展弹窗：**英文来源** → `YouTube 英文字幕` → **开始**（徽章 **CC**）
-4. 句中/句末可改为云端接口（见下），不必离线
-
-### C. 云端引擎
-
-1. `/config` 填 Key → **保存** → **测试**（悬停状态看详情）
-2. 扩展或 `/` 选三层组合；句中推荐 MT，句末推荐 LLM（见 `/guide/provider-keys` 与各接口说明）
-
-## 三层引擎
-
-| 层 | 语音识别模式 | YouTube 字幕模式 |
-|---|---|---|
-| **识别** | Whisper / 腾讯云 / OpenAI | **跳过**（直接用 CC 文本） |
-| **句中** | Argos 离线 或 TMT / LLM 快译… | 同上，可云端 |
-| **句末** | Argos / **不翻译** / LLM 润色… | 同上，可云端 |
-
-- 离线默认可用项（Whisper、Argos 等）**无需**在 `/config` 测试。
-- 云端接口：**测试通过**后才出现在下拉框；`VERIFIED_*` 在进程内生效，重启后靠自动测试或手动一键测试。
-- OpenAI：**识别**测试只验 Key；**句中/句末**走 Chat，需账户有余额（429 = 配额不足）。
-
-## 项目结构
-
-```
-server/
-  main.py                 FastAPI + WebSocket（含 caption-mode）
-  provider_registry.py    接口 ID / 组合规则
-  provider_enable.py      测试门控 + 离线默认可用
-  engine_config.py        三层引擎统一状态
-  translate_*.py          各厂商适配
-static/
-  index.html, config.html
-  js/app.js, config.js, engine-select.js, capture.js
-extension/                浏览器扩展 Chrome/Edge（见 extension/README.md）
-  content/youtube-captions.js   YouTube CC 抓取
-```
-
-## 环境变量（`.env`）
-
-复制 `.env.example`。密钥与 `/config` 表单一一对应；**保存配置**会合并写入 `.env`。
-
-引擎字段（控制台或扩展改引擎时也会写入）：
-
-- `ASR_PROVIDER` / `PARTIAL_PROVIDER` / `FINAL_PROVIDER` / `REVISE_MODE`
-
-其他：`VOICEBRIDGE_PORT`（默认 `8765`）、`AUTO_TEST_ON_START=1`
-
-## API
-
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | `/api/health` | 健康检查、引擎选项、已验证接口 |
-| GET | `/api/cloud/settings` | 云端配置状态 |
-| POST | `/api/cloud/settings` | 保存密钥 → `.env` |
-| POST | `/api/cloud/test` | 测试单项 |
-| POST | `/api/cloud/test-all` | 一键测试 |
-| POST | `/api/engine/settings` | 保存引擎 → 内存 + `.env` |
-| WS | `/ws` | 音频 PCM **或** 字幕 JSON（见 [extension/API.md](extension/API.md)） |
-
-WebSocket 字幕模式：`config` 带 `inputMode: "caption"`，后续发 `{ type: "caption", text, segmentId, final }`。
-
-## 浏览器扩展（Chrome / Edge）
-
-扩展位于本仓库 **`extension/`** 目录，与 **Chrome、Microsoft Edge** 等 Chromium 浏览器兼容（Manifest V3；需 Offscreen Document，Edge 109+ / Chrome 109+）。
-
-1. `./run.sh`
-2. 加载扩展（二选一）：
-   - **Chrome**：`chrome://extensions` → 开发者模式 → 加载已解压的扩展程序 → 选 **`extension/`**
-   - **Edge**：`edge://extensions` → 开发人员模式 → 加载扩展 → 选 **`extension/`**
-3. 选 **英文来源** + 句中/句末引擎 → **开始悬浮字幕**
-
-| 模式 | 徽章 | 说明 |
-|---|---|---|
-| 语音识别 | `ON` | 采集标签页音频，走 ASR |
-| YouTube 字幕 | `CC` | 读 CC 文本，不抓音频、不跑 Whisper |
-
-默认引擎：`local + argos + argos`（可改为云端翻译）。详见 [extension/README.md](extension/README.md)、[extension/API.md](extension/API.md)。
+根目录 [README.md](../README.md)
