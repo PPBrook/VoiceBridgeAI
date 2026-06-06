@@ -1,4 +1,4 @@
-"""VoiceBridgeAI — tab capture, PCM, ASR (Tencent / local), translate, revise."""
+"""VoiceBridgeAI — tab capture, PCM, multi-provider ASR / translate / revise."""
 
 import asyncio
 import json
@@ -10,7 +10,7 @@ from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from cloud_config import apply_cloud, cloud_status
+from cloud_config import apply_cloud, cloud_status, test_and_verify
 from asr_config import default_mode, get_status as get_asr_status, normalize_mode
 from engine_config import apply_settings, get_engine_status
 from pcm import PcmFramer, resample_to_16k
@@ -72,6 +72,7 @@ FEATURES = [
     "websocket-pcm",
     "asr-tencent-stream",
     "asr-whisper-local",
+    "asr-openai-cloud",
     "asr-settings",
     "utterance-vad",
     "translate-zh",
@@ -80,6 +81,7 @@ FEATURES = [
     "engine-providers",
     "translate-offline",
     "cloud-config",
+    "provider-test",
     "subtitle-revise",
     "revise-modes",
 ]
@@ -87,9 +89,9 @@ FEATURES = [
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    mode = default_mode()
+    mode = normalize_mode(default_mode())
     log.info("default ASR mode: %s", mode)
-    if mode == "local" or not tencent_configured():
+    if mode == "local":
         await asyncio.to_thread(load_whisper)
     yield
 
@@ -114,6 +116,33 @@ def health():
 @app.get("/api/cloud/settings")
 def get_cloud_settings():
     return {"ok": True, **cloud_status()}
+
+
+@app.post("/api/cloud/test")
+async def post_cloud_test(payload: dict = Body(...)):
+    layer = (payload.get("layer") or "").strip()
+    provider_id = (payload.get("providerId") or payload.get("provider") or "").strip()
+    if not layer or not provider_id:
+        return {
+            "ok": False,
+            "message": "缺少 layer 或 providerId",
+            **cloud_status(),
+        }
+    ok, message = await asyncio.to_thread(test_and_verify, layer, provider_id, payload)
+    if ok and layer == "asr" and provider_id == "local":
+        await asyncio.to_thread(load_whisper)
+    if ok and layer in ("partial", "final") and provider_id == "argos":
+        from translate_argos import load_model
+
+        await asyncio.to_thread(load_model)
+    return {
+        "ok": ok,
+        "message": message,
+        **get_asr_status(),
+        **get_engine_status(),
+        **get_revise_status(),
+        **cloud_status(),
+    }
 
 
 @app.post("/api/cloud/settings")
@@ -147,6 +176,7 @@ async def engine_settings(payload: dict = Body(...)):
         **get_asr_status(asr_mode),
         **get_engine_status(),
         **get_revise_status(rv_mode),
+        **cloud_status(),
     }
 
 
@@ -209,12 +239,15 @@ async def websocket_pcm(ws: WebSocket):
             task.cancel()
 
     async def run_local(seg_id: int, pcm: bytes, *, final: bool) -> None:
-        from whisper_asr import transcribe
-
         try:
             if not alive:
                 return
-            text = await asyncio.to_thread(transcribe, pcm, sample_rate)
+            if asr_mode == "openai":
+                from openai_asr import transcribe as cloud_transcribe
+            else:
+                from whisper_asr import transcribe as cloud_transcribe
+
+            text = await asyncio.to_thread(cloud_transcribe, pcm, sample_rate)
             if not text or not alive:
                 return
             if final:
@@ -270,7 +303,7 @@ async def websocket_pcm(ws: WebSocket):
                 await send_json(
                     {
                         "type": "error",
-                        "message": "云端流式识别未配置，请选「本地离线识别」或在 .env 填入密钥",
+                        "message": "腾讯云 ASR 未配置，请选其他识别方式或在 API 配置填写密钥",
                     }
                 )
                 return False
@@ -288,6 +321,18 @@ async def websocket_pcm(ws: WebSocket):
                     }
                 )
                 return False
+        elif asr_mode == "openai":
+            from openai_asr import configured as openai_ok
+
+            if not openai_ok():
+                await send_json(
+                    {
+                        "type": "error",
+                        "message": "OpenAI ASR 未配置，请填写 OpenAI API Key",
+                    }
+                )
+                return False
+            engine = ReviseEngine(sample_rate, revise_params.refine_interval_s)
         else:
             await asyncio.to_thread(load_whisper)
             engine = ReviseEngine(sample_rate, revise_params.refine_interval_s)

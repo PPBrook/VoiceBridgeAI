@@ -11,6 +11,56 @@ const openConsoleEl = document.getElementById("open-console");
 
 const engineEls = [asrModeEl, partialProviderEl, finalProviderEl, reviseModeEl];
 
+const LLM_PROVIDER_IDS = new Set(["qiniu", "aliyun", "deepseek", "openai"]);
+
+function llmProvidersFrom(d) {
+  return new Set(d?.engineRules?.llmProviders || LLM_PROVIDER_IDS);
+}
+
+function allowsSameLayer(id, llmIds) {
+  return llmIds.has(id);
+}
+
+function filterFinalProviders(providers, partialId, llmIds) {
+  if (!partialId || allowsSameLayer(partialId, llmIds)) return providers || [];
+  const others = (providers || []).filter((p) => p.id !== partialId && p.id !== "none");
+  return others.length ? others : providers || [];
+}
+
+function filterPartialProviders(providers, finalId, llmIds) {
+  if (!finalId || finalId === "none" || allowsSameLayer(finalId, llmIds)) {
+    return providers || [];
+  }
+  const others = (providers || []).filter((p) => p.id !== finalId);
+  return others.length ? others : providers || [];
+}
+
+function reconcileEnginePair(d) {
+  const llmIds = llmProvidersFrom(d);
+  const partialList = filterPartialProviders(
+    d.partialProviders,
+    d.finalProvider,
+    llmIds
+  );
+  let partialId = d.partialProvider;
+  if (partialId && !partialList.some((p) => p.id === partialId)) {
+    partialId = partialList[0]?.id;
+  }
+  const finalList = filterFinalProviders(d.finalProviders, partialId, llmIds);
+  let finalId = d.finalProvider;
+  if (
+    partialId &&
+    finalId === partialId &&
+    !allowsSameLayer(partialId, llmIds)
+  ) {
+    finalId = finalList.find((p) => p.id !== partialId)?.id ?? finalId;
+  }
+  if (finalId && !finalList.some((p) => p.id === finalId)) {
+    finalId = finalList[0]?.id;
+  }
+  return { partialList, finalList, partialId, finalId };
+}
+
 function showError(text) {
   if (!text) {
     errorEl.hidden = true;
@@ -19,6 +69,27 @@ function showError(text) {
   }
   errorEl.hidden = false;
   errorEl.textContent = text;
+}
+
+function syncSelect(selectEl, providers, value) {
+  if (!selectEl || !providers?.length) return;
+  const ids = providers.map((p) => p.id).join("|");
+  if (selectEl.dataset.providerIds !== ids) {
+    selectEl.dataset.providerIds = ids;
+    selectEl.replaceChildren(
+      ...providers.map((m) => {
+        const opt = document.createElement("option");
+        opt.value = m.id;
+        opt.textContent = m.label;
+        return opt;
+      })
+    );
+  }
+  const pick =
+    value && selectEl.querySelector(`option[value="${value}"]`)
+      ? value
+      : selectEl.options[0]?.value;
+  if (pick) selectEl.value = pick;
 }
 
 async function saveSettings() {
@@ -42,14 +113,37 @@ async function loadSettings() {
     "finalProvider",
     "reviseMode",
   ]);
-  if (stored.asrMode || stored.asrProvider) {
-    asrModeEl.value = stored.asrProvider || stored.asrMode;
-  }
-  if (stored.partialProvider) partialProviderEl.value = stored.partialProvider;
-  if (stored.finalProvider) finalProviderEl.value = stored.finalProvider;
   if (stored.reviseMode) reviseModeEl.value = stored.reviseMode;
   const base = stored.serverUrl || "http://127.0.0.1:8765";
   openConsoleEl.href = base;
+  return stored;
+}
+
+let lastHealthData = null;
+
+function applyEngineOptions(d, stored = {}) {
+  const pair = reconcileEnginePair({
+    ...d,
+    partialProvider: stored.partialProvider || d.partialProvider,
+    finalProvider: stored.finalProvider || d.finalProvider,
+  });
+  syncSelect(asrModeEl, d.asrModes, stored.asrProvider || stored.asrMode || d.asrProvider);
+  syncSelect(partialProviderEl, pair.partialList, pair.partialId);
+  syncSelect(finalProviderEl, pair.finalList, pair.finalId);
+  return pair;
+}
+
+async function fetchEngineOptions(base, stored = {}) {
+  try {
+    const r = await fetch(`${base}/api/health`);
+    if (!r.ok) return null;
+    const d = await r.json();
+    lastHealthData = d;
+    applyEngineOptions(d, stored);
+    return d;
+  } catch {
+    return null;
+  }
 }
 
 function setCapturing(active) {
@@ -60,22 +154,29 @@ function setCapturing(active) {
 
 async function refreshStatus() {
   const status = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
+  const stored = await loadSettings();
+  const base = stored.serverUrl || "http://127.0.0.1:8765";
+  const health = await fetchEngineOptions(base, stored);
+
   serverStatusEl.textContent = status.serverOk ? "服务已连接" : "服务未连接";
   serverStatusEl.className = `status-pill ${status.serverOk ? "ok" : "bad"}`;
   btnStart.disabled = !status.serverOk;
   setCapturing(status.capturing);
+
   if (status.capturing) {
     hintEl.textContent = "正在当前标签页显示悬浮字幕…";
+  } else if (status.serverOk && health) {
+    hintEl.textContent = "句中快译 + 句末润色；机器翻译勿重复选同一家。";
   } else if (status.serverOk) {
-    hintEl.textContent = "打开英文视频页，点击「开始悬浮字幕」。";
+    hintEl.textContent = "打开控制台配置 API Key 后，可选接口会出现在此处。";
   } else {
     hintEl.textContent = "请先在项目目录运行 ./run.sh";
   }
-  if (status.config) {
-    asrModeEl.value = status.config.asrProvider || status.config.asrMode;
-    partialProviderEl.value = status.config.partialProvider || "tmt";
-    finalProviderEl.value = status.config.finalProvider || "qiniu";
-    reviseModeEl.value = status.config.reviseMode;
+
+  if (status.config && health) {
+    lastHealthData = health;
+    applyEngineOptions(health, status.config);
+    if (status.config.reviseMode) reviseModeEl.value = status.config.reviseMode;
   }
 }
 
@@ -101,8 +202,30 @@ btnStop.addEventListener("click", async () => {
   await refreshStatus();
 });
 
-for (const el of engineEls) {
+partialProviderEl?.addEventListener("change", () => {
+  if (!lastHealthData) return saveSettings();
+  const pair = reconcileEnginePair({
+    ...lastHealthData,
+    partialProvider: partialProviderEl.value,
+    finalProvider: finalProviderEl.value,
+  });
+  syncSelect(finalProviderEl, pair.finalList, pair.finalId);
+  saveSettings();
+});
+
+finalProviderEl?.addEventListener("change", () => {
+  if (!lastHealthData) return saveSettings();
+  const pair = reconcileEnginePair({
+    ...lastHealthData,
+    partialProvider: partialProviderEl.value,
+    finalProvider: finalProviderEl.value,
+  });
+  syncSelect(partialProviderEl, pair.partialList, pair.partialId);
+  saveSettings();
+});
+
+for (const el of [asrModeEl, reviseModeEl]) {
   el.addEventListener("change", () => saveSettings());
 }
 
-loadSettings().then(refreshStatus);
+refreshStatus();

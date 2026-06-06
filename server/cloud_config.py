@@ -1,4 +1,4 @@
-"""Runtime cloud API configuration (Tencent / Qiniu / Aliyun)."""
+"""Runtime cloud API configuration."""
 
 from __future__ import annotations
 
@@ -44,13 +44,60 @@ def apply_aliyun(payload: dict[str, Any] | None) -> None:
     _set_if("ALIYUN_AI_MODEL", payload.get("model"))
 
 
-def apply_cloud(payload: dict[str, Any]) -> None:
+def apply_baidu(payload: dict[str, Any] | None) -> None:
+    if not payload:
+        return
+    _set_if("BAIDU_APP_ID", payload.get("appId"))
+    _set_if("BAIDU_SECRET_KEY", payload.get("secretKey"))
+
+
+def apply_deepl(payload: dict[str, Any] | None) -> None:
+    if not payload:
+        return
+    _set_if("DEEPL_API_KEY", payload.get("apiKey"))
+    _set_if("DEEPL_API_URL", payload.get("apiUrl"))
+
+
+def apply_deepseek(payload: dict[str, Any] | None) -> None:
+    if not payload:
+        return
+    _set_if("DEEPSEEK_API_KEY", payload.get("apiKey"))
+    _set_if("DEEPSEEK_BASE_URL", payload.get("baseUrl"))
+    _set_if("DEEPSEEK_MODEL", payload.get("model"))
+
+
+def apply_openai(payload: dict[str, Any] | None) -> None:
+    if not payload:
+        return
+    _set_if("OPENAI_API_KEY", payload.get("apiKey"))
+    _set_if("OPENAI_BASE_URL", payload.get("baseUrl"))
+    _set_if("OPENAI_MODEL", payload.get("model"))
+    _set_if("OPENAI_ASR_MODEL", payload.get("asrModel"))
+
+
+def apply_credentials(payload: dict[str, Any]) -> None:
     apply_tencent(payload.get("tencent"))
     apply_qiniu(payload.get("qiniu"))
     apply_aliyun(payload.get("aliyun"))
-    from engine_config import apply_settings
+    apply_baidu(payload.get("baidu"))
+    apply_deepl(payload.get("deepl"))
+    apply_deepseek(payload.get("deepseek"))
+    apply_openai(payload.get("openai"))
 
-    apply_settings(payload)
+
+def apply_cloud(payload: dict[str, Any]) -> list[str]:
+    apply_credentials(payload)
+    return []
+
+
+def test_and_verify(layer: str, provider_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
+    apply_credentials(payload)
+    from provider_enable import set_verified
+    from provider_test import test_provider
+
+    ok, message = test_provider(layer, provider_id)
+    set_verified(layer, provider_id, ok)
+    return ok, message
 
 
 def tencent_status() -> dict[str, Any]:
@@ -92,9 +139,61 @@ def aliyun_status() -> dict[str, Any]:
     }
 
 
+def baidu_status() -> dict[str, Any]:
+    from translate_baidu import configured
+
+    return {
+        "configured": configured(),
+        "appId": os.getenv("BAIDU_APP_ID", "").strip() or None,
+        "hasSecretKey": bool(os.getenv("BAIDU_SECRET_KEY", "").strip()),
+    }
+
+
+def deepl_status() -> dict[str, Any]:
+    from translate_deepl import api_url, configured
+
+    return {
+        "configured": configured(),
+        "apiUrl": api_url(),
+        "hasApiKey": bool(os.getenv("DEEPL_API_KEY", "").strip()),
+    }
+
+
+def deepseek_status() -> dict[str, Any]:
+    from translate_deepseek import base_url, configured, model_name
+
+    return {
+        "configured": configured(),
+        "baseUrl": base_url(),
+        "model": model_name(),
+        "hasApiKey": bool(os.getenv("DEEPSEEK_API_KEY", "").strip()),
+    }
+
+
+def openai_status() -> dict[str, Any]:
+    from openai_asr import asr_model, configured as asr_ok
+    from translate_openai import base_url, configured, model_name
+
+    return {
+        "configured": configured(),
+        "asrConfigured": asr_ok(),
+        "baseUrl": base_url(),
+        "model": model_name(),
+        "asrModel": asr_model(),
+        "hasApiKey": bool(os.getenv("OPENAI_API_KEY", "").strip()),
+    }
+
+
 def cloud_status() -> dict[str, Any]:
+    from provider_enable import verified_status
+
     return {
         "tencent": tencent_status(),
         "qiniu": qiniu_status(),
         "aliyun": aliyun_status(),
+        "baidu": baidu_status(),
+        "deepl": deepl_status(),
+        "deepseek": deepseek_status(),
+        "openai": openai_status(),
+        "verified": verified_status(),
     }
