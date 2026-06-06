@@ -147,7 +147,7 @@ async function startCapture(tabId) {
     cache: "no-store",
   }).catch(() => null);
   if (!health?.ok) {
-    throw new Error("无法连接 VoiceBridgeAI 服务，请先运行 ./run.sh");
+    throw new Error("无法连接 VoiceBridgeAI 服务端，请确认服务已启动且地址正确");
   }
 
   const previousTabId = capturingTabId;

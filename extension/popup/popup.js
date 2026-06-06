@@ -3,6 +3,7 @@ const btnStart = document.getElementById("btn-start");
 const btnStop = document.getElementById("btn-stop");
 const hintEl = document.getElementById("hint");
 const errorEl = document.getElementById("error");
+const serverUrlEl = document.getElementById("server-url");
 const asrModeEl = document.getElementById("asr-mode");
 const partialProviderEl = document.getElementById("partial-provider");
 const finalProviderEl = document.getElementById("final-provider");
@@ -11,6 +12,35 @@ const openConsoleEl = document.getElementById("open-console");
 const openConfigEl = document.getElementById("open-config");
 
 const engineEls = [asrModeEl, partialProviderEl, finalProviderEl, reviseModeEl];
+
+const DEFAULT_SERVER_URL = "http://127.0.0.1:8765";
+
+function normalizeServerUrl(raw) {
+  let text = String(raw || "").trim();
+  if (!text) return DEFAULT_SERVER_URL;
+  if (!/^https?:\/\//i.test(text)) text = `http://${text}`;
+  return new URL(text).origin;
+}
+
+function serverOriginPattern(origin) {
+  return `${origin.replace(/\/$/, "")}/*`;
+}
+
+async function ensureServerPermission(origin) {
+  if (/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(origin)) {
+    return true;
+  }
+  const pattern = serverOriginPattern(origin);
+  if (await chrome.permissions.contains({ origins: [pattern] })) {
+    return true;
+  }
+  return chrome.permissions.request({ origins: [pattern] });
+}
+
+function updateServerLinks(base) {
+  openConsoleEl.href = base;
+  if (openConfigEl) openConfigEl.href = `${base}/config`;
+}
 
 const LLM_PROVIDER_IDS = new Set(["qiniu", "aliyun", "deepseek", "openai"]);
 const REPEAT_MT_PROVIDER_IDS = new Set(["argos"]);
@@ -95,8 +125,11 @@ function syncSelect(selectEl, providers, value) {
 }
 
 async function saveSettings() {
-  const stored = await chrome.storage.sync.get(["serverUrl"]);
-  const base = stored.serverUrl || "http://127.0.0.1:8765";
+  const base = normalizeServerUrl(serverUrlEl?.value);
+  if (serverUrlEl) serverUrlEl.value = base;
+  updateServerLinks(base);
+  await chrome.storage.sync.set({ serverUrl: base });
+
   const config = {
     asrMode: asrModeEl.value,
     asrProvider: asrModeEl.value,
@@ -126,11 +159,11 @@ async function loadSettings() {
     "finalProvider",
     "reviseMode",
   ]);
+  const base = normalizeServerUrl(stored.serverUrl);
+  if (serverUrlEl) serverUrlEl.value = base;
+  updateServerLinks(base);
   if (stored.reviseMode) reviseModeEl.value = stored.reviseMode;
-  const base = stored.serverUrl || "http://127.0.0.1:8765";
-  openConsoleEl.href = base;
-  if (openConfigEl) openConfigEl.href = `${base}/config`;
-  return stored;
+  return { ...stored, serverUrl: base };
 }
 
 let lastHealthData = null;
@@ -169,7 +202,7 @@ function setCapturing(active) {
 async function refreshStatus() {
   const status = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
   const stored = await loadSettings();
-  const base = stored.serverUrl || "http://127.0.0.1:8765";
+  const base = stored.serverUrl || DEFAULT_SERVER_URL;
   const health = await fetchEngineOptions(base, stored);
 
   serverStatusEl.textContent = status.serverOk ? "服务已连接" : "服务未连接";
@@ -184,7 +217,7 @@ async function refreshStatus() {
   } else if (status.serverOk) {
     hintEl.textContent = "控制台引擎选项加载失败，请刷新扩展或打开控制台。";
   } else {
-    hintEl.textContent = "请先在项目目录运行 ./run.sh，并打开 http://127.0.0.1:8765";
+    hintEl.textContent = "请先启动 VoiceBridgeAI 服务端，并确认上方地址可访问。";
   }
 
   if (status.config && health) {
@@ -241,5 +274,22 @@ finalProviderEl?.addEventListener("change", () => {
 for (const el of [asrModeEl, reviseModeEl]) {
   el.addEventListener("change", () => saveSettings());
 }
+
+serverUrlEl?.addEventListener("change", async () => {
+  showError("");
+  try {
+    const base = normalizeServerUrl(serverUrlEl.value);
+    serverUrlEl.value = base;
+    const ok = await ensureServerPermission(base);
+    if (!ok) {
+      showError("未授予访问该服务端的权限");
+      return;
+    }
+    await saveSettings();
+    await refreshStatus();
+  } catch {
+    showError("服务端地址无效，请使用 http://主机:端口 格式");
+  }
+});
 
 refreshStatus();
