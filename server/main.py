@@ -305,6 +305,8 @@ async def websocket_pcm(ws: WebSocket):
     engine: ReviseEngine | None = None
     framer = PcmFramer()
     local_tasks: dict[int, asyncio.Task] = {}
+    tencent_pcm_acc = bytearray()
+    tencent_sample_rate = 16000
     log.info("client connected")
 
     def mark_dead() -> None:
@@ -368,10 +370,15 @@ async def websocket_pcm(ws: WebSocket):
         local_tasks[seg_id] = asyncio.create_task(run_local(seg_id, pcm, final=final))
 
     async def handle_tencent(index: int, text: str, is_final: bool) -> None:
+        nonlocal tencent_pcm_acc
         if not alive or not text:
             return
         if is_final:
+            if tencent_pcm_acc:
+                revise.attach_pcm(index, bytes(tencent_pcm_acc), tencent_sample_rate)
+                tencent_pcm_acc.clear()
             await revise.finalize(index, text)
+            await revise.run_lookback(index)
             log.info("segment %d [tencent final]: %s", index, text)
         else:
             await revise.emit_english(index, text, partial=True, final=False)
@@ -381,12 +388,13 @@ async def websocket_pcm(ws: WebSocket):
         mode: str,
         rv_mode: str | None = None,
     ) -> bool:
-        nonlocal tencent, engine, framer, asr_mode, revise_mode, revise_params, revise
+        nonlocal tencent, engine, framer, asr_mode, revise_mode, revise_params, revise, tencent_pcm_acc
         asr_mode = normalize_mode(mode)
         if rv_mode is not None:
             revise_mode = normalize_revise_mode(rv_mode)
         revise_params = get_revise_params(revise_mode)
         framer = PcmFramer()
+        tencent_pcm_acc.clear()
         revise.clear()
         revise = bind_revise(revise_params)
         for seg_id in list(local_tasks):
@@ -547,6 +555,7 @@ async def websocket_pcm(ws: WebSocket):
                     if tencent is None:
                         continue
                     pcm16 = resample_to_16k(msg["bytes"], sample_rate)
+                    tencent_pcm_acc.extend(pcm16)
                     for frame in framer.push(pcm16):
                         await tencent.send_pcm(frame)
                 elif engine is not None:
