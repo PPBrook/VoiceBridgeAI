@@ -1,94 +1,82 @@
-# VoiceBridgeAI macOS 桌面客户端
+# VoiceBridgeAI
 
-Swift + AppKit + ScreenCaptureKit 原生客户端。**独立 `.app` 版内置 Python 引擎**，用户无需克隆仓库或手动 `run.sh`。
+英文音频 / 字幕 → 实时中文悬浮翻译。当前主开发线为 **macOS 原生 App**；浏览器扩展与 Web 控制台归档在 [`legacy/web-only`](https://github.com/PPBrook/VoiceBridgeAI/tree/legacy/web-only) 分支。
 
-浏览器版见分支 **`legacy/web-only`**。
-
-## 功能
-
-| 能力 | 说明 |
-|------|------|
-| 系统音频采集 | ScreenCaptureKit → WebSocket |
-| 悬浮字幕 | 双行、partial、纠正、透明度 |
-| App 内设置 | 引擎 + 云端密钥 + 本地模型下载 |
-| **内置引擎** | Python 侧车打包在 `.app` 内，自动启动 |
-| 配置持久化 | `~/Library/Application Support/VoiceBridgeAI/.env` |
-
-## 要求
-
-- macOS **13+**
-- 打包机需 **Python 3.10+**（仅开发者 `build-app.sh` 时用）
-- 最终用户 **只需安装 `.app`**
-
-## 用户：只装 App
-
-1. 拿到 `VoiceBridgeAI.app`（拖入「应用程序」）
-2. 双击打开（未签名需在「隐私与安全性」允许一次）
-3. **系统设置 → 隐私 → 屏幕录制** → 允许 VoiceBridgeAI
-4. **设置 → 本地模型** 下载 Whisper/Argos，或 **接口密钥** 配云端
-5. **开始字幕**
-
-配置与日志：
+## 仓库结构
 
 ```
-~/Library/Application Support/VoiceBridgeAI/
-├── .env          # 引擎 / 密钥（App 内保存）
-├── server.log    # 侧车日志
-└── models/       # 可选下载的 Whisper / Argos
+VoiceBridgeAI/
+├── README.md                 # 本文件：项目总览
+├── docs/                     # 架构、分支、协议说明
+├── desktop/macos/            # macOS App（Swift UI + 打包脚本）
+├── server/                   # Python 引擎（ASR / 翻译 / WebSocket）
+├── extension/                # [归档] Chromium 扩展（本分支仅保留，见 docs/web-legacy.md）
+├── static/                   # [归档] Web 控制台
+├── run.sh                    # 开发：启动 Python 引擎
+├── requirements.txt
+└── .env.example
 ```
 
-## 开发者：打包独立 App
+## 快速开始
+
+### macOS 用户（推荐）
 
 ```bash
 cd desktop/macos
-chmod +x build-app.sh
-./build-app.sh          # 含 pip 安装，约 3–8 分钟
+./build-app.sh
 open dist/VoiceBridgeAI.app
 ```
 
-快速调试 Swift UI（不含 Python，**.app 不能独立运行**）：
+1. 授予 **屏幕录制** 权限  
+2. App 内 **设置 → 本地模型** 或 **接口密钥**  
+3. **开始悬浮字幕**
+
+详见 [desktop/README.md](desktop/README.md)。
+
+### 开发者（改引擎 / 调试侧车）
 
 ```bash
-SKIP_VENV=1 ./build-app.sh
-```
-
-开发模式（仓库 + `run.sh`，不打包侧车）：
-
-```bash
+cp .env.example .env
 ./run.sh
+cd desktop/macos && ./run.sh
 ```
 
-## 架构
+## 架构概览
 
 ```
-VoiceBridgeAI.app
-├── Contents/MacOS/VoiceBridgeAI     ← Swift UI
-└── Contents/Resources/
-    ├── run-server.sh
-    ├── python-venv/                 ← 内置依赖
-    └── server/                      ← FastAPI 引擎
+系统音频 ──► macOS App (Swift) ──WebSocket──► Python server/ ──► 字幕回 App overlay
 ```
 
-App 启动 → 检测 `127.0.0.1:8765` → 不可达则执行 `run-server.sh` → WebSocket 会话。
+- **App**：采音、UI、设置、可选内置 Python 侧车  
+- **server/**：Whisper / 腾讯云 / OpenAI + 多厂商翻译 + 纠正  
 
-## 本地模型
+详见 [docs/architecture.md](docs/architecture.md)。
 
-默认 **按需下载**（不增大 App 本体内核体积；Whisper/Argos 仍须首次下载）。
+## 分支
 
-## 已知限制
-
-- 未代码签名 / 公证（比赛 demo 可接受）
-- App 体积约 **500MB–1GB**（含 Python + ML 依赖，不含 Whisper 权重）
-- 无 YouTube CC 模式
-- 仅本机 `127.0.0.1`
-
-## 故障排查
-
-| 现象 | 处理 |
+| 分支 | 用途 |
 |------|------|
-| 启动失败 | 查看 `~/Library/Application Support/VoiceBridgeAI/server.log` |
-| 无 Whisper/Argos | 设置 → 本地模型 → 下载 |
-| 无声音 | 屏幕录制权限 |
-| 改设置无效 | 停止字幕后重新开始 |
+| `main` | 集成分支（含桌面 MVP） |
+| `feat/macapp` | 独立 `.app` + 本地模型按需下载 |
+| `feat/desktop-client` | 桌面 MVP（仓库 + `run.sh`） |
+| `legacy/web-only` | 浏览器版保底（Web + 扩展 + YouTube CC） |
 
-根目录 [README.md](../README.md)
+详见 [docs/branches.md](docs/branches.md)。
+
+## 文档索引
+
+| 文档 | 说明 |
+|------|------|
+| [desktop/README.md](desktop/README.md) | macOS 安装、打包、故障排查 |
+| [server/README.md](server/README.md) | Python 引擎与 API |
+| [docs/architecture.md](docs/architecture.md) | 系统架构 |
+| [docs/branches.md](docs/branches.md) | 分支策略 |
+| [docs/web-legacy.md](docs/web-legacy.md) | 浏览器版（归档） |
+| [extension/API.md](extension/API.md) | WebSocket 协议（桌面共用） |
+
+## 环境变量
+
+复制 `.env.example`。App 独立安装时配置写入  
+`~/Library/Application Support/VoiceBridgeAI/.env`（开发模式为仓库根 `.env`）。
+
+常用项：`VOICEBRIDGE_PORT`、`VOICEBRIDGE_OPTIONAL_LOCAL_MODELS`、`ASR_PROVIDER`、`PARTIAL_PROVIDER`、`FINAL_PROVIDER`。

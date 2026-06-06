@@ -2,6 +2,13 @@
 .env
 __pycache__/
 *.pyc
+*.pyo
 .DS_Store
+**/.DS_Store
+
+# macOS desktop build artifacts
 desktop/macos/.build/
 desktop/macos/dist/
+
+# logs (local dev / App Support copies)
+*.log

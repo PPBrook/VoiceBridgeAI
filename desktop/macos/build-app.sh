@@ -25,7 +25,7 @@ cp "$ROOT/Info.plist" "$APP/Contents/Info.plist"
 echo "复制 Python server …"
 rsync -a --exclude '__pycache__' --exclude '*.pyc' "$REPO_ROOT/server/" "$RES/server/"
 cp "$REPO_ROOT/requirements.txt" "$RES/requirements.txt"
-cp "$ROOT/bundle-sidecar/run-server.sh" "$RES/run-server.sh"
+cp "$ROOT/scripts/run-server.sh" "$RES/run-server.sh"
 chmod +x "$RES/run-server.sh"
 
 if [[ "$SKIP_VENV" == "1" ]]; then

@@ -1,5 +1,7 @@
 # VoiceBridgeAI 浏览器扩展
 
+> **归档说明**：本分支（`main` / `feat/macapp`）以 macOS App 为主。浏览器版完整维护见 **`legacy/web-only`** 分支与 [docs/web-legacy.md](../docs/web-legacy.md)。
+
 本仓库内的 **Manifest V3** 扩展：在任意网页上显示 **VoiceBridgeAI 中文悬浮字幕**。支持 **Google Chrome**、**Microsoft Edge** 及其它 Chromium 内核浏览器（需 Offscreen Document，一般 Chrome/Edge 109+）。
 
 **与服务端：** 扩展在 `extension/`，服务端在 `server/` + `static/`。同一仓库，`./run.sh` 后加载扩展即可。
