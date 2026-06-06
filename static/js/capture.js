@@ -81,8 +81,4 @@ const Capture = {
   noAudioMessage() {
     return "未检测到音频：请选「Chrome 标签页」并勾选「分享标签页音频」";
   },
-
-  dropVideoTracks(stream) {
-    stream.getVideoTracks().forEach((t) => t.stop());
-  },
 };

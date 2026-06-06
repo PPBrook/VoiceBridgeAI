@@ -1,16 +1,15 @@
-"""Translation routing via configurable partial / final providers."""
+"""Translation routing with cached partial / final providers."""
 
 from __future__ import annotations
 
 import logging
 from functools import lru_cache
-from typing import Any, Optional
+from typing import Optional
 
 from final_config import normalize_provider as normalize_final
 from final_config import translate as final_translate
 from partial_config import normalize_provider as normalize_partial
 from partial_config import translate as partial_translate
-from engine_config import get_engine_status
 
 log = logging.getLogger(__name__)
 
@@ -77,11 +76,3 @@ def translate_final(
 ) -> str:
     p = normalize_final(provider)
     return _cached_final(p, text.strip(), (draft_zh or "").strip())
-
-
-def translate(text: str, provider: str | None = None) -> str:
-    return translate_partial(text, provider)
-
-
-def get_translate_status(mode: str | None = None) -> dict[str, Any]:
-    return get_engine_status()

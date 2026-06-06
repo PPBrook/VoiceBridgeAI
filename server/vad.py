@@ -22,63 +22,6 @@ def chunk_rms(pcm: bytes) -> float:
     return float(np.sqrt(np.mean(samples * samples)))
 
 
-class UtteranceEngine:
-    """Accumulate PCM; finalize an utterance after sustained silence."""
-
-    def __init__(self, sample_rate: int) -> None:
-        self.sample_rate = sample_rate
-        self.buffer = PcmBuffer()
-        self.silence_samples = 0
-        self.next_segment_id = 0
-
-    def reset(self, sample_rate: int) -> None:
-        self.sample_rate = sample_rate
-        self.buffer = PcmBuffer()
-        self.silence_samples = 0
-
-    def feed(self, chunk: bytes) -> tuple[int, bytes] | None:
-        if not chunk:
-            return None
-
-        rms = chunk_rms(chunk)
-        n_samples = len(chunk) // 2
-        self.buffer.append(chunk)
-
-        if rms < SILENCE_RMS:
-            self.silence_samples += n_samples
-        else:
-            self.silence_samples = 0
-
-        dur = self.buffer.duration(self.sample_rate)
-        silence_s = self.silence_samples / self.sample_rate
-
-        if dur >= MAX_UTTERANCE_S:
-            return self._finalize()
-
-        if (
-            silence_s >= SILENCE_MS / 1000
-            and dur >= MIN_UTTERANCE_MS / 1000
-            and dur > silence_s
-        ):
-            return self._finalize()
-
-        return None
-
-    def flush(self) -> tuple[int, bytes] | None:
-        if self.buffer.duration(self.sample_rate) >= MIN_UTTERANCE_MS / 1000:
-            return self._finalize()
-        self.buffer = PcmBuffer()
-        self.silence_samples = 0
-        return None
-
-    def _finalize(self) -> tuple[int, bytes]:
-        pcm = self.buffer.drain()
-        self.silence_samples = 0
-        seg_id = self.next_segment_id
-        self.next_segment_id += 1
-        return seg_id, pcm
-
-
 class ReviseEngine:
     """VAD buffer with periodic refine while the speaker is still talking."""
 

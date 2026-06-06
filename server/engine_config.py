@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from typing import Any
 
 from asr_config import get_status as asr_status
@@ -13,39 +12,25 @@ from final_config import set_provider as set_final
 from partial_config import get_status as partial_status
 from partial_config import set_provider as set_partial
 
-# 快速预设（控制台「路径 A/B/C」）
-ENGINE_PRESETS = (
-    {"id": "dual", "label": "路径 A · 云端双擎"},
-    {"id": "argos", "label": "路径 B · 全本地"},
-    {"id": "local", "label": "路径 C · 联网兜底"},
-)
-
-_PRESET_VALUES: dict[str, dict[str, str]] = {
-    "dual": {"asr": "tencent", "partial": "tmt", "final": "qiniu"},
-    "argos": {"asr": "local", "partial": "argos", "final": "argos"},
-    "local": {"asr": "local", "partial": "google", "final": "google"},
-}
-
 
 def apply_settings(payload: dict[str, Any]) -> None:
-    preset_id = payload.get("translateMode") or payload.get("enginePreset")
-    if preset_id and preset_id in _PRESET_VALUES:
-        values = _PRESET_VALUES[preset_id]
-        os.environ["ENGINE_PRESET"] = preset_id
-        set_asr(values["asr"])
-        set_partial(values["partial"])
-        set_final(values["final"])
-        return
+    from final_config import available_providers as final_available
+    from partial_config import normalize_provider as norm_partial
+    from provider_registry import resolve_final_provider
 
-    os.environ.pop("ENGINE_PRESET", None)
     asr = payload.get("asrProvider") or payload.get("asrMode")
     if asr:
         set_asr(asr)
-    if payload.get("partialProvider"):
-        set_partial(payload["partialProvider"])
+    partial_id = payload.get("partialProvider")
+    if partial_id:
+        set_partial(partial_id)
     final = payload.get("finalProvider") or payload.get("llmProvider")
-    if final:
-        set_final(final)
+    if final or partial_id:
+        partial = norm_partial(partial_id) if partial_id else norm_partial(None)
+        available = {p["id"] for p in final_available()}
+        resolved = resolve_final_provider(partial, final, available)
+        if resolved:
+            set_final(resolved)
 
 
 def get_engine_status(asr_mode: str | None = None) -> dict[str, Any]:
@@ -56,31 +41,18 @@ def get_engine_status(asr_mode: str | None = None) -> dict[str, Any]:
     partial = partial_status()
     final = final_status()
 
-    preset_id = os.getenv("ENGINE_PRESET", "").strip()
-    if preset_id not in _PRESET_VALUES:
-        preset_id = ""
-        for pid, values in _PRESET_VALUES.items():
-            if (
-                values["partial"] == partial["partialProvider"]
-                and values["final"] == final["finalProvider"]
-                and (
-                    values["asr"] == asr["asrMode"]
-                    or (
-                        values["asr"] == "tencent"
-                        and asr["asrMode"] == "local"
-                    )
-                )
-            ):
-                # asr 因未配置腾讯云时 normalize 会落到 local，仍视为同预设
-                preset_id = pid
-                break
+    from provider_registry import LLM_PROVIDERS, engine_pair_note, filter_final_providers
 
+    partial_id = partial["partialProvider"]
+    final_id = final["finalProvider"]
     return {
         **asr,
         **partial,
         **final,
-        "enginePreset": preset_id or None,
-        "enginePresets": list(ENGINE_PRESETS),
+        "finalProvidersFiltered": filter_final_providers(
+            final["finalProviders"],
+            partial_id,
+        ),
         "translatePartial": partial["partialEngine"],
         "translateFinal": final["finalEngine"],
         "asrProvider": asr["asrMode"],
@@ -91,8 +63,8 @@ def get_engine_status(asr_mode: str | None = None) -> dict[str, Any]:
         "tmtConfigured": tmt_configured(),
         "tmtRegion": tmt_region() if tmt_configured() else None,
         "offlineTranslate": partial["partialProvider"] == "argos",
+        "engineRules": {
+            "llmProviders": sorted(LLM_PROVIDERS),
+            "pairNote": engine_pair_note(partial_id, final_id),
+        },
     }
-
-
-def normalize_asr_mode(mode: str | None) -> str:
-    return normalize_asr(mode)

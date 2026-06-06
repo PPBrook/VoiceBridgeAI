@@ -5,59 +5,59 @@ from __future__ import annotations
 import os
 from typing import Any
 
-PARTIAL_PROVIDERS = (
-    {"id": "tmt", "label": "腾讯 TMT · 机器翻译"},
-    {"id": "google", "label": "Google 在线"},
-    {"id": "argos", "label": "Argos 离线"},
-    {"id": "aliyun", "label": "阿里云 DashScope · LLM"},
-)
+from provider_registry import PARTIAL_PROVIDERS
 
 _VALID = frozenset(p["id"] for p in PARTIAL_PROVIDERS)
 
 
+def available_providers() -> list[dict[str, str]]:
+    from provider_enable import is_verified
+
+    return [dict(item) for item in PARTIAL_PROVIDERS if is_verified("partial", item["id"])]
+
+
 def default_provider() -> str:
     env = os.getenv("PARTIAL_PROVIDER", "").strip()
-    if env in _VALID:
+    available = {p["id"] for p in available_providers()}
+    if env in available:
         return env
-    # legacy TRANSLATE_MODE
     legacy = os.getenv("TRANSLATE_MODE", "").strip()
-    if legacy == "dual":
+    if legacy == "dual" and "tmt" in available:
         return "tmt"
-    if legacy == "argos":
+    if legacy == "argos" and "argos" in available:
         return "argos"
-    if legacy == "local":
+    if legacy == "local" and "google" in available:
         return "google"
-    from translate_tmt import configured as tmt_ok
-
-    return "tmt" if tmt_ok() else "google"
+    if "tmt" in available:
+        return "tmt"
+    return available[0]["id"] if available else ""
 
 
 def normalize_provider(provider: str | None) -> str:
     if provider in _VALID:
         return provider  # type: ignore[return-value]
-    return default_provider()
+    available = {p["id"] for p in available_providers()}
+    if provider in available:
+        return provider  # type: ignore[return-value]
+    env = os.getenv("PARTIAL_PROVIDER", "").strip()
+    if env in available:
+        return env
+    modes = available_providers()
+    return modes[0]["id"] if modes else ""
+
+
+def configured(provider: str | None = None) -> bool:
+    from provider_enable import is_verified
+
+    p = normalize_provider(None) if provider is None else provider
+    if p not in _VALID:
+        return False
+    return is_verified("partial", p)
 
 
 def set_provider(provider: str | None) -> None:
     if provider in _VALID:
         os.environ["PARTIAL_PROVIDER"] = provider  # type: ignore[arg-type]
-
-
-def configured(provider: str | None = None) -> bool:
-    p = normalize_provider(provider)
-    if p == "tmt":
-        from translate_tmt import configured as tmt_configured
-
-        return tmt_configured()
-    if p == "argos":
-        return True
-    if p == "google":
-        return True
-    if p == "aliyun":
-        from translate_aliyun import configured as aliyun_configured
-
-        return aliyun_configured()
-    return False
 
 
 def translate(text: str, provider: str | None = None) -> str:
@@ -69,6 +69,14 @@ def translate(text: str, provider: str | None = None) -> str:
         from translate_tmt import translate as tmt_translate
 
         return tmt_translate(text)
+    if p == "baidu":
+        from translate_baidu import translate as baidu_translate
+
+        return baidu_translate(text)
+    if p == "qiniu":
+        from translate_qiniu import translate as qiniu_translate
+
+        return qiniu_translate(text, None, polish=False)
     if p == "argos":
         from translate_argos import translate as argos_translate
 
@@ -77,10 +85,22 @@ def translate(text: str, provider: str | None = None) -> str:
         from deep_translator import GoogleTranslator
 
         return GoogleTranslator(source="en", target="zh-CN").translate(text)
+    if p == "deepl":
+        from translate_deepl import translate as deepl_translate
+
+        return deepl_translate(text)
     if p == "aliyun":
         from translate_aliyun import translate as aliyun_translate
 
-        return aliyun_translate(text, None)
+        return aliyun_translate(text, None, polish=False)
+    if p == "deepseek":
+        from translate_deepseek import translate as deepseek_translate
+
+        return deepseek_translate(text, None, polish=False)
+    if p == "openai":
+        from translate_openai import translate as openai_translate
+
+        return openai_translate(text, None, polish=False)
     raise RuntimeError(f"unknown partial provider: {p}")
 
 
@@ -88,9 +108,14 @@ def engine_label(provider: str | None = None) -> str:
     p = normalize_provider(provider)
     return {
         "tmt": "tencent-tmt",
+        "baidu": "baidu-mt",
+        "qiniu": "qiniu-llm",
         "google": "google",
+        "deepl": "deepl",
         "argos": "argos-offline",
         "aliyun": "aliyun-llm",
+        "deepseek": "deepseek-llm",
+        "openai": "openai-llm",
     }.get(p, p)
 
 
@@ -103,11 +128,21 @@ def provider_label(provider: str | None = None) -> str:
 
 
 def get_status() -> dict[str, Any]:
+    from translate_baidu import configured as baidu_ok
+    from translate_deepseek import configured as deepseek_ok
+    from translate_deepl import configured as deepl_ok
+    from translate_openai import configured as openai_ok
+
     current = normalize_provider(None)
+    providers = available_providers()
     return {
         "partialProvider": current,
-        "partialProviders": list(PARTIAL_PROVIDERS),
+        "partialProviders": providers,
         "partialConfigured": configured(current),
         "partialEngine": engine_label(current),
         "partialProviderLabel": provider_label(current),
+        "baiduConfigured": baidu_ok(),
+        "deeplConfigured": deepl_ok(),
+        "deepseekConfigured": deepseek_ok(),
+        "openaiTranslateConfigured": openai_ok(),
     }

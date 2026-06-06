@@ -5,53 +5,69 @@ from __future__ import annotations
 import os
 from typing import Any
 
+from openai_asr import asr_model as openai_asr_model
 from tencent_asr import configured as tencent_configured, engine_model
 from whisper_asr import MODEL_NAME as WHISPER_MODEL
 
-ASR_MODES = (
-    {"id": "tencent", "label": "云端流式识别 · 低延迟"},
-    {"id": "local", "label": "本地离线识别 · 无需密钥"},
-)
+from provider_registry import ASR_MODES
+
+_VALID = frozenset(m["id"] for m in ASR_MODES)
+
+
+def available_modes() -> list[dict[str, str]]:
+    from provider_enable import is_verified
+
+    return [dict(m) for m in ASR_MODES if is_verified("asr", m["id"])]
 
 
 def set_provider(mode: str | None) -> None:
-    if mode in ("tencent", "local"):
+    if mode in _VALID:
         os.environ["ASR_MODE"] = mode
         os.environ["ASR_PROVIDER"] = mode
 
 
 def default_mode() -> str:
     env = os.getenv("ASR_PROVIDER", "").strip() or os.getenv("ASR_MODE", "").strip()
-    if env in ("tencent", "local"):
+    available = {m["id"] for m in available_modes()}
+    if env in available:
         return env
-    return "tencent" if tencent_configured() else "local"
+    modes = available_modes()
+    return modes[0]["id"] if modes else ""
 
 
 def normalize_mode(mode: str | None) -> str:
-    if mode == "tencent":
-        if tencent_configured():
-            return "tencent"
-        return "local"
-    if mode == "local":
-        return "local"
-    return default_mode()
+    if mode in _VALID:
+        return mode  # type: ignore[return-value]
+    available = {m["id"] for m in available_modes()}
+    if mode in available:
+        return mode  # type: ignore[return-value]
+    if available:
+        return default_mode()
+    return mode if mode in _VALID else "local"
 
 
 def get_status(mode: str | None = None) -> dict[str, Any]:
-    current = normalize_mode(mode)
-    modes = list(ASR_MODES)
-    if not tencent_configured():
-        modes = [m for m in modes if m["id"] != "tencent"] or [
-            {"id": "local", "label": "本地离线识别 · 无需密钥"}
-        ]
-        if current == "tencent":
-            current = "local"
+    from openai_asr import configured as openai_configured
+
+    modes = available_modes()
+    current = normalize_mode(mode) if mode else default_mode()
+    if current and current not in {m["id"] for m in modes}:
+        current = modes[0]["id"] if modes else ""
+
+    if current == "tencent":
+        engine = engine_model()
+    elif current == "openai":
+        engine = openai_asr_model()
+    else:
+        engine = WHISPER_MODEL
+
     return {
         "asrMode": current,
         "asrProvider": current,
         "asrModes": modes,
         "asrProviders": modes,
         "tencentConfigured": tencent_configured(),
+        "openaiAsrConfigured": openai_configured(),
         "whisperModel": WHISPER_MODEL,
-        "asrEngine": engine_model() if current == "tencent" else WHISPER_MODEL,
+        "asrEngine": engine,
     }

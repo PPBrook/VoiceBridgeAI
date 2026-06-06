@@ -1,8 +1,12 @@
 body {
   margin: 2rem;
-  font-family: system-ui, sans-serif;
+  font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", sans-serif;
   background: #0a0c10;
   color: #e8eaed;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 
 h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; }
@@ -25,6 +29,180 @@ button:disabled { opacity: 0.6; cursor: wait; }
   border: 1px solid #2a2f3a;
   border-radius: 6px;
   background: #12151c;
+}
+
+.fold-panel {
+  padding: 0;
+}
+
+.fold-panel > .fold-title,
+.fold-group > .fold-subtitle,
+.provider-fold > summary {
+  list-style: none;
+  cursor: pointer;
+  user-select: none;
+}
+
+.provider-flat .provider-summary {
+  cursor: default;
+}
+
+.fold-panel > .fold-title::-webkit-details-marker,
+.fold-group > .fold-subtitle::-webkit-details-marker,
+.provider-fold > summary::-webkit-details-marker {
+  display: none;
+}
+
+.fold-panel > .fold-title::before,
+.fold-group > .fold-subtitle::before,
+.provider-fold > summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 0.875rem;
+  margin-right: 0.35rem;
+  color: #5f6368;
+  font-size: 0.75rem;
+  transition: transform 0.15s ease;
+}
+
+.fold-panel[open] > .fold-title::before,
+.fold-group[open] > .fold-subtitle::before,
+.provider-fold[open] > summary::before {
+  transform: rotate(90deg);
+  color: #8ab4f8;
+}
+
+.fold-panel > .fold-title {
+  padding: 0.85rem 1rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #e8eaed;
+  letter-spacing: 0.01em;
+}
+
+.fold-panel > .fold-title:hover,
+.fold-group > .fold-subtitle:hover,
+.provider-fold > summary:hover {
+  color: #fff;
+}
+
+.fold-panel > :not(summary) {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.fold-panel > :last-child {
+  padding-bottom: 0.85rem;
+}
+
+.fold-intro {
+  margin: 0 0 0.85rem;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  color: #9aa0a6;
+  background: #0f1218;
+  border-radius: 4px;
+  border-left: 3px solid #3c4043;
+}
+
+.fold-group {
+  margin: 0 0 0.55rem;
+  border: 1px solid #2a2f3a;
+  border-radius: 6px;
+  background: #0f1218;
+  overflow: hidden;
+}
+
+.fold-group > .fold-subtitle {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #80868b;
+  letter-spacing: 0.02em;
+}
+
+.fold-group-body {
+  padding: 0.35rem 0.5rem 0.55rem;
+}
+
+.provider-fold {
+  margin: 0.35rem 0 0;
+  border: 1px solid #2a2f3a;
+  border-radius: 4px;
+  background: #12151c;
+}
+
+.provider-flat {
+  margin: 0.35rem 0 0;
+  border: 1px solid #2a2f3a;
+  border-radius: 4px;
+  background: #12151c;
+}
+
+.provider-flat .provider-summary {
+  padding: 0.5rem 0.65rem;
+}
+
+.provider-fold > summary {
+  padding: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+}
+
+.provider-fold > summary.provider-summary {
+  padding: 0.5rem 0.65rem;
+}
+
+.provider-body {
+  padding: 0.35rem 0.65rem 0.65rem;
+  border-top: 1px solid #252a33;
+  background: #0d1016;
+}
+
+.provider-fold[open] > summary.provider-summary .provider-name {
+  color: #fff;
+}
+
+.cloud-panel .provider-body .setting {
+  margin: 0.3rem 0;
+}
+
+.cloud-panel .provider-body .setting > span {
+  min-width: 5.75rem;
+  font-size: 0.8125rem;
+  color: #80868b;
+  font-weight: 500;
+}
+
+.cloud-panel .provider-body .setting input {
+  font-size: 0.8125rem;
+}
+
+#cloud-settings-note {
+  margin-top: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: #9aa0a6;
+  background: #0f1218;
+  border-radius: 4px;
+}
+
+#cloud-settings-note.warn {
+  color: #fbbf24;
+  background: #1c1510;
+  border: 1px solid #5c4a1f;
+}
+
+.fold-panel .engine-intro {
+  margin: 0 0 0.85rem;
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 0.8125rem;
+  color: #80868b;
 }
 
 .settings legend {
@@ -141,6 +319,14 @@ button.hint-trigger {
 .setting span {
   min-width: 5rem;
   color: #9aa0a6;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+#engine-settings .setting > span {
+  min-width: 5.25rem;
+  color: #80868b;
+  font-size: 0.8125rem;
 }
 
 .setting select {
@@ -256,6 +442,128 @@ button.hint-trigger {
   color: #8ab4f8;
 }
 
+.provider-card {
+  margin: 0.75rem 0 1rem;
+  padding: 0.75rem 0 0.25rem;
+  border-top: 1px solid #3c4043;
+}
+
+.provider-card:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+
+.enable-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.35rem 0;
+  font-size: 0.875rem;
+}
+
+.provider-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  list-style: none;
+  min-height: 2.125rem;
+}
+
+.provider-name {
+  flex-shrink: 0;
+  min-width: 6.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #e8eaed;
+  letter-spacing: 0.01em;
+}
+
+.cap-strip {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.cap-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.12rem 0.45rem 0.12rem 0.35rem;
+  font-size: 0.8125rem;
+  flex-wrap: nowrap;
+  background: #171b24;
+  border: 1px solid #2a2f3a;
+  border-radius: 999px;
+}
+
+.cap-label {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #bdc1c6;
+  letter-spacing: 0.03em;
+}
+
+.cap-status {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #5f6368;
+  flex: 0 1 auto;
+  max-width: 5.5rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cap-status.ok {
+  color: #81c995;
+}
+
+.cap-status.err {
+  color: #f28b82;
+}
+
+.btn-test {
+  flex-shrink: 0;
+  padding: 0.12rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: #bdc1c6;
+  background: transparent;
+  border: 1px solid #3c4043;
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1.35;
+}
+
+.btn-test:hover:not(:disabled) {
+  color: #e8eaed;
+  border-color: #8ab4f8;
+  background: rgba(138, 180, 248, 0.08);
+}
+
+.btn-test:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+button.btn-test {
+  margin: 0;
+  min-width: 0;
+  background: transparent;
+  border-radius: 999px;
+}
+
+.engine-intro {
+  margin: 0 0 0.75rem;
+}
+
 .cloud-advanced[hidden] {
   display: none;
 }
@@ -295,15 +603,16 @@ button.hint-trigger {
 .engine-note-summary {
   margin: 0.5rem 0 0.35rem;
   font-size: 0.8125rem;
-  font-weight: 600;
+  font-weight: 500;
   color: #bdc1c6;
+  line-height: 1.55;
 }
 
 .engine-note-path {
   margin: 0.25rem 0 0;
   font-size: 0.75rem;
   line-height: 1.55;
-  color: #9aa0a6;
+  color: #80868b;
 }
 
 .engine-note-detail {
