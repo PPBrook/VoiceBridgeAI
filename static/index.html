@@ -6,251 +6,23 @@
   <title>VoiceBridgeAI</title>
   <link rel="icon" href="data:," />
   <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/guide.css" />
 </head>
 <body>
   <main>
+    <nav class="page-nav">
+      <a href="/config">接口配置</a>
+      <a href="/guide/provider-keys">密钥文档</a>
+    </nav>
     <h1>VoiceBridgeAI</h1>
-
-    <details id="cloud-settings" class="fold-panel settings cloud-panel" open>
-      <summary class="fold-title">接口配置</summary>
-      <p class="hint fold-intro">填写密钥 → 保存 → 测试。通过后出现在引擎设置。</p>
-
-      <details class="fold-group">
-        <summary class="fold-subtitle">本地 / 离线</summary>
-        <div class="fold-group-body">
-          <div class="provider-flat">
-            <div class="provider-summary">
-              <span class="provider-name">本地 Whisper</span>
-              <span class="cap-strip">
-                <span class="cap-row" data-layer="asr" data-id="local">
-                  <span class="cap-label">识别</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-              </span>
-            </div>
-          </div>
-          <div class="provider-flat">
-            <div class="provider-summary">
-              <span class="provider-name">Argos 离线</span>
-              <span class="cap-strip">
-                <span class="cap-row" data-layer="partial" data-id="argos">
-                  <span class="cap-label">句中</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-                <span class="cap-row" data-layer="final" data-id="argos">
-                  <span class="cap-label">句末</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-              </span>
-            </div>
-          </div>
-        </div>
-      </details>
-
-      <details class="fold-group">
-        <summary class="fold-subtitle">国内接口</summary>
-        <div class="fold-group-body">
-          <details class="provider-fold">
-            <summary class="provider-summary">
-              <span class="provider-name">腾讯云</span>
-              <span class="cap-strip">
-                <span class="cap-row" data-layer="asr" data-id="tencent">
-                  <span class="cap-label">识别</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-                <span class="cap-row" data-layer="partial" data-id="tmt">
-                  <span class="cap-label">句中</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-                <span class="cap-row" data-layer="final" data-id="tmt">
-                  <span class="cap-label">句末</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-              </span>
-            </summary>
-            <div class="provider-body">
-              <label class="setting"><span>AppId</span><input id="tencent-app-id" type="text" placeholder="1250000000" /></label>
-              <label class="setting"><span>SecretId</span><input id="tencent-secret-id" type="password" placeholder="AKID…" /></label>
-              <label class="setting"><span>SecretKey</span><input id="tencent-secret-key" type="password" placeholder="…" /></label>
-              <label class="setting"><span>识别引擎</span><input id="tencent-engine" type="text" placeholder="16k_en（默认）" /></label>
-              <label class="setting"><span>TMT 区域</span><input id="tencent-tmt-region" type="text" placeholder="ap-guangzhou" /></label>
-              <label class="setting"><span>TMT ProjectId</span><input id="tencent-tmt-project-id" type="text" placeholder="0" /></label>
-            </div>
-          </details>
-          <details class="provider-fold">
-            <summary class="provider-summary">
-              <span class="provider-name">七牛 AI</span>
-              <span class="cap-strip">
-                <span class="cap-row" data-layer="partial" data-id="qiniu">
-                  <span class="cap-label">句中</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-                <span class="cap-row" data-layer="final" data-id="qiniu">
-                  <span class="cap-label">句末</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-              </span>
-            </summary>
-            <div class="provider-body">
-              <label class="setting"><span>API Key</span><input id="qiniu-api-key" type="password" placeholder="sk-…" /></label>
-              <label class="setting"><span>接口地址</span><input id="qiniu-base-url" type="url" placeholder="https://api.qnaigc.com/v1" /></label>
-              <label class="setting"><span>模型</span><input id="qiniu-model" type="text" placeholder="qwen-turbo" /></label>
-            </div>
-          </details>
-          <details class="provider-fold">
-            <summary class="provider-summary">
-              <span class="provider-name">阿里云 DashScope</span>
-              <span class="cap-strip">
-                <span class="cap-row" data-layer="partial" data-id="aliyun">
-                  <span class="cap-label">句中</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-                <span class="cap-row" data-layer="final" data-id="aliyun">
-                  <span class="cap-label">句末</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-              </span>
-            </summary>
-            <div class="provider-body">
-              <label class="setting"><span>API Key</span><input id="aliyun-api-key" type="password" placeholder="sk-…" /></label>
-              <label class="setting"><span>接口地址</span><input id="aliyun-base-url" type="url" placeholder="https://dashscope.aliyuncs.com/compatible-mode/v1" /></label>
-              <label class="setting"><span>模型</span><input id="aliyun-model" type="text" placeholder="qwen-turbo" /></label>
-            </div>
-          </details>
-          <details class="provider-fold">
-            <summary class="provider-summary">
-              <span class="provider-name">百度翻译</span>
-              <span class="cap-strip">
-                <span class="cap-row" data-layer="partial" data-id="baidu">
-                  <span class="cap-label">句中</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-                <span class="cap-row" data-layer="final" data-id="baidu">
-                  <span class="cap-label">句末</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-              </span>
-            </summary>
-            <div class="provider-body">
-              <label class="setting"><span>AppId</span><input id="baidu-app-id" type="text" placeholder="…" /></label>
-              <label class="setting"><span>Secret Key</span><input id="baidu-secret-key" type="password" placeholder="…" /></label>
-            </div>
-          </details>
-          <details class="provider-fold">
-            <summary class="provider-summary">
-              <span class="provider-name">DeepSeek</span>
-              <span class="cap-strip">
-                <span class="cap-row" data-layer="partial" data-id="deepseek">
-                  <span class="cap-label">句中</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-                <span class="cap-row" data-layer="final" data-id="deepseek">
-                  <span class="cap-label">句末</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-              </span>
-            </summary>
-            <div class="provider-body">
-              <label class="setting"><span>API Key</span><input id="deepseek-api-key" type="password" placeholder="sk-…" /></label>
-              <label class="setting"><span>接口地址</span><input id="deepseek-base-url" type="url" placeholder="https://api.deepseek.com/v1" /></label>
-              <label class="setting"><span>模型</span><input id="deepseek-model" type="text" placeholder="deepseek-chat" /></label>
-            </div>
-          </details>
-        </div>
-      </details>
-
-      <details class="fold-group">
-        <summary class="fold-subtitle">海外接口</summary>
-        <div class="fold-group-body">
-          <details class="provider-fold">
-            <summary class="provider-summary">
-              <span class="provider-name">OpenAI</span>
-              <span class="cap-strip">
-                <span class="cap-row" data-layer="asr" data-id="openai">
-                  <span class="cap-label">识别</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-                <span class="cap-row" data-layer="partial" data-id="openai">
-                  <span class="cap-label">句中</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-                <span class="cap-row" data-layer="final" data-id="openai">
-                  <span class="cap-label">句末</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-              </span>
-            </summary>
-            <div class="provider-body">
-              <label class="setting"><span>API Key</span><input id="openai-api-key" type="password" placeholder="sk-…" /></label>
-              <label class="setting"><span>接口地址</span><input id="openai-base-url" type="url" placeholder="https://api.openai.com/v1" /></label>
-              <label class="setting"><span>翻译模型</span><input id="openai-model" type="text" placeholder="gpt-4o-mini" /></label>
-              <label class="setting"><span>识别模型</span><input id="openai-asr-model" type="text" placeholder="whisper-1" /></label>
-            </div>
-          </details>
-          <details class="provider-fold">
-            <summary class="provider-summary">
-              <span class="provider-name">DeepL</span>
-              <span class="cap-strip">
-                <span class="cap-row" data-layer="partial" data-id="deepl">
-                  <span class="cap-label">句中</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-                <span class="cap-row" data-layer="final" data-id="deepl">
-                  <span class="cap-label">句末</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-              </span>
-            </summary>
-            <div class="provider-body">
-              <label class="setting"><span>API Key</span><input id="deepl-api-key" type="password" placeholder="…:fx（免费版）" /></label>
-            </div>
-          </details>
-          <div class="provider-flat">
-            <div class="provider-summary">
-              <span class="provider-name">Google 在线</span>
-              <span class="cap-strip">
-                <span class="cap-row" data-layer="partial" data-id="google">
-                  <span class="cap-label">句中</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-                <span class="cap-row" data-layer="final" data-id="google">
-                  <span class="cap-label">句末</span>
-                  <button type="button" class="btn-test">测试</button>
-                  <span class="cap-status" aria-live="polite"></span>
-                </span>
-              </span>
-            </div>
-          </div>
-        </div>
-      </details>
-
-      <button type="button" id="save-cloud" class="btn-secondary">保存配置</button>
-      <p id="cloud-settings-note" class="hint"></p>
-    </details>
+    <p class="page-tagline">Chrome 标签页英文音频 → 实时中英双语字幕</p>
 
     <details id="engine-settings" class="fold-panel settings" open>
       <summary class="fold-title">引擎设置</summary>
-      <p class="hint engine-intro">句中优先快译；句末建议选不同接口（LLM 可与句中同一家，模式不同）。</p>
+      <p class="hint engine-intro">
+        默认可直接用本地 Whisper + Argos（句中/句末），无需 Key。
+        句末也可选「不翻译」；云端推荐 <strong>句中 MT + 句末 LLM</strong>，见下方下拉分组；接口请先到 <a class="inline-link" href="/config">接口配置</a> 填写密钥并测试，再回来选择。
+      </p>
       <label class="setting">
         <span>语音识别</span>
         <div class="setting-control">
@@ -262,7 +34,10 @@
         </div>
       </label>
       <label class="setting">
-        <span>句中翻译</span>
+        <span class="setting-label">
+          句中翻译
+          <small class="setting-recommend">推荐 MT</small>
+        </span>
         <div class="setting-control">
           <select id="partial-provider"></select>
           <span class="hint-anchor">
@@ -272,8 +47,17 @@
         </div>
       </label>
       <label class="setting">
-        <span>句末润色</span>
-        <select id="final-provider"></select>
+        <span class="setting-label">
+          句末润色
+          <small class="setting-recommend">推荐 LLM</small>
+        </span>
+        <div class="setting-control">
+          <select id="final-provider"></select>
+          <span class="hint-anchor">
+            <button type="button" class="hint-trigger" id="final-hint" aria-label="句末润色说明">?</button>
+            <span class="hint-popover" id="final-hint-pop" role="tooltip"></span>
+          </span>
+        </div>
       </label>
       <label class="setting">
         <span>纠正模式</span>
@@ -288,13 +72,14 @@
       <p id="engine-settings-note" class="hint"></p>
     </details>
 
-    <button type="button" id="capture">捕获音频</button>
-    <p id="hint" class="hint"></p>
-    <p id="status">idle</p>
+    <button type="button" id="capture">开始捕获</button>
+    <p id="hint" class="hint capture-hint"></p>
+    <p id="status" class="status-line">就绪</p>
     <ol id="segments" class="segments"></ol>
     <div id="health" class="health-panel" hidden></div>
   </main>
   <script src="/static/js/capture.js"></script>
+  <script src="/static/js/engine-select.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>

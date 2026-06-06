@@ -4,18 +4,26 @@ from __future__ import annotations
 
 import os
 
-from provider_registry import LAYER_PROVIDERS, NO_KEY_PROVIDERS
+from provider_registry import DEFAULT_AVAILABLE, LAYER_PROVIDERS, NO_KEY_PROVIDERS
 
 
 def _verified_key(layer: str, provider_id: str) -> str:
     return f"VERIFIED_{layer.upper()}_{provider_id.upper()}"
 
 
+def is_default_available(layer: str, provider_id: str) -> bool:
+    return provider_id in DEFAULT_AVAILABLE.get(layer, frozenset())
+
+
 def is_verified(layer: str, provider_id: str) -> bool:
+    if is_default_available(layer, provider_id):
+        return True
     return os.getenv(_verified_key(layer, provider_id), "").strip() == "1"
 
 
 def set_verified(layer: str, provider_id: str, verified: bool) -> None:
+    if is_default_available(layer, provider_id):
+        return
     key = _verified_key(layer, provider_id)
     if verified:
         os.environ[key] = "1"
@@ -61,7 +69,13 @@ def credentials_ok(layer: str, provider_id: str) -> bool:
 
 
 def verified_status() -> dict[str, list[str]]:
+    """Explicitly test-passed providers (excludes built-in offline defaults)."""
     out: dict[str, list[str]] = {}
     for layer, ids in LAYER_PROVIDERS.items():
-        out[layer] = [pid for pid in ids if is_verified(layer, pid)]
+        out[layer] = [
+            pid
+            for pid in ids
+            if not is_default_available(layer, pid)
+            and os.getenv(_verified_key(layer, pid), "").strip() == "1"
+        ]
     return out

@@ -8,22 +8,24 @@ const partialProviderEl = document.getElementById("partial-provider");
 const finalProviderEl = document.getElementById("final-provider");
 const reviseModeEl = document.getElementById("revise-mode");
 const openConsoleEl = document.getElementById("open-console");
+const openConfigEl = document.getElementById("open-config");
 
 const engineEls = [asrModeEl, partialProviderEl, finalProviderEl, reviseModeEl];
 
 const LLM_PROVIDER_IDS = new Set(["qiniu", "aliyun", "deepseek", "openai"]);
+const REPEAT_MT_PROVIDER_IDS = new Set(["argos"]);
 
 function llmProvidersFrom(d) {
   return new Set(d?.engineRules?.llmProviders || LLM_PROVIDER_IDS);
 }
 
 function allowsSameLayer(id, llmIds) {
-  return llmIds.has(id);
+  return llmIds.has(id) || REPEAT_MT_PROVIDER_IDS.has(id);
 }
 
 function filterFinalProviders(providers, partialId, llmIds) {
   if (!partialId || allowsSameLayer(partialId, llmIds)) return providers || [];
-  const others = (providers || []).filter((p) => p.id !== partialId && p.id !== "none");
+  const others = (providers || []).filter((p) => p.id !== partialId);
   return others.length ? others : providers || [];
 }
 
@@ -93,6 +95,8 @@ function syncSelect(selectEl, providers, value) {
 }
 
 async function saveSettings() {
+  const stored = await chrome.storage.sync.get(["serverUrl"]);
+  const base = stored.serverUrl || "http://127.0.0.1:8765";
   const config = {
     asrMode: asrModeEl.value,
     asrProvider: asrModeEl.value,
@@ -101,6 +105,15 @@ async function saveSettings() {
     reviseMode: reviseModeEl.value,
   };
   await chrome.storage.sync.set(config);
+  try {
+    await fetch(`${base}/api/engine/settings`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    });
+  } catch {
+    /* server offline — local extension prefs still saved */
+  }
   return config;
 }
 
@@ -116,6 +129,7 @@ async function loadSettings() {
   if (stored.reviseMode) reviseModeEl.value = stored.reviseMode;
   const base = stored.serverUrl || "http://127.0.0.1:8765";
   openConsoleEl.href = base;
+  if (openConfigEl) openConfigEl.href = `${base}/config`;
   return stored;
 }
 
@@ -128,8 +142,8 @@ function applyEngineOptions(d, stored = {}) {
     finalProvider: stored.finalProvider || d.finalProvider,
   });
   syncSelect(asrModeEl, d.asrModes, stored.asrProvider || stored.asrMode || d.asrProvider);
-  syncSelect(partialProviderEl, pair.partialList, pair.partialId);
-  syncSelect(finalProviderEl, pair.finalList, pair.finalId);
+  syncProviderSelect(partialProviderEl, pair.partialList, pair.partialId, "partial");
+  syncProviderSelect(finalProviderEl, pair.finalList, pair.finalId, "final");
   return pair;
 }
 
@@ -166,11 +180,11 @@ async function refreshStatus() {
   if (status.capturing) {
     hintEl.textContent = "正在当前标签页显示悬浮字幕…";
   } else if (status.serverOk && health) {
-    hintEl.textContent = "句中快译 + 句末润色；机器翻译勿重复选同一家。";
+    hintEl.textContent = "离线默认可用；云端接口请先在控制台「接口配置」测试通过。";
   } else if (status.serverOk) {
-    hintEl.textContent = "打开控制台配置 API Key 后，可选接口会出现在此处。";
+    hintEl.textContent = "控制台引擎选项加载失败，请刷新扩展或打开控制台。";
   } else {
-    hintEl.textContent = "请先在项目目录运行 ./run.sh";
+    hintEl.textContent = "请先在项目目录运行 ./run.sh，并打开 http://127.0.0.1:8765";
   }
 
   if (status.config && health) {
@@ -209,7 +223,7 @@ partialProviderEl?.addEventListener("change", () => {
     partialProvider: partialProviderEl.value,
     finalProvider: finalProviderEl.value,
   });
-  syncSelect(finalProviderEl, pair.finalList, pair.finalId);
+  syncProviderSelect(finalProviderEl, pair.finalList, pair.finalId, "final");
   saveSettings();
 });
 
@@ -220,7 +234,7 @@ finalProviderEl?.addEventListener("change", () => {
     partialProvider: partialProviderEl.value,
     finalProvider: finalProviderEl.value,
   });
-  syncSelect(partialProviderEl, pair.partialList, pair.partialId);
+  syncProviderSelect(partialProviderEl, pair.partialList, pair.partialId, "partial");
   saveSettings();
 });
 

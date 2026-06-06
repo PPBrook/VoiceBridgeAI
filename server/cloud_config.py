@@ -86,7 +86,15 @@ def apply_credentials(payload: dict[str, Any]) -> None:
 
 
 def apply_cloud(payload: dict[str, Any]) -> list[str]:
+    from env_persist import payload_has_updates, persist_cloud_config
+
+    if not payload_has_updates(payload):
+        return ["没有可保存的内容（请填写至少一项，密钥留空表示不修改已有值）"]
     apply_credentials(payload)
+    try:
+        persist_cloud_config(payload)
+    except OSError as exc:
+        return [f"写入 .env 失败：{exc}"]
     return []
 
 
@@ -98,6 +106,36 @@ def test_and_verify(layer: str, provider_id: str, payload: dict[str, Any]) -> tu
     ok, message = test_provider(layer, provider_id)
     set_verified(layer, provider_id, ok)
     return ok, message
+
+
+def test_all_and_verify(payload: dict[str, Any] | None = None) -> tuple[list[dict[str, Any]], str]:
+    """Test every provider with credentials; update verify flags."""
+    if payload:
+        apply_credentials(payload)
+    from provider_enable import set_verified
+    from provider_test import iter_test_targets, test_provider
+
+    results: list[dict[str, Any]] = []
+    passed = failed = 0
+    for layer, provider_id in iter_test_targets():
+        ok, message = test_provider(layer, provider_id)
+        set_verified(layer, provider_id, ok)
+        results.append(
+            {
+                "layer": layer,
+                "providerId": provider_id,
+                "ok": ok,
+                "message": message,
+            }
+        )
+        if ok:
+            passed += 1
+        else:
+            failed += 1
+    if not results:
+        return results, "没有可测试的接口（请先填写并保存密钥）"
+    summary = f"测试完成：{passed} 通过，{failed} 失败"
+    return results, summary
 
 
 def tencent_status() -> dict[str, Any]:

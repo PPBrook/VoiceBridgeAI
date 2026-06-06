@@ -2,10 +2,10 @@
 
 const DEFAULT_CONFIG = {
   serverUrl: "http://127.0.0.1:8765",
-  asrMode: "tencent",
-  asrProvider: "tencent",
-  partialProvider: "tmt",
-  finalProvider: "qiniu",
+  asrMode: "local",
+  asrProvider: "local",
+  partialProvider: "argos",
+  finalProvider: "argos",
   reviseMode: "balanced",
   showEnglish: true,
 };

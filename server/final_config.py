@@ -29,22 +29,26 @@ def default_provider() -> str:
         return "qiniu"
     if legacy_tr == "argos" and "argos" in available:
         return "argos"
+    if legacy_tr == "argos" and "none" in available:
+        return "none"
     if legacy_tr == "local" and "google" in available:
         return "google"
     if "qiniu" in available:
         return "qiniu"
+    if "argos" in available:
+        return "argos"
+    if "none" in available:
+        return "none"
     return available[0]["id"] if available else ""
 
 
 def normalize_provider(provider: str | None) -> str:
-    if provider in _VALID:
-        return provider  # type: ignore[return-value]
     available = {p["id"] for p in available_providers()}
-    if provider in available:
+    if provider and provider in available:
         return provider  # type: ignore[return-value]
     env = os.getenv("FINAL_PROVIDER", "").strip()
     if env in available:
-        return env
+        return env  # type: ignore[return-value]
     modes = available_providers()
     return modes[0]["id"] if modes else ""
 

@@ -1,8 +1,10 @@
 """VoiceBridgeAI — tab capture, PCM, multi-provider ASR / translate / revise."""
 
 import asyncio
+import contextlib
 import json
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -10,7 +12,7 @@ from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from cloud_config import apply_cloud, cloud_status, test_and_verify
+from cloud_config import apply_cloud, cloud_status, test_all_and_verify, test_and_verify
 from asr_config import default_mode, get_status as get_asr_status, normalize_mode
 from engine_config import apply_settings, get_engine_status
 from pcm import PcmFramer, resample_to_16k
@@ -82,9 +84,62 @@ FEATURES = [
     "translate-offline",
     "cloud-config",
     "provider-test",
+    "startup-test-all",
     "subtitle-revise",
     "revise-modes",
 ]
+
+
+_startup_test: dict = {"running": False, "done": False, "summary": None, "results": []}
+
+
+def startup_test_status() -> dict:
+    return dict(_startup_test)
+
+
+async def _preload_after_provider_test(layer: str, provider_id: str) -> None:
+    if layer == "asr" and provider_id == "local":
+        await asyncio.to_thread(load_whisper)
+    if layer in ("partial", "final") and provider_id == "argos":
+        from translate_argos import load_model
+
+        await asyncio.to_thread(load_model)
+
+
+async def _run_startup_tests() -> None:
+    global _startup_test
+    if os.getenv("AUTO_TEST_ON_START", "1").strip().lower() in ("0", "false", "no", "off"):
+        _startup_test = {
+            "running": False,
+            "done": True,
+            "summary": "已跳过启动测试（AUTO_TEST_ON_START=0）",
+            "results": [],
+        }
+        return
+    _startup_test = {"running": True, "done": False, "summary": "正在测试已配置接口…", "results": []}
+    try:
+        results, summary = await asyncio.to_thread(test_all_and_verify, None)
+        for item in results:
+            if item.get("ok"):
+                await _preload_after_provider_test(
+                    str(item["layer"]),
+                    str(item["providerId"]),
+                )
+        _startup_test = {
+            "running": False,
+            "done": True,
+            "summary": summary,
+            "results": results,
+        }
+        log.info("startup test-all: %s", summary)
+    except Exception:
+        log.exception("startup test-all failed")
+        _startup_test = {
+            "running": False,
+            "done": True,
+            "summary": "启动测试异常",
+            "results": [],
+        }
 
 
 @asynccontextmanager
@@ -93,7 +148,11 @@ async def lifespan(_app: FastAPI):
     log.info("default ASR mode: %s", mode)
     if mode == "local":
         await asyncio.to_thread(load_whisper)
+    startup_task = asyncio.create_task(_run_startup_tests())
     yield
+    startup_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await startup_task
 
 
 app = FastAPI(title="VoiceBridgeAI", version="0.1.0", lifespan=lifespan)
@@ -110,6 +169,7 @@ def health():
         **get_engine_status(),
         **get_revise_status(),
         **cloud_status(),
+        "startupTest": startup_test_status(),
     }
 
 
@@ -129,12 +189,8 @@ async def post_cloud_test(payload: dict = Body(...)):
             **cloud_status(),
         }
     ok, message = await asyncio.to_thread(test_and_verify, layer, provider_id, payload)
-    if ok and layer == "asr" and provider_id == "local":
-        await asyncio.to_thread(load_whisper)
-    if ok and layer in ("partial", "final") and provider_id == "argos":
-        from translate_argos import load_model
-
-        await asyncio.to_thread(load_model)
+    if ok:
+        await _preload_after_provider_test(layer, provider_id)
     return {
         "ok": ok,
         "message": message,
@@ -145,9 +201,39 @@ async def post_cloud_test(payload: dict = Body(...)):
     }
 
 
+@app.post("/api/cloud/test-all")
+async def post_cloud_test_all(payload: dict = Body(default_factory=dict)):
+    results, summary = await asyncio.to_thread(test_all_and_verify, payload or None)
+    for item in results:
+        if item.get("ok"):
+            await _preload_after_provider_test(
+                str(item["layer"]),
+                str(item["providerId"]),
+            )
+    passed = sum(1 for item in results if item.get("ok"))
+    failed = len(results) - passed
+    return {
+        "ok": failed == 0 and bool(results),
+        "message": summary,
+        "results": results,
+        "passed": passed,
+        "failed": failed,
+        **get_asr_status(),
+        **get_engine_status(),
+        **get_revise_status(),
+        **cloud_status(),
+    }
+
+
 @app.post("/api/cloud/settings")
 async def post_cloud_settings(payload: dict = Body(...)):
-    apply_cloud(payload)
+    errors = apply_cloud(payload)
+    if errors:
+        return {
+            "ok": False,
+            "errors": errors,
+            **cloud_status(),
+        }
     apply_settings(payload)
     asr_mode = normalize_mode(payload.get("asrProvider") or payload.get("asrMode"))
     rv_mode = normalize_revise_mode(payload.get("reviseMode"))
@@ -193,6 +279,16 @@ async def translate_settings(payload: dict = Body(...)):
 @app.get("/")
 def index():
     return FileResponse(STATIC / "index.html")
+
+
+@app.get("/config")
+def config_page():
+    return FileResponse(STATIC / "config.html")
+
+
+@app.get("/guide/provider-keys")
+def guide_provider_keys():
+    return FileResponse(STATIC / "guide" / "provider-keys.html")
 
 
 @app.websocket("/ws")
@@ -421,15 +517,20 @@ async def websocket_pcm(ws: WebSocket):
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 
+DOCS = ROOT / "docs"
+if DOCS.is_dir():
+    app.mount("/docs", StaticFiles(directory=DOCS), name="docs")
+
 
 if __name__ == "__main__":
     import uvicorn
 
-    print("VoiceBridgeAI — http://127.0.0.1:8765")
+    port = int(os.getenv("VOICEBRIDGE_PORT", "8765"))
+    print(f"VoiceBridgeAI — http://127.0.0.1:{port}")
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8765,
+        port=port,
         reload=False,
         ws_ping_interval=20,
         ws_ping_timeout=120,
