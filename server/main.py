@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from cloud_config import apply_cloud, cloud_status
 from asr_config import default_mode, get_status as get_asr_status, normalize_mode
+from engine_config import apply_settings, get_engine_status
 from pcm import PcmFramer, resample_to_16k
 from revise import ReviseScheduler
 from revise_config import default_mode as default_revise_mode
@@ -20,9 +21,6 @@ from revise_config import get_status as get_revise_status
 from revise_config import normalize_mode as normalize_revise_mode
 from tencent_asr import TencentAsrStream, configured as tencent_configured
 from translate import translate_final, translate_partial
-from translate_config import default_mode as default_translate_mode
-from translate_config import get_status as get_translate_config_status
-from translate_config import normalize_mode as normalize_translate_mode
 from vad import ReviseEngine
 from whisper_asr import load_model as load_whisper
 
@@ -53,16 +51,18 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 
-async def _preload_translate(tr_mode: str) -> None:
-    tr_mode = normalize_translate_mode(tr_mode)
-    if tr_mode == "argos":
+async def _preload_translate(payload: dict | None = None) -> None:
+    from final_config import normalize_provider as normalize_final
+    from partial_config import normalize_provider as normalize_partial
+
+    partial = normalize_partial(
+        payload.get("partialProvider") if payload else None
+    )
+    final = normalize_final(payload.get("finalProvider") if payload else None)
+    if partial == "argos" or final == "argos":
         from translate_argos import load_model as load_argos
 
         await asyncio.to_thread(load_argos)
-    elif tr_mode == "opus":
-        from translate_opus import load_model as load_opus
-
-        await asyncio.to_thread(load_opus)
 
 
 FEATURES = [
@@ -77,6 +77,7 @@ FEATURES = [
     "translate-zh",
     "translate-dual-engine",
     "translate-settings",
+    "engine-providers",
     "translate-offline",
     "cloud-config",
     "subtitle-revise",
@@ -104,7 +105,7 @@ def health():
         "pr": 10,
         "features": FEATURES,
         **get_asr_status(),
-        **get_translate_config_status(),
+        **get_engine_status(),
         **get_revise_status(),
         **cloud_status(),
     }
@@ -118,13 +119,16 @@ def get_cloud_settings():
 @app.post("/api/cloud/settings")
 async def post_cloud_settings(payload: dict = Body(...)):
     apply_cloud(payload)
-    asr_mode = normalize_mode(payload.get("asrMode"))
-    tr_mode = normalize_translate_mode(payload.get("translateMode"))
+    apply_settings(payload)
+    asr_mode = normalize_mode(payload.get("asrProvider") or payload.get("asrMode"))
     rv_mode = normalize_revise_mode(payload.get("reviseMode"))
+    if asr_mode == "local":
+        await asyncio.to_thread(load_whisper)
+    await _preload_translate(payload)
     return {
         "ok": True,
         **get_asr_status(asr_mode),
-        **get_translate_config_status(tr_mode),
+        **get_engine_status(),
         **get_revise_status(rv_mode),
         **cloud_status(),
     }
@@ -132,16 +136,16 @@ async def post_cloud_settings(payload: dict = Body(...)):
 
 @app.post("/api/engine/settings")
 async def engine_settings(payload: dict = Body(...)):
-    asr_mode = normalize_mode(payload.get("asrMode"))
-    tr_mode = normalize_translate_mode(payload.get("translateMode"))
+    apply_settings(payload)
+    asr_mode = normalize_mode(payload.get("asrProvider") or payload.get("asrMode"))
     rv_mode = normalize_revise_mode(payload.get("reviseMode"))
     if asr_mode == "local":
         await asyncio.to_thread(load_whisper)
-    await _preload_translate(tr_mode)
+    await _preload_translate(payload)
     return {
         "ok": True,
         **get_asr_status(asr_mode),
-        **get_translate_config_status(tr_mode),
+        **get_engine_status(),
         **get_revise_status(rv_mode),
     }
 
@@ -166,7 +170,6 @@ async def websocket_pcm(ws: WebSocket):
     await ws.accept()
     sample_rate = 48000
     asr_mode = default_mode()
-    translate_mode = default_translate_mode()
     revise_mode = default_revise_mode()
     revise_params = get_revise_params(revise_mode)
     alive = True
@@ -190,18 +193,15 @@ async def websocket_pcm(ws: WebSocket):
             mark_dead()
             return False
 
-    def bind_revise(tr_mode: str, params) -> ReviseScheduler:
-        m = normalize_translate_mode(tr_mode)
+    def bind_revise(params) -> ReviseScheduler:
+        return ReviseScheduler(
+            translate_partial,
+            translate_final,
+            send_json,
+            params,
+        )
 
-        def partial_fn(text: str) -> str:
-            return translate_partial(text, m)
-
-        def final_fn(text: str, draft: str | None) -> str:
-            return translate_final(text, draft, m)
-
-        return ReviseScheduler(partial_fn, final_fn, send_json, params)
-
-    revise = bind_revise(translate_mode, revise_params)
+    revise = bind_revise(revise_params)
 
     def cancel_local_task(seg_id: int) -> None:
         task = local_tasks.pop(seg_id, None)
@@ -248,19 +248,16 @@ async def websocket_pcm(ws: WebSocket):
 
     async def start_asr(
         mode: str,
-        tr_mode: str | None = None,
         rv_mode: str | None = None,
     ) -> bool:
-        nonlocal tencent, engine, framer, asr_mode, translate_mode, revise_mode, revise_params, revise
+        nonlocal tencent, engine, framer, asr_mode, revise_mode, revise_params, revise
         asr_mode = normalize_mode(mode)
-        if tr_mode is not None:
-            translate_mode = normalize_translate_mode(tr_mode)
         if rv_mode is not None:
             revise_mode = normalize_revise_mode(rv_mode)
         revise_params = get_revise_params(revise_mode)
         framer = PcmFramer()
         revise.clear()
-        revise = bind_revise(translate_mode, revise_params)
+        revise = bind_revise(revise_params)
         for seg_id in list(local_tasks):
             cancel_local_task(seg_id)
         if tencent:
@@ -294,19 +291,23 @@ async def websocket_pcm(ws: WebSocket):
         else:
             await asyncio.to_thread(load_whisper)
             engine = ReviseEngine(sample_rate, revise_params.refine_interval_s)
-        await _preload_translate(translate_mode)
+        await _preload_translate(None)
         await send_json(
             {
                 "type": "asrReady",
                 **get_asr_status(asr_mode),
-                **get_translate_config_status(translate_mode),
+                **get_engine_status(),
                 **get_revise_status(revise_mode),
             }
         )
+        from partial_config import normalize_provider as np
+        from final_config import normalize_provider as nf
+
         log.info(
-            "asr ready mode=%s translate=%s revise=%s sampleRate=%s",
+            "asr ready asr=%s partial=%s final=%s revise=%s sampleRate=%s",
             asr_mode,
-            translate_mode,
+            np(None),
+            nf(None),
             revise_mode,
             sample_rate,
         )
@@ -322,14 +323,14 @@ async def websocket_pcm(ws: WebSocket):
             if "text" in msg and msg["text"]:
                 data = json.loads(msg["text"])
                 if data.get("type") == "config":
+                    apply_settings(data)
                     sample_rate = int(data.get("sampleRate", 48000))
-                    mode = data.get("asrMode", asr_mode)
-                    tr_mode = data.get("translateMode", translate_mode)
+                    mode = data.get("asrProvider") or data.get("asrMode", asr_mode)
                     rv_mode = data.get("reviseMode", revise_mode)
                     pending = get_revise_params(rv_mode)
                     if engine:
                         engine.reset(sample_rate, pending.refine_interval_s)
-                    ok = await start_asr(mode, tr_mode, rv_mode)
+                    ok = await start_asr(mode, rv_mode)
                     if not ok:
                         mark_dead()
                         break
