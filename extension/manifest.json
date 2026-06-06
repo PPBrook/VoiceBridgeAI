@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "VoiceBridgeAI 悬浮字幕",
+  "version": "0.1.0",
+  "description": "捕获当前标签页音频，在页面上显示实时中英悬浮字幕（需本地 VoiceBridgeAI 服务）",
+  "permissions": ["tabCapture", "offscreen", "storage", "activeTab", "scripting"],
+  "host_permissions": ["http://127.0.0.1:8765/*", "http://localhost:8765/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "VoiceBridgeAI 悬浮字幕"
+  },
+  "icons": {
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["pcm-processor.js", "content/subtitle-overlay.css"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

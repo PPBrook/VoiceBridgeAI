@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoiceBridgeAI</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <h1>VoiceBridgeAI</h1>
+    <p id="server-status" class="status-pill">检测中…</p>
+  </header>
+
+  <section class="controls">
+    <button type="button" id="btn-start" class="btn-primary">开始悬浮字幕</button>
+    <button type="button" id="btn-stop" class="btn-secondary" hidden>停止</button>
+  </section>
+
+  <p id="hint" class="hint">在当前标签页捕获音频，字幕悬浮显示在视频上方。</p>
+  <p id="error" class="error" hidden></p>
+
+  <fieldset class="settings">
+    <legend>引擎（与服务端一致）</legend>
+    <label>
+      语音识别
+      <select id="asr-mode">
+        <option value="tencent">云端流式</option>
+        <option value="local">本地离线</option>
+      </select>
+    </label>
+    <label>
+      翻译
+      <select id="translate-mode">
+        <option value="dual">云端双擎</option>
+        <option value="argos">本地离线</option>
+        <option value="local">联网在线</option>
+      </select>
+    </label>
+    <label>
+      纠正
+      <select id="revise-mode">
+        <option value="speed">实时优先</option>
+        <option value="balanced" selected>标准纠正</option>
+        <option value="accuracy">精准纠正</option>
+      </select>
+    </label>
+  </fieldset>
+
+  <footer>
+    <a id="open-console" href="http://127.0.0.1:8765" target="_blank" rel="noopener">打开控制台 · API 配置</a>
+  </footer>
+  <script src="popup.js"></script>
+</body>
+</html>
