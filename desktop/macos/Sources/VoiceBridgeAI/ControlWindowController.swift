@@ -95,9 +95,14 @@ final class ControlWindowController: NSWindowController, NSWindowDelegate {
     func refresh() {
         Task { @MainActor in
             let ok = await ServerManager.shared.ping()
-            let running = SessionController.shared.isRunning
+            let session = SessionController.shared
+            let running = session.isRunning
+            let starting = session.isStarting
             if running {
                 statusLabel.stringValue = "● 字幕运行中"
+                statusLabel.textColor = .systemBlue
+            } else if starting {
+                statusLabel.stringValue = "● 正在启动字幕…"
                 statusLabel.textColor = .systemBlue
             } else if ok {
                 statusLabel.stringValue = "● 服务端已连接"
@@ -106,7 +111,7 @@ final class ControlWindowController: NSWindowController, NSWindowDelegate {
                 statusLabel.stringValue = "● 服务端未连接（启动时将自动拉起）"
                 statusLabel.textColor = .systemOrange
             }
-            startButton.isEnabled = !running
+            startButton.isEnabled = !running && !starting
             stopButton.isEnabled = running
             MenuBarController.shared.rebuildMenu()
         }

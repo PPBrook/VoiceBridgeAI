@@ -189,7 +189,7 @@ final class EnginePanelView: NSView {
             do {
                 let msg = try await store.saveEngine()
                 if SessionController.shared.isRunning {
-                    statusLabel.stringValue = "\(msg)；请停止并重新开始字幕后，纠正模式才会生效"
+                    statusLabel.stringValue = "\(msg)；请停止并重新开始字幕后，引擎设置才会生效"
                 } else {
                     statusLabel.stringValue = msg
                 }

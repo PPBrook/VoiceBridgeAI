@@ -24,9 +24,11 @@ final class MenuBarController {
         menu.addItem(.separator())
 
         let running = SessionController.shared.isRunning
-        let toggleTitle = running ? "停止悬浮字幕" : "开始悬浮字幕"
+        let starting = SessionController.shared.isStarting
+        let toggleTitle = running ? "停止悬浮字幕" : (starting ? "正在启动…" : "开始悬浮字幕")
         let toggleItem = NSMenuItem(title: toggleTitle, action: #selector(toggleSession), keyEquivalent: "")
         toggleItem.target = self
+        toggleItem.isEnabled = !starting
         menu.addItem(toggleItem)
 
         let settingsItem = NSMenuItem(title: "设置…", action: #selector(openSettings), keyEquivalent: ",")
@@ -80,9 +82,11 @@ final class MenuBarController {
 
     @objc private func toggleSession() {
         Task { @MainActor in
-            if SessionController.shared.isRunning {
-                SessionController.shared.stop()
-            } else if let err = await SessionController.shared.start() {
+            let session = SessionController.shared
+            if session.isStarting { return }
+            if session.isRunning {
+                session.stop()
+            } else if let err = await session.start() {
                 AppDelegate.shared?.control?.showError(err)
                 showControlWindow()
             }
