@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional
 
 import numpy as np
@@ -12,7 +13,7 @@ from pcm import TARGET_RATE
 
 log = logging.getLogger(__name__)
 
-MODEL_NAME = "tiny.en"
+MODEL_NAME = os.getenv("WHISPER_MODEL", "tiny.en").strip() or "tiny.en"
 _model: Optional[WhisperModel] = None
 
 
@@ -20,8 +21,21 @@ def load_model() -> None:
     global _model
     if _model is not None:
         return
+    from local_models import (
+        configure_model_cache_env,
+        is_whisper_installed,
+        mark_whisper_installed,
+        optional_local_models_enabled,
+    )
+
+    configure_model_cache_env()
+    if optional_local_models_enabled() and not is_whisper_installed(MODEL_NAME):
+        raise RuntimeError(
+            f"Whisper 模型 {MODEL_NAME} 未安装。请在设置中下载本地模型，或改用云端 ASR。"
+        )
     log.info("Loading Whisper %s (cpu, int8) …", MODEL_NAME)
     _model = WhisperModel(MODEL_NAME, device="cpu", compute_type="int8")
+    mark_whisper_installed(MODEL_NAME)
     log.info("Whisper ready")
 
 

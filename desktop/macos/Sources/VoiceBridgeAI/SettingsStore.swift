@@ -29,6 +29,24 @@ final class SettingsStore {
         return "密钥已保存到 .env"
     }
 
+    func downloadLocalModel(id: String, whisperModel: String?) async throws -> String {
+        var body: [String: Any] = ["id": id]
+        if let whisperModel, !whisperModel.isEmpty {
+            body["whisperModel"] = whisperModel
+        }
+        let json = try await APIClient.postJSON(path: "api/models/local/download", body: body)
+        health.merge(json) { _, new in new }
+        engine = EngineConfig.from(health: health)
+        if json["ok"] as? Bool == false {
+            throw NSError(
+                domain: "VoiceBridgeAI",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: json["message"] as? String ?? "下载失败"]
+            )
+        }
+        return json["message"] as? String ?? "下载完成"
+    }
+
     func testCloud(layer: String, providerId: String, payload: [String: Any]) async -> (Bool, String) {
         var body = payload
         body["layer"] = layer

@@ -45,6 +45,10 @@ def _run_test(layer: str, provider_id: str) -> tuple[bool, str]:
 
 
 def _test_asr_local() -> tuple[bool, str]:
+    from local_models import is_whisper_installed, optional_local_models_enabled
+
+    if optional_local_models_enabled() and not is_whisper_installed():
+        return False, "Whisper 未安装，请先在「本地模型」下载"
     from whisper_asr import load_model
 
     load_model()

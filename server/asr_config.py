@@ -31,10 +31,8 @@ def default_mode() -> str:
     available = {m["id"] for m in available_modes()}
     if env in available:
         return env
-    if "local" in available:
-        return "local"
     modes = available_modes()
-    return modes[0]["id"] if modes else "local"
+    return modes[0]["id"] if modes else ""
 
 
 def normalize_mode(mode: str | None) -> str:

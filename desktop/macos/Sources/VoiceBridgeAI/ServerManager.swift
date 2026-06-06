@@ -40,6 +40,7 @@ final class ServerManager {
         proc.currentDirectoryURL = root
         var env = ProcessInfo.processInfo.environment
         env["VOICEBRIDGE_PORT"] = String(AppSettings.port)
+        env["VOICEBRIDGE_OPTIONAL_LOCAL_MODELS"] = "1"
         proc.environment = env
         proc.standardOutput = FileHandle.nullDevice
         proc.standardError = FileHandle.nullDevice

@@ -11,7 +11,7 @@ Swift + AppKit + ScreenCaptureKit 原生客户端（无 Electron / Node）。
 | 系统音频采集 | ScreenCaptureKit，mono int16 PCM → WebSocket |
 | 悬浮字幕 | 置顶面板：双行、partial、纠正闪色、背景透明度、EN 开关 |
 | 控制面板 | 连接状态、开始/停止、引擎摘要 |
-| App 内设置 | 引擎（ASR / 句中 / 句末 / 纠正）+ 云端密钥，API 同 Web `/config` |
+| App 内设置 | 引擎（ASR / 句中 / 句末 / 纠正）+ 云端密钥 + **本地模型（按需下载）**，API 同 Web `/config` |
 | 菜单栏 | 可收起到菜单栏；关主窗口不退出 |
 | 自动拉起服务 | 若 `http://127.0.0.1:8765/api/health` 不可达，执行仓库根 `run.sh` |
 
@@ -81,7 +81,8 @@ desktop/
         ├── SubtitleStore.swift
         ├── OverlayPanelController.swift
         ├── OverlayPreferences.swift      # UserDefaults：透明度、EN
-        └── MenuBarController.swift
+        ├── MenuBarController.swift
+        └── LocalModelsPanelView.swift   # 可选下载 Whisper / Argos
 ```
 
 编译产物：`desktop/macos/.build/`（已在根 `.gitignore` 忽略）。
@@ -97,6 +98,14 @@ desktop/
 | 可配置远程 serverUrl | ✅ | ❌ 仅 `127.0.0.1` |
 
 修改引擎/纠正模式后需 **停止并重新开始字幕** 才会生效（WebSocket 握手时一次性下发配置）。
+
+## 本地模型（按需下载）
+
+Whisper / Argos 默认 **不内置**，在 **设置 → 本地模型** 下载（目录 `~/Library/Application Support/VoiceBridgeAI/models`）。
+
+- 未下载前，引擎下拉不显示 local / argos
+- 可只用云端 ASR + 云端翻译
+- `VOICEBRIDGE_OPTIONAL_LOCAL_MODELS=1`（默认）；legacy/web-only 分支设 `0` 恢复旧行为
 
 ## 已知限制（MVP）
 
@@ -118,6 +127,7 @@ desktop/
 | 找不到 `run.sh` | 设置 `VOICEBRIDGE_ROOT` 指向仓库根 |
 | 启动超时 / 退出码 1 | 检查端口 8765 是否被占用；根目录手动 `./run.sh` 看报错 |
 | 无声音 / 采集失败 | 检查屏幕录制权限；重启 App 后再试 |
+| 引擎无 Whisper/Argos | 设置 → 本地模型 → 下载 |
 | 改设置不生效 | 停止字幕后重新开始 |
 
 更多项目说明见仓库根 [README.md](../README.md)。
