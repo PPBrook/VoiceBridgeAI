@@ -9,9 +9,9 @@ macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 | 版本 | 下载 | 体积 | 说明 |
 |------|------|------|------|
 | **Local**（推荐） | [VoiceBridgeAI-Local.zip](releases/VoiceBridgeAI-Local.zip) | ~428 MB | 内置 Whisper + Argos，离线可用 |
-| **Cloud** | [VoiceBridgeAI-Cloud.zip](releases/VoiceBridgeAI-Cloud.zip) | ~25 MB | 仅云端 ASR/翻译，需网络 |
+| **Cloud** | [VoiceBridgeAI-Cloud.zip](releases/VoiceBridgeAI-Cloud.zip) | ~25 MB | 仅云端 ASR/翻译，需网络（**直接下载**，无需 LFS） |
 
-安装包通过 **Git LFS** 托管。浏览器打开链接直接下载；若 clone 仓库，需先执行 `git lfs pull`。
+**Local** 安装包通过 Git LFS 托管（clone 后需 `git lfs pull`）；**Cloud** 为普通文件，GitHub 页面点 **Download** 即可。
 
 **快速开始**
 
@@ -42,7 +42,7 @@ cd desktop/macos
 # 或 ./build-app-cloud.sh        # → dist/VoiceBridgeAI-Cloud.app
 ```
 
-产物在 `desktop/macos/dist/`（gitignore）。发布 zip 放在 `releases/`（Git LFS）。
+产物在 `desktop/macos/dist/`（gitignore）。Local 发布 zip 在 `releases/`（Git LFS）；Cloud zip 为普通 Git 文件。
 
 ---
 

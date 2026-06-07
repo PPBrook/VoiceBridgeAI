@@ -21,10 +21,9 @@
 
 体积更小（约 24 MB），**不含** Whisper/Argos，默认使用云端 ASR/翻译（安装包内已合并演示用 API 配置）。
 
-1. 下载 [releases/VoiceBridgeAI-Cloud.zip](../releases/VoiceBridgeAI-Cloud.zip)（Git LFS，约 25 MB）
-   - 在 **GitHub 网页**打开链接 → 点右上角 **Download**（勿复制 raw 链接到浏览器）
-   - 若 clone 仓库：执行 `git lfs pull`
-   - 下载后校验：`file VoiceBridgeAI-Cloud.zip` 应显示 `Zip archive`；体积约 25 MB（不是 133 B 或几百 KB 的 HTML/LFS 指针）
+1. 下载 [releases/VoiceBridgeAI-Cloud.zip](../releases/VoiceBridgeAI-Cloud.zip)（约 25 MB，**非 LFS**，可直接下载）
+   - 在 **GitHub 网页**打开链接 → 点 **Raw** 旁的 **下载图标**
+   - 下载后校验：`file VoiceBridgeAI-Cloud.zip` 应显示 `Zip archive`；体积约 25 MB
 2. 解压 → **右键打开** `VoiceBridgeAI-Cloud.app`
 3. 其余步骤同上（屏幕录制 → 开始字幕）
 
@@ -36,8 +35,8 @@
 
 | 实际大小 | 可能原因 |
 |----------|----------|
-| ~133 B，内容为 `version https://git-lfs.github.com/...` | clone 后未执行 `git lfs pull` |
-| ~300 KB，用文本打开是 HTML | 用了 raw 直链或 404 页面，需在 GitHub 文件页点 **Download** |
+| ~133 B，内容为 `version https://git-lfs.github.com/...` | 误把 **Local** zip 当普通文件 clone（Local 需 `git lfs pull`） |
+| ~300 KB，用文本打开是 HTML | 用了错误链接；请在 GitHub 文件页点 **下载图标** |
 | 体积明显偏小（如几 MB） | 下载不完整，请重新下载 |
 
 终端校验示例：
