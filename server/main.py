@@ -25,6 +25,7 @@ from core.vad import ReviseEngine
 from providers.whisper_asr import load_model as load_whisper
 from core.local_models import get_status as get_local_models_status
 import core.local_models as local_models
+from core.local_model_jobs import get_active_download, get_job, job_public_view, start_download
 
 from config.app_paths import env_file_path
 
@@ -152,7 +153,7 @@ app = FastAPI(title="VoiceBridgeAI", version="0.1.0", lifespan=lifespan)
 
 @app.get("/api/health")
 def health():
-    return {
+    payload = {
         "status": "ok",
         "version": "0.1.0",
         "pr": 10,
@@ -164,6 +165,10 @@ def health():
         **get_local_models_status(),
         "startupTest": startup_test_status(),
     }
+    active = get_active_download()
+    if active:
+        payload["activeDownload"] = job_public_view(active)
+    return payload
 
 
 @app.get("/api/models/local")
@@ -178,29 +183,40 @@ async def post_local_model_download(payload: dict = Body(default_factory=dict)):
     if not model_id:
         return {"ok": False, "message": "缺少 id（whisper 或 argos）", **get_local_models_status()}
     try:
-        await asyncio.to_thread(
-            local_models.download,
-            model_id,
-            whisper_model=whisper_model,
-        )
-        if model_id == "whisper" and whisper_model:
-            os.environ["WHISPER_MODEL"] = whisper_model
-            from config.env_persist import persist_local_model_settings
-
-            persist_local_model_settings({"whisperModel": whisper_model})
-            from providers.whisper_asr import unload_model
-
-            unload_model()
+        job = await asyncio.to_thread(start_download, model_id, whisper_model=whisper_model)
         return {
             "ok": True,
-            "message": "下载完成",
+            "message": job.get("message") or "已开始下载",
+            "job": job_public_view(job),
             **get_local_models_status(),
-            **get_asr_status(),
-            **get_engine_status(),
         }
     except Exception as exc:
-        log.exception("local model download failed: %s", model_id)
+        log.exception("local model download start failed: %s", model_id)
         return {"ok": False, "message": str(exc), **get_local_models_status()}
+
+
+@app.get("/api/models/local/download/{job_id}")
+def get_local_model_download_job(job_id: str):
+    job = get_job(job_id)
+    if not job:
+        return {"ok": False, "message": "下载任务不存在", **get_local_models_status()}
+    payload: dict = {
+        "ok": job.get("status") != "error",
+        "job": job_public_view(job),
+        **get_local_models_status(),
+    }
+    if job.get("status") == "done":
+        payload["message"] = job.get("message") or "下载完成"
+        payload.update(get_asr_status())
+        payload.update(get_engine_status())
+    elif job.get("status") == "error":
+        payload["message"] = job.get("error") or job.get("message") or "下载失败"
+    else:
+        payload["message"] = job.get("message") or "正在下载…"
+    active = get_active_download()
+    if active:
+        payload["activeDownload"] = job_public_view(active)
+    return payload
 
 
 @app.post("/api/models/local/settings")

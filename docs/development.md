@@ -48,11 +48,12 @@ VoiceBridgeAI/
 
 | 操作 | API |
 |------|-----|
-| 下载 | `POST /api/models/local/download` `{ id, whisperModel? }` |
+| 开始下载 | `POST /api/models/local/download` → 立即返回 `job` |
+| 查询进度 | `GET /api/models/local/download/{jobId}` |
 | 启用/切换 | `POST /api/models/local/settings` |
-| 删除 | `POST /api/models/local/delete` `{ id, whisperModel? }` |
+| 删除 | `POST /api/models/local/delete` |
 
-Whisper 支持多规格（`tiny.en` / `base.en`）分别下载与删除。Argos 以 marker + 语言包目录判断是否已安装。
+下载在后台线程执行，App 可关闭设置页；`GET /api/health` 的 `activeDownload` 可恢复进行中的任务。
 
 ## 主窗口操作
 
