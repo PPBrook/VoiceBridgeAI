@@ -19,8 +19,7 @@ Set-Location $Root
 $Runtime = Get-AppxPackage -Name "Microsoft.WindowsAppRuntime.1.6*" -ErrorAction SilentlyContinue
 if (-not $Runtime) {
     Write-Host ""
-    Write-Host "WARNING: Windows App Runtime 1.6 not detected."
-    Write-Host "Run:  .\install-runtime.ps1"
+    Write-Host "WARNING: Windows App Runtime 1.6 not detected. Run: .\install-runtime.ps1"
     Write-Host ""
 }
 
@@ -35,39 +34,54 @@ if (-not (Test-Path $Exe)) {
     Write-Error "Missing build output: $Exe"
 }
 
-# WinUI must launch via apphost .exe (dotnet exec -> 0xC0000145 DLL not found)
 Get-ChildItem $OutDir -File -Recurse -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
 
 Write-Host "Starting $Exe ..."
-Write-Host "(If blocked: Settings -> Privacy -> Windows Security -> App control -> Smart App Control -> Off)"
 Write-Host ""
 
 Push-Location $OutDir
+$exitCode = 0
 try {
     $proc = Start-Process -FilePath $Exe -WorkingDirectory $OutDir -PassThru -Wait
     $exitCode = $proc.ExitCode
 }
-catch [System.ComponentModel.Win32Exception] {
-    Write-Host ""
-    Write-Host "Could not start VoiceBridgeAI.exe: $($_.Exception.Message)"
-    Write-Host ""
-    Write-Host "Smart App Control often blocks unsigned dev builds."
-    Write-Host "Turn OFF: Settings -> Privacy and security -> Windows Security"
-    Write-Host "          -> App and browser control -> Smart App Control -> Off (restart PC)"
-    Write-Host ""
-    Write-Host "Then run this script again."
-    $exitCode = 1
+catch {
+    $msg = $_.Exception.Message
+    if ($msg -match "Application Control|应用控制|4551") {
+        Write-Host "============================================================"
+        Write-Host " BLOCKED: Smart App Control (unsigned dev build)"
+        Write-Host "============================================================"
+        Write-Host ""
+        Write-Host "WinUI must run VoiceBridgeAI.exe. Windows blocks unsigned apps."
+        Write-Host "There is no code workaround — turn Smart App Control OFF once:"
+        Write-Host ""
+        Write-Host "  1. Settings -> Privacy and security -> Windows Security"
+        Write-Host "  2. App and browser control -> Smart App Control"
+        Write-Host "  3. Select OFF -> Restart PC (required)"
+        Write-Host "  4. Run:  .\run.ps1"
+        Write-Host ""
+        Write-Host "Opening Windows Security settings ..."
+        Start-Process "windowsdefender://smartappcontrol" -ErrorAction SilentlyContinue
+        if ($LASTEXITCODE -ne 0) {
+            Start-Process "ms-settings:windowsdefender" -ErrorAction SilentlyContinue
+        }
+        Write-Host ""
+        Write-Host "Meanwhile you can test the Python engine only:"
+        Write-Host "  cd C:\Users\pengp\VoiceBridgeAI"
+        Write-Host "  .\run.ps1"
+        $exitCode = 1
+    }
+    else {
+        Write-Error $_
+    }
 }
 finally {
     Pop-Location
 }
 
-if ($exitCode -ne 0) {
-    Write-Host ""
+if ($exitCode -ne 0 -and -not ($msg -match "Application Control|应用控制|4551")) {
     Write-Host "Client exited with code: $exitCode"
     if (Test-Path $LogPath) {
-        Write-Host ""
-        Write-Host "Startup log ($LogPath):"
         Get-Content $LogPath -Tail 20
     }
     Read-Host "Press Enter to close"
