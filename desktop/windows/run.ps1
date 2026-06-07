@@ -24,39 +24,45 @@ if (-not $Runtime) {
     Write-Host ""
 }
 
-# Run via dotnet host (VoiceBridgeAI.dll) — unsigned apphost .exe is often blocked by Smart App Control
 dotnet build $Project -c Release
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Build failed"
 }
 
-$Dll = Join-Path $Root "VoiceBridgeAI/VoiceBridgeAI/bin/Release/net8.0-windows10.0.19041.0/win-x64/VoiceBridgeAI.dll"
+$OutDir = Join-Path $Root "VoiceBridgeAI/VoiceBridgeAI/bin/Release/net8.0-windows10.0.19041.0/win-x64"
+$Dll = Join-Path $OutDir "VoiceBridgeAI.dll"
 if (-not (Test-Path $Dll)) {
     Write-Error "Missing build output: $Dll"
 }
 
-Write-Host "Starting via dotnet exec (bypasses blocked VoiceBridgeAI.exe apphost) ..."
-dotnet exec $Dll
-if ($LASTEXITCODE -ne 0) {
+# Must run from output dir so WinApp SDK native/bootstrap DLLs resolve (exit 0xC0000145 otherwise)
+Write-Host "Starting from $OutDir ..."
+Push-Location $OutDir
+try {
+    dotnet exec VoiceBridgeAI.dll
+    $exitCode = $LASTEXITCODE
+}
+finally {
+    Pop-Location
+}
+
+if ($exitCode -ne 0) {
     Write-Host ""
-    Write-Host "Client exited with code: $LASTEXITCODE"
-    if ($LASTEXITCODE -eq -532462766) {
-        Write-Host "(0xE0434352 = unhandled .NET exception — see log below or a popup dialog)"
+    Write-Host "Client exited with code: $exitCode"
+    if ($exitCode -eq -532462766) {
+        Write-Host "(0xE0434352 = unhandled .NET exception)"
+    }
+    if ($exitCode -eq -1073741189) {
+        Write-Host "(0xC0000145 = DLL not found — try: .\install-runtime.ps1 -Upgrade)"
     }
     if (Test-Path $LogPath) {
         Write-Host ""
-        Write-Host "Startup log ($LogPath):"
+        Write-Host "Startup log ($LogPath) — last 40 lines:"
         Get-Content $LogPath -Tail 40
     }
-    else {
-        Write-Host ""
-        Write-Host "No startup log. Common fixes:"
-        Write-Host "  1. Install Windows App Runtime 1.6 x64 (required once):"
-        Write-Host "     cd desktop\windows"
-        Write-Host "     .\install-runtime.ps1"
-        Write-Host "  2. Smart App Control blocked the app:"
-        Write-Host "     Settings -> Privacy & security -> Windows Security -> App & browser control"
-        Write-Host "     -> Smart App Control -> Off (requires restart)"
-    }
+    Write-Host ""
+    Write-Host "Fixes:"
+    Write-Host "  1. .\install-runtime.ps1 -Upgrade"
+    Write-Host "  2. Smart App Control off (Settings -> Windows Security -> App control)"
     Read-Host "Press Enter to close"
 }
