@@ -1,6 +1,5 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media;
 using VoiceBridgeAI.Session;
 
 namespace VoiceBridgeAI;
@@ -52,7 +51,6 @@ public sealed partial class MainWindow : Window
             var healthy = await ServerManager.Shared.PingAsync();
             if (healthy)
             {
-                SetEngineStatus(running: true);
                 StatusText.Text = "引擎运行中";
                 StartEngineButton.IsEnabled = false;
                 _tray?.SetEngineRunning(true);
@@ -60,9 +58,8 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            SetEngineStatus(running: false);
             StatusText.Text = "引擎未运行";
-            EngineText.Text = "ASR / 翻译提供方未连接";
+            EngineText.Text = "引擎：—";
             StartEngineButton.IsEnabled = true;
             _tray?.SetEngineRunning(false);
         }
@@ -80,7 +77,7 @@ public sealed partial class MainWindow : Window
             using var doc = await ServerManager.Shared.GetHealthJsonAsync();
             if (doc is null)
             {
-                EngineText.Text = "已连接 · 详情不可用";
+                EngineText.Text = "引擎：已连接";
                 return;
             }
 
@@ -88,20 +85,18 @@ public sealed partial class MainWindow : Window
             var asr = root.TryGetProperty("asrProvider", out var asrEl) ? asrEl.GetString() : null;
             var partial = root.TryGetProperty("partialProvider", out var partialEl) ? partialEl.GetString() : null;
             var final = root.TryGetProperty("finalProvider", out var finalEl) ? finalEl.GetString() : null;
-            EngineText.Text = $"ASR={asr ?? "—"} · 翻译={partial ?? "—"}/{final ?? "—"}";
+            EngineText.Text = $"引擎：ASR={asr ?? "—"} · 翻译={partial ?? "—"}/{final ?? "—"}";
         }
         catch
         {
-            EngineText.Text = "已连接";
+            EngineText.Text = "引擎：已连接";
         }
     }
 
     private async void StartEngineClicked(object sender, RoutedEventArgs e)
     {
         StartEngineButton.IsEnabled = false;
-        SetEngineStatus(starting: true);
-        StatusText.Text = "正在启动引擎…";
-        EngineText.Text = "首次启动可能需要几分钟";
+        StatusText.Text = "正在启动引擎（首次可能需要几分钟）…";
         ClearError();
 
         var error = await ServerManager.Shared.EnsureRunningAsync();
@@ -109,9 +104,7 @@ public sealed partial class MainWindow : Window
         {
             ShowError(error);
             StartEngineButton.IsEnabled = true;
-            SetEngineStatus(running: false);
             StatusText.Text = "引擎未运行";
-            EngineText.Text = "启动失败，请查看下方错误";
             _tray?.SetEngineRunning(false);
             return;
         }
@@ -154,8 +147,7 @@ public sealed partial class MainWindow : Window
         var session = SessionController.Shared;
         if (session.IsStarting)
         {
-            SetSessionStatus(starting: true);
-            SessionText.Text = "正在启动…";
+            SessionText.Text = "字幕：正在启动…";
             StartSubtitleButton.IsEnabled = false;
             StopSubtitleButton.IsEnabled = false;
             return;
@@ -163,54 +155,27 @@ public sealed partial class MainWindow : Window
 
         if (session.IsRunning)
         {
-            SetSessionStatus(running: true);
-            SessionText.Text = "运行中 · 系统音频 → 悬浮字幕";
+            SessionText.Text = "字幕：运行中（系统音频 → 悬浮字幕）";
             StartSubtitleButton.IsEnabled = false;
             StopSubtitleButton.IsEnabled = true;
             return;
         }
 
-        SetSessionStatus(running: false);
-        SessionText.Text = "未运行 · 点击上方按钮开始";
+        SessionText.Text = "字幕：未运行";
         StartSubtitleButton.IsEnabled = true;
         StopSubtitleButton.IsEnabled = false;
-    }
-
-    private void SetEngineStatus(bool running = false, bool starting = false)
-    {
-        EngineStatusDot.Fill = StatusBrush(running, starting);
-    }
-
-    private void SetSessionStatus(bool running = false, bool starting = false)
-    {
-        SessionStatusDot.Fill = StatusBrush(running, starting);
-    }
-
-    private static Brush StatusBrush(bool running, bool starting)
-    {
-        if (starting)
-        {
-            return new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 245, 158, 11));
-        }
-
-        if (running)
-        {
-            return new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 34, 197, 94));
-        }
-
-        return new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 156, 163, 175));
     }
 
     public void ShowError(string message)
     {
         ErrorText.Text = message;
-        ErrorPanel.Visibility = Visibility.Visible;
+        ErrorText.Visibility = Visibility.Visible;
     }
 
     private void ClearError()
     {
         ErrorText.Text = "";
-        ErrorPanel.Visibility = Visibility.Collapsed;
+        ErrorText.Visibility = Visibility.Collapsed;
     }
 
     public void CloseApp()
