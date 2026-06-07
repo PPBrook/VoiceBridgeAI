@@ -4,7 +4,7 @@ $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RepoRoot = (Resolve-Path (Join-Path $Root "../..")).Path
 $env:VOICEBRIDGE_ROOT = $RepoRoot
 
-Write-Host "VoiceBridgeAI Windows client — repo: $RepoRoot"
+Write-Host "VoiceBridgeAI Windows client - repo: $RepoRoot"
 
 $Project = Join-Path $Root "VoiceBridgeAI/VoiceBridgeAI/VoiceBridgeAI.csproj"
 if (-not (Test-Path $Project)) {

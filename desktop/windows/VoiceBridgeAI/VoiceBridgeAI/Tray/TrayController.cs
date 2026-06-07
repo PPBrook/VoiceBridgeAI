@@ -1,12 +1,15 @@
-using System.Drawing;
-using System.Windows.Forms;
 using VoiceBridgeAI.Session;
 
 namespace VoiceBridgeAI;
 
 public sealed class TrayController : IDisposable
 {
-    private readonly NotifyIcon _icon;
+    private const int MenuShow = 1;
+    private const int MenuToggleSession = 2;
+    private const int MenuEngine = 3;
+    private const int MenuQuit = 4;
+
+    private readonly Tray.NativeTrayIcon _icon;
     private readonly Action _showMainWindow;
     private readonly Action _quit;
     private bool _engineRunning;
@@ -16,113 +19,105 @@ public sealed class TrayController : IDisposable
         _showMainWindow = showMainWindow;
         _quit = quit;
 
-        _icon = new NotifyIcon
-        {
-            Icon = SystemIcons.Application,
-            Visible = true,
-            Text = "VoiceBridgeAI",
-        };
-
-        RefreshMenu();
-        _icon.DoubleClick += (_, _) => _showMainWindow();
+        _icon = new Tray.NativeTrayIcon(_showMainWindow, BuildMenuItems);
+        _icon.Show("VoiceBridgeAI");
     }
 
     public void SetEngineRunning(bool running)
     {
         _engineRunning = running;
         UpdateTooltip();
-        RefreshMenu();
     }
 
     public void RefreshMenu()
     {
+        UpdateTooltip();
+    }
+
+    private IReadOnlyList<Tray.NativeTrayIcon.TrayMenuItem> BuildMenuItems()
+    {
         var session = SessionController.Shared;
-        var menu = new ContextMenuStrip();
+        var items = new List<Tray.NativeTrayIcon.TrayMenuItem>
+        {
+            new(MenuShow, "显示主窗口", _showMainWindow),
+            Tray.NativeTrayIcon.TrayMenuItem.Separator(),
+        };
 
-        menu.Items.Add("显示主窗口", null, (_, _) => _showMainWindow());
-        menu.Items.Add(new ToolStripSeparator());
+        var toggleTitle = session.IsRunning
+            ? "停止悬浮字幕"
+            : session.IsStarting
+                ? "正在启动…"
+                : "开始悬浮字幕";
 
-        string toggleTitle;
+        items.Add(new Tray.NativeTrayIcon.TrayMenuItem(
+            MenuToggleSession,
+            toggleTitle,
+            () => _ = ToggleSessionAsync(),
+            !session.IsStarting));
+
+        items.Add(Tray.NativeTrayIcon.TrayMenuItem.Separator());
+
+        var engineLabel = _engineRunning ? "引擎运行中" : "启动引擎";
+        items.Add(new Tray.NativeTrayIcon.TrayMenuItem(
+            MenuEngine,
+            engineLabel,
+            () => _ = StartEngineAsync(),
+            !_engineRunning));
+
+        items.Add(Tray.NativeTrayIcon.TrayMenuItem.Separator());
+        items.Add(new Tray.NativeTrayIcon.TrayMenuItem(MenuQuit, "退出 VoiceBridgeAI", _quit));
+        return items;
+    }
+
+    private async Task ToggleSessionAsync()
+    {
+        var session = SessionController.Shared;
+        if (session.IsStarting)
+        {
+            return;
+        }
+
         if (session.IsRunning)
         {
-            toggleTitle = "停止悬浮字幕";
-        }
-        else if (session.IsStarting)
-        {
-            toggleTitle = "正在启动…";
+            session.Stop();
         }
         else
         {
-            toggleTitle = "开始悬浮字幕";
-        }
-
-        var toggleItem = menu.Items.Add(toggleTitle, null, async (_, _) =>
-        {
-            if (session.IsStarting)
-            {
-                return;
-            }
-
-            if (session.IsRunning)
-            {
-                session.Stop();
-            }
-            else
-            {
-                var err = await session.StartAsync();
-                if (err is not null)
-                {
-                    _showMainWindow();
-                }
-            }
-
-            RefreshMenu();
-        });
-        toggleItem.Enabled = !session.IsStarting;
-
-        menu.Items.Add(new ToolStripSeparator());
-
-        var engineLabel = _engineRunning ? "引擎运行中" : "启动引擎";
-        var engineItem = menu.Items.Add(engineLabel, null, async (_, _) =>
-        {
-            if (_engineRunning)
+            var err = await session.StartAsync();
+            if (err is not null)
             {
                 _showMainWindow();
-                return;
             }
+        }
 
-            _ = await ServerManager.Shared.EnsureRunningAsync();
-            SetEngineRunning(await ServerManager.Shared.PingAsync());
-        });
-        engineItem.Enabled = !_engineRunning;
-
-        menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("退出 VoiceBridgeAI", null, (_, _) => _quit());
-
-        _icon.ContextMenuStrip = menu;
         UpdateTooltip();
+    }
+
+    private async Task StartEngineAsync()
+    {
+        if (_engineRunning)
+        {
+            _showMainWindow();
+            return;
+        }
+
+        _ = await ServerManager.Shared.EnsureRunningAsync();
+        SetEngineRunning(await ServerManager.Shared.PingAsync());
     }
 
     private void UpdateTooltip()
     {
         var session = SessionController.Shared;
-        if (session.IsRunning)
-        {
-            _icon.Text = "VoiceBridgeAI · 字幕运行中";
-        }
-        else if (_engineRunning)
-        {
-            _icon.Text = "VoiceBridgeAI · 引擎运行中";
-        }
-        else
-        {
-            _icon.Text = "VoiceBridgeAI";
-        }
+        var text = session.IsRunning
+            ? "VoiceBridgeAI · 字幕运行中"
+            : _engineRunning
+                ? "VoiceBridgeAI · 引擎运行中"
+                : "VoiceBridgeAI";
+        _icon.UpdateTooltip(text);
     }
 
     public void Dispose()
     {
-        _icon.Visible = false;
         _icon.Dispose();
     }
 }
