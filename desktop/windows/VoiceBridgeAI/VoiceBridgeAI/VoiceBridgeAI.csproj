@@ -17,6 +17,7 @@
     <EnableDefaultPriItems>false</EnableDefaultPriItems>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <WindowsAppSDKBootstrapAutoInitializeOptions>OnNoMatch_ShowUI</WindowsAppSDKBootstrapAutoInitializeOptions>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>

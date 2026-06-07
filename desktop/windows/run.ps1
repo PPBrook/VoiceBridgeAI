@@ -16,6 +16,14 @@ if (-not (Test-Path $Project)) {
 
 Set-Location $Root
 
+$Runtime = Get-AppxPackage -Name "Microsoft.WindowsAppRuntime.1.6*" -ErrorAction SilentlyContinue
+if (-not $Runtime) {
+    Write-Host ""
+    Write-Host "WARNING: Windows App Runtime 1.6 not detected."
+    Write-Host "Run once (as admin if prompted):  .\install-runtime.ps1"
+    Write-Host ""
+}
+
 # Run via dotnet host (VoiceBridgeAI.dll) — unsigned apphost .exe is often blocked by Smart App Control
 dotnet build $Project -c Release
 if ($LASTEXITCODE -ne 0) {
@@ -43,8 +51,9 @@ if ($LASTEXITCODE -ne 0) {
     else {
         Write-Host ""
         Write-Host "No startup log. Common fixes:"
-        Write-Host "  1. Install Windows App Runtime 1.6 x64"
-        Write-Host "     https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads"
+        Write-Host "  1. Install Windows App Runtime 1.6 x64 (required once):"
+        Write-Host "     cd desktop\windows"
+        Write-Host "     .\install-runtime.ps1"
         Write-Host "  2. Smart App Control blocked the app:"
         Write-Host "     Settings -> Privacy & security -> Windows Security -> App & browser control"
         Write-Host "     -> Smart App Control -> Off (requires restart)"

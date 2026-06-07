@@ -1,13 +1,10 @@
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
-using Microsoft.Windows.ApplicationModel.DynamicDependency;
 
 namespace VoiceBridgeAI;
 
 public static class Program
 {
-    private const uint WindowsAppRuntimeVersion = 0x00010006; // 1.6
-
     [STAThread]
     public static void Main(string[] args)
     {
@@ -18,19 +15,6 @@ public static class Program
                 StartupDiagnostics.Log("AppDomain.UnhandledException", ex);
             }
         };
-
-        try
-        {
-            Bootstrap.Initialize(WindowsAppRuntimeVersion);
-        }
-        catch (Exception ex)
-        {
-            StartupDiagnostics.Log(
-                "Bootstrap.Initialize failed - install Windows App Runtime 1.6 (x64)",
-                ex);
-            Environment.Exit(1);
-            return;
-        }
 
         try
         {
@@ -49,18 +33,10 @@ public static class Program
         }
         catch (Exception ex)
         {
-            StartupDiagnostics.Log("Application.Start", ex);
+            StartupDiagnostics.Log(
+                "Application.Start failed. Run desktop\\windows\\install-runtime.ps1 once, then retry.",
+                ex);
             Environment.Exit(1);
-        }
-        finally
-        {
-            try
-            {
-                Bootstrap.Shutdown();
-            }
-            catch
-            {
-            }
         }
     }
 }
