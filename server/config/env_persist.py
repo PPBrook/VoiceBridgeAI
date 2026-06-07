@@ -136,6 +136,46 @@ def merge_env_file(
         os.environ[key] = value
 
 
+def persist_single_env(key: str, value: str | None, *, section_comment: str = "# --- provider verified ---") -> None:
+    """Set or remove one .env key (used for VERIFIED_* flags)."""
+    path = env_file_path()
+    lines: list[str] = []
+    if path.is_file():
+        lines = path.read_text(encoding="utf-8").splitlines()
+
+    merged: list[str] = []
+    found = False
+    for raw in lines:
+        stripped = raw.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            merged.append(raw)
+            continue
+        line_key, _, _ = stripped.partition("=")
+        if line_key.strip() == key:
+            found = True
+            if value is not None:
+                merged.append(f"{key}={_quote_env(value)}")
+            continue
+        merged.append(raw)
+
+    if value is not None and not found:
+        if merged and merged[-1].strip():
+            merged.append("")
+        merged.append(section_comment)
+        merged.append(f"{key}={_quote_env(value)}")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = "\n".join(merged)
+    if text:
+        text += "\n"
+    path.write_text(text, encoding="utf-8")
+
+    if value is not None:
+        os.environ[key] = value
+    else:
+        os.environ.pop(key, None)
+
+
 def persist_cloud_config(payload: dict[str, Any]) -> None:
     merge_env_file(env_file_path(), payload_env_updates(payload))
 
