@@ -188,12 +188,17 @@ public sealed partial class MainWindow : Window
 
     private static Brush StatusBrush(bool running, bool starting)
     {
-        var key = starting
-            ? "VbaStatusWarnBrush"
-            : running
-                ? "VbaStatusOkBrush"
-                : "VbaStatusIdleBrush";
-        return (Brush)Application.Current.Resources[key];
+        if (starting)
+        {
+            return new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 245, 158, 11));
+        }
+
+        if (running)
+        {
+            return new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 34, 197, 94));
+        }
+
+        return new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(255, 156, 163, 175));
     }
 
     public void ShowError(string message)

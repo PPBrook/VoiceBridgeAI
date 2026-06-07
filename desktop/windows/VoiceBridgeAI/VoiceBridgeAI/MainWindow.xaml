@@ -8,7 +8,7 @@
     MinWidth="420"
     MinHeight="360">
 
-    <Grid Padding="28,24">
+    <Grid Padding="28,24" RowSpacing="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -16,17 +16,21 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Margin="0,0,0,20" Spacing="4">
+        <StackPanel Grid.Row="0" Spacing="4">
+            <TextBlock FontSize="26" FontWeight="SemiBold" Text="VoiceBridgeAI" />
             <TextBlock
-                FontSize="26"
-                FontWeight="SemiBold"
-                Text="VoiceBridgeAI" />
-            <TextBlock
-                Style="{StaticResource VbaCaptionStyle}"
-                Text="系统音频实时翻译 · 悬浮字幕" />
+                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                Text="系统音频实时翻译 · 悬浮字幕"
+                TextWrapping="WrapWholeWords" />
         </StackPanel>
 
-        <Border Grid.Row="1" Margin="0,0,0,20" Style="{StaticResource VbaCardStyle}">
+        <Border
+            Grid.Row="1"
+            Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            CornerRadius="12"
+            Padding="16">
             <StackPanel Spacing="14">
                 <Grid ColumnSpacing="10">
                     <Grid.ColumnDefinitions>
@@ -37,24 +41,23 @@
                         x:Name="EngineStatusDot"
                         Width="10"
                         Height="10"
-                        Fill="{StaticResource VbaStatusIdleBrush}"
+                        Fill="#FF9CA3AF"
                         VerticalAlignment="Top"
                         Margin="0,5,0,0" />
                     <StackPanel Grid.Column="1" Spacing="2">
                         <TextBlock
                             x:Name="StatusText"
-                            Style="{StaticResource VbaSectionTitleStyle}"
+                            FontWeight="SemiBold"
                             Text="检测引擎…" />
                         <TextBlock
                             x:Name="EngineText"
-                            Style="{StaticResource VbaCaptionStyle}"
-                            Text="引擎：—" />
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="引擎：—"
+                            TextWrapping="WrapWholeWords" />
                     </StackPanel>
                 </Grid>
 
-                <Rectangle
-                    Fill="{StaticResource VbaCardBorderBrush}"
-                    Height="1" />
+                <Rectangle Fill="{ThemeResource DividerStrokeColorDefaultBrush}" Height="1" />
 
                 <Grid ColumnSpacing="10">
                     <Grid.ColumnDefinitions>
@@ -65,17 +68,16 @@
                         x:Name="SessionStatusDot"
                         Width="10"
                         Height="10"
-                        Fill="{StaticResource VbaStatusIdleBrush}"
+                        Fill="#FF9CA3AF"
                         VerticalAlignment="Top"
                         Margin="0,5,0,0" />
                     <StackPanel Grid.Column="1" Spacing="2">
-                        <TextBlock
-                            Style="{StaticResource VbaSectionTitleStyle}"
-                            Text="悬浮字幕" />
+                        <TextBlock FontWeight="SemiBold" Text="悬浮字幕" />
                         <TextBlock
                             x:Name="SessionText"
-                            Style="{StaticResource VbaCaptionStyle}"
-                            Text="未运行" />
+                            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                            Text="未运行"
+                            TextWrapping="WrapWholeWords" />
                     </StackPanel>
                 </Grid>
             </StackPanel>
@@ -117,15 +119,15 @@
         </StackPanel>
 
         <Border
+            x:Name="ErrorPanel"
             Grid.Row="3"
-            Margin="0,16,0,0"
+            Margin="0,4,0,0"
             Padding="12"
             Background="#12DC2626"
             BorderBrush="#40DC2626"
             BorderThickness="1"
             CornerRadius="8"
-            Visibility="Collapsed"
-            x:Name="ErrorPanel">
+            Visibility="Collapsed">
             <TextBlock
                 x:Name="ErrorText"
                 Foreground="#FFB91C1C"

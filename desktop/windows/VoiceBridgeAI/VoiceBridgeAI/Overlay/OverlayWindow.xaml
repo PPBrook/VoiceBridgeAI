@@ -107,7 +107,6 @@
                                 BorderThickness="1"
                                 Checked="EnToggle_Changed"
                                 Content="EN"
-                                CornerRadius="6"
                                 FontSize="10"
                                 FontWeight="Bold"
                                 Foreground="#B8FFFFFF"
