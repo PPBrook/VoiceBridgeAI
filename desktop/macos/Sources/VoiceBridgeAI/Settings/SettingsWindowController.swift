@@ -8,19 +8,20 @@ final class SettingsWindowController: NSWindowController {
     private let enginePanel = EnginePanelView(frame: .zero)
     private let cloudPanel = CloudPanelView(frame: .zero)
     private let localModelsPanel = LocalModelsPanelView(frame: .zero)
+    private let transcriptPanel = TranscriptSettingsPanelView(frame: .zero)
     private var startupPollTask: Task<Void, Never>?
 
     init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 560, height: 580),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 680),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "VoiceBridgeAI 设置"
         window.center()
-        window.minSize = NSSize(width: 520, height: 440)
-        window.setContentSize(NSSize(width: 540, height: 560))
+        window.minSize = NSSize(width: 520, height: 520)
+        window.setContentSize(NSSize(width: 540, height: 660))
         super.init(window: window)
         Self.shared = self
         setupUI()
@@ -47,8 +48,13 @@ final class SettingsWindowController: NSWindowController {
         modelsItem.label = "本地模型"
         modelsItem.view = localModelsPanel
 
+        let transcriptItem = NSTabViewItem(identifier: "transcript")
+        transcriptItem.label = "字幕记录"
+        transcriptItem.view = transcriptPanel
+
         tabView.addTabViewItem(engineItem)
         tabView.addTabViewItem(modelsItem)
+        tabView.addTabViewItem(transcriptItem)
         tabView.addTabViewItem(cloudItem)
 
         NSLayoutConstraint.activate([
@@ -78,6 +84,7 @@ final class SettingsWindowController: NSWindowController {
             CloudProviderPreferences.applyHealthPrefs(SettingsStore.shared.health)
             enginePanel.reload()
             localModelsPanel.reload()
+            transcriptPanel.reload()
             cloudPanel.reload()
             scheduleStartupPollIfNeeded()
         } catch {
@@ -101,6 +108,7 @@ final class SettingsWindowController: NSWindowController {
                 try? await SettingsStore.shared.refresh()
                 enginePanel.reload()
                 localModelsPanel.reload()
+                transcriptPanel.reload()
                 cloudPanel.reload()
                 let running = (SettingsStore.shared.health["startupTest"] as? [String: Any])?["running"] as? Bool == true
                 if !running { break }

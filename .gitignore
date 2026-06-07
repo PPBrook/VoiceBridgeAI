@@ -12,6 +12,9 @@ cloud-ui.json
 # dev / App Support downloaded models (Whisper markers, HF cache)
 models/
 
+# session subtitle transcripts (dev repo root)
+transcripts/
+
 # Python type/check caches
 .mypy_cache/
 .pytest_cache/

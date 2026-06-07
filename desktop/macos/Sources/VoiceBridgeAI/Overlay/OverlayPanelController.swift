@@ -28,18 +28,27 @@ final class OverlayPanelController {
 
     private final class ToggleHandler: NSObject {
         var onToggleEnglish: (() -> Void)?
+        var onToggleRecord: (() -> Void)?
         @MainActor @objc func toggleEnglish(_ sender: NSButton) {
             onToggleEnglish?()
+        }
+        @MainActor @objc func toggleRecord(_ sender: NSButton) {
+            onToggleRecord?()
         }
     }
 
     private let panel: NSPanel
     private let stopHandler = StopHandler()
     private let opacityHandler = OpacityHandler()
+    private let textOpacityHandler = OpacityHandler()
     private let toggleHandler = ToggleHandler()
     private let opacitySlider = NSSlider(value: 0.78, minValue: 0.15, maxValue: 1.0, target: nil, action: nil)
+    private let textOpacitySlider = NSSlider(value: 1.0, minValue: 0.25, maxValue: 1.0, target: nil, action: nil)
     private let enToggleButton = NSButton(title: "EN", target: nil, action: nil)
+    private let recordToggleButton = NSButton(title: "记", target: nil, action: nil)
     private var showEnglish = OverlayPreferences.showEnglish
+    private var recordEnabled = TranscriptPreferences.recordEnabled
+    private var textOpacity = OverlayPreferences.textOpacity
     private let historyZhLabel = NSTextField(wrappingLabelWithString: "")
     private let historyEnLabel = NSTextField(wrappingLabelWithString: "")
     private let zhLabel = NSTextField(wrappingLabelWithString: "等待字幕…")
@@ -49,6 +58,7 @@ final class OverlayPanelController {
     private let clipView = NSView()
     private let backgroundView = NSVisualEffectView()
     private let tintView = NSView()
+    private let modeLabel = NSTextField(labelWithString: "")
 
     var onStop: (() -> Void)?
 
@@ -96,6 +106,14 @@ final class OverlayPanelController {
 
         let titleLabel = captionLabel("VoiceBridgeAI", size: 10, weight: .semibold, color: Style.chromeMuted)
 
+        modeLabel.font = .systemFont(ofSize: 9, weight: .medium)
+        modeLabel.textColor = Style.chrome
+        modeLabel.lineBreakMode = .byTruncatingTail
+        modeLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        modeLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        modeLabel.maximumNumberOfLines = 1
+        modeLabel.cell?.truncatesLastVisibleLine = true
+
         opacitySlider.floatValue = Float(OverlayPreferences.backgroundOpacity)
         opacitySlider.controlSize = .mini
         opacitySlider.widthAnchor.constraint(equalToConstant: 68).isActive = true
@@ -110,6 +128,20 @@ final class OverlayPanelController {
         opacityStack.spacing = 5
         opacityStack.alignment = .centerY
 
+        textOpacitySlider.floatValue = Float(OverlayPreferences.textOpacity)
+        textOpacitySlider.controlSize = .mini
+        textOpacitySlider.widthAnchor.constraint(equalToConstant: 56).isActive = true
+        textOpacitySlider.target = textOpacityHandler
+        textOpacitySlider.action = #selector(OpacityHandler.changed(_:))
+        textOpacitySlider.toolTip = "字幕文字不透明度"
+
+        let textOpacityHint = captionLabel("文字", size: 9, weight: .medium, color: Style.chromeMuted)
+
+        let textOpacityStack = NSStackView(views: [textOpacityHint, textOpacitySlider])
+        textOpacityStack.orientation = .horizontal
+        textOpacityStack.spacing = 5
+        textOpacityStack.alignment = .centerY
+
         enToggleButton.bezelStyle = .recessed
         enToggleButton.setButtonType(.toggle)
         enToggleButton.font = .systemFont(ofSize: 10, weight: .bold)
@@ -119,6 +151,16 @@ final class OverlayPanelController {
         enToggleButton.widthAnchor.constraint(equalToConstant: 34).isActive = true
         enToggleButton.heightAnchor.constraint(equalToConstant: 20).isActive = true
         syncEnglishToggleAppearance()
+
+        recordToggleButton.bezelStyle = .recessed
+        recordToggleButton.setButtonType(.toggle)
+        recordToggleButton.font = .systemFont(ofSize: 10, weight: .bold)
+        recordToggleButton.target = toggleHandler
+        recordToggleButton.action = #selector(ToggleHandler.toggleRecord(_:))
+        recordToggleButton.toolTip = "记录中英文字幕（设置 → 字幕记录 可改目录与文件名）"
+        recordToggleButton.widthAnchor.constraint(equalToConstant: 34).isActive = true
+        recordToggleButton.heightAnchor.constraint(equalToConstant: 20).isActive = true
+        syncRecordToggleAppearance()
 
         styleSubtitleLabel(
             historyZhLabel,
@@ -169,7 +211,7 @@ final class OverlayPanelController {
         subtitleStack.setCustomSpacing(4, after: zhLabel)
         subtitleStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let header = NSStackView(views: [titleLabel, opacityStack, enToggleButton, NSView(), stopButton])
+        let header = NSStackView(views: [titleLabel, modeLabel, opacityStack, textOpacityStack, enToggleButton, recordToggleButton, NSView(), stopButton])
         header.orientation = .horizontal
         header.spacing = 8
         header.alignment = .centerY
@@ -232,8 +274,14 @@ final class OverlayPanelController {
         opacityHandler.onChange = { [weak self] value in
             self?.applyBackgroundOpacity(value)
         }
+        textOpacityHandler.onChange = { [weak self] value in
+            self?.applyTextOpacity(value)
+        }
         toggleHandler.onToggleEnglish = { [weak self] in
             self?.toggleEnglish()
+        }
+        toggleHandler.onToggleRecord = { [weak self] in
+            self?.toggleRecord()
         }
     }
 
@@ -304,12 +352,44 @@ final class OverlayPanelController {
         enToggleButton.contentTintColor = showEnglish ? Style.zhPrimary : Style.chromeMuted
     }
 
+    private func toggleRecord() {
+        recordEnabled.toggle()
+        TranscriptPreferences.recordEnabled = recordEnabled
+        syncRecordToggleAppearance()
+        if recordEnabled, SessionController.shared.isRunning {
+            let health = SettingsStore.shared.health
+            let modeId = SettingsStore.shared.engine.reviseMode
+            let label = ReviseModeGuides.info(for: modeId, health: health)?.label ?? modeId
+            TranslationRecorder.shared.beginSessionIfNeeded(reviseModeId: modeId, reviseModeLabel: label)
+        }
+    }
+
+    private func syncRecordToggleAppearance() {
+        recordToggleButton.state = recordEnabled ? .on : .off
+        recordToggleButton.alphaValue = recordEnabled ? 1 : 0.5
+        recordToggleButton.contentTintColor = recordEnabled ? Style.zhPrimary : Style.chromeMuted
+    }
+
     private func applyBackgroundOpacity(_ value: CGFloat) {
         let clamped = min(1.0, max(0.15, value))
         OverlayPreferences.backgroundOpacity = clamped
         tintView.alphaValue = clamped
         backgroundView.alphaValue = min(1, clamped + 0.08)
         opacitySlider.floatValue = Float(clamped)
+    }
+
+    private func applyTextOpacity(_ value: CGFloat) {
+        let clamped = min(1.0, max(0.25, value))
+        OverlayPreferences.textOpacity = clamped
+        textOpacity = clamped
+        textOpacitySlider.floatValue = Float(clamped)
+        if let store = AppDelegate.shared?.lastSubtitleStore {
+            update(with: store)
+        }
+    }
+
+    private func textAlpha(_ base: CGFloat) -> CGFloat {
+        min(1.0, max(0, base * textOpacity))
     }
 
     func positionBottomCenter() {
@@ -328,6 +408,12 @@ final class OverlayPanelController {
     }
 
     func update(with store: SubtitleStore) {
+        textOpacity = OverlayPreferences.textOpacity
+        textOpacitySlider.floatValue = Float(textOpacity)
+        recordEnabled = TranscriptPreferences.recordEnabled
+        syncRecordToggleAppearance()
+        updateModeBadge()
+
         if store.isVisible {
             panel.orderFrontRegardless()
         } else {
@@ -338,6 +424,7 @@ final class OverlayPanelController {
         if let err = store.errorMessage, !err.isEmpty {
             errorLabel.stringValue = err
             errorLabel.isHidden = false
+            errorLabel.alphaValue = textAlpha(0.95)
             historyZhLabel.stringValue = ""
             historyEnLabel.stringValue = ""
             historyZhLabel.isHidden = true
@@ -353,7 +440,7 @@ final class OverlayPanelController {
             historyEnLabel.isHidden = true
             zhLabel.stringValue = store.statusMessage
             zhLabel.textColor = Style.chrome
-            zhLabel.alphaValue = 0.9
+            zhLabel.alphaValue = textAlpha(0.9)
             enLabel.stringValue = ""
             enLabel.isHidden = true
             return
@@ -364,16 +451,25 @@ final class OverlayPanelController {
             let prev = lines[lines.count - 2]
             let cur = lines[lines.count - 1]
             applyHistoryLine(prev)
-            applyCurrentLine(cur, prev: prev)
+            applyCurrentLine(cur)
         } else if let cur = lines.last {
             historyZhLabel.isHidden = true
             historyEnLabel.isHidden = true
-            applyCurrentLine(cur, prev: nil)
+            applyCurrentLine(cur)
         }
     }
 
+    private func updateModeBadge() {
+        let health = SettingsStore.shared.health
+        let modeId = SettingsStore.shared.engine.reviseMode
+        let info = ReviseModeGuides.info(for: modeId, health: health)
+        modeLabel.stringValue = info?.label ?? modeId
+        modeLabel.toolTip = info.map { "\($0.label)\n\($0.description)" } ?? "观看场景"
+        modeLabel.isHidden = !SessionController.shared.isRunning
+    }
+
     private func applyHistoryLine(_ seg: SubtitleSegment) {
-        let zh = displayZH(seg, fallback: nil)
+        let zh = displayZH(seg)
         let en = seg.text
         let hasZh = !zh.isEmpty
         let hasEn = showEnglish && !en.isEmpty
@@ -381,11 +477,13 @@ final class OverlayPanelController {
         historyEnLabel.stringValue = hasEn ? en : ""
         historyZhLabel.isHidden = !hasZh
         historyEnLabel.isHidden = !hasEn
+        historyZhLabel.alphaValue = textAlpha(1)
+        historyEnLabel.alphaValue = textAlpha(1)
     }
 
-    private func applyCurrentLine(_ cur: SubtitleSegment, prev: SubtitleSegment?) {
+    private func applyCurrentLine(_ cur: SubtitleSegment) {
         let en = cur.text
-        let zh = displayZH(cur, fallback: prev)
+        let zh = displayZH(cur)
 
         if zh.isEmpty && cur.partial {
             zhLabel.stringValue = "…"
@@ -395,21 +493,20 @@ final class OverlayPanelController {
             zhLabel.textColor = Style.zhPrimary
         }
 
-        zhLabel.alphaValue = cur.partial ? 0.78 : 1
+        zhLabel.alphaValue = textAlpha(cur.partial ? 0.78 : 1)
 
         if showEnglish, !en.isEmpty {
             enLabel.stringValue = en
             enLabel.isHidden = false
-            enLabel.alphaValue = cur.partial ? 0.72 : 0.92
+            enLabel.alphaValue = textAlpha(cur.partial ? 0.72 : 0.92)
         } else {
             enLabel.stringValue = ""
             enLabel.isHidden = true
         }
     }
 
-    private func displayZH(_ cur: SubtitleSegment, fallback: SubtitleSegment?) -> String {
+    private func displayZH(_ cur: SubtitleSegment) -> String {
         if !cur.translation.isEmpty { return cur.translation }
-        if let fallback, !fallback.translation.isEmpty { return fallback.translation }
         if cur.partial { return "" }
         return cur.text
     }

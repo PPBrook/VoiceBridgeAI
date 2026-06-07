@@ -11,6 +11,7 @@ final class SessionController {
     private let webSocket = WebSocketSession()
     private var capture: SystemAudioCapture?
     private var engineConfig = EngineConfig()
+    private var silenceMonitor = PcmSilenceMonitor()
 
     private init() {
         store.onChange = { [weak self] in
@@ -21,7 +22,9 @@ final class SessionController {
 
         webSocket.onASR = { [weak self] payload in
             Task { @MainActor in
+                self?.silenceMonitor.reset()
                 self?.store.applyASR(payload)
+                self?.recordTranslationIfNeeded(payload)
             }
         }
         webSocket.onError = { [weak self] message in
@@ -71,6 +74,10 @@ final class SessionController {
             cap.onPCM = { [weak self] data in
                 Task { @MainActor in
                     guard let self, self.isRunning else { return }
+                    if self.silenceMonitor.feed(pcm: data), !self.store.segments.isEmpty {
+                        self.store.clearDisplay()
+                        self.silenceMonitor.reset()
+                    }
                     do {
                         try await self.webSocket.send(pcm: data)
                     } catch {
@@ -98,7 +105,9 @@ final class SessionController {
         }
 
         isRunning = true
+        silenceMonitor.reset()
         store.reset()
+        beginTranslationRecordingIfNeeded()
         AppDelegate.shared?.overlay.update(with: store)
         return nil
     }
@@ -111,6 +120,7 @@ final class SessionController {
         webSocket.disconnect()
         isRunning = false
         isStarting = false
+        TranslationRecorder.shared.endSession()
         store.hide()
         AppDelegate.shared?.overlay.update(with: store)
         AppDelegate.shared?.refreshControlUI()
@@ -120,6 +130,7 @@ final class SessionController {
         SettingsStore.shared.engine.reviseMode = mode
         _ = try await SettingsStore.shared.saveEngine()
         try await reconfigureEngine()
+        AppDelegate.shared?.overlay.update(with: store)
     }
 
     func reconfigureEngine() async throws {
@@ -127,6 +138,31 @@ final class SessionController {
         engineConfig = SettingsStore.shared.engine
         if isRunning {
             try await webSocket.reconfigure(config: engineConfig)
+            AppDelegate.shared?.overlay.update(with: store)
         }
+    }
+
+    private func beginTranslationRecordingIfNeeded() {
+        guard TranscriptPreferences.recordEnabled else { return }
+        let health = SettingsStore.shared.health
+        let modeId = engineConfig.reviseMode
+        let label = ReviseModeGuides.info(for: modeId, health: health)?.label ?? modeId
+        TranslationRecorder.shared.beginSession(reviseModeId: modeId, reviseModeLabel: label)
+    }
+
+    private func recordTranslationIfNeeded(_ payload: [String: Any]) {
+        guard TranscriptPreferences.recordEnabled else { return }
+        guard payload["final"] as? Bool == true else { return }
+        let english = (payload["text"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !english.isEmpty else { return }
+        let segmentId = String(describing: payload["segmentId"] ?? "")
+        let chinese = (payload["translation"] as? String) ?? ""
+        let revised = (payload["revise"] as? Bool ?? false) || (payload["lookback"] as? Bool ?? false)
+        TranslationRecorder.shared.record(
+            segmentId: segmentId,
+            english: english,
+            chinese: chinese,
+            revised: revised
+        )
     }
 }

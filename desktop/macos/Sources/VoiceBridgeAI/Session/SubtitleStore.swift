@@ -22,8 +22,34 @@ final class SubtitleStore {
     private var map: [String: SubtitleSegment] = [:]
     private let maxLines = 2
     private var partialNotifyTask: Task<Void, Never>?
+    private var idleClearTask: Task<Void, Never>?
+    /// Clear stale subtitles if no ASR update (covers muted pause / tab switch).
+    private let idleClearSeconds: TimeInterval = 8
 
     private func notify() { onChange?() }
+
+    private func scheduleIdleClear() {
+        idleClearTask?.cancel()
+        idleClearTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(idleClearSeconds * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            clearDisplay()
+        }
+    }
+
+    /// Remove on-screen subtitles after pause / video switch; keep session running.
+    func clearDisplay() {
+        partialNotifyTask?.cancel()
+        partialNotifyTask = nil
+        idleClearTask?.cancel()
+        idleClearTask = nil
+        map.removeAll()
+        segments = []
+        errorMessage = nil
+        statusMessage = "正在聆听…"
+        isVisible = true
+        notify()
+    }
 
     private func scheduleNotify(isFinal: Bool) {
         if isFinal {
@@ -43,6 +69,8 @@ final class SubtitleStore {
     func reset() {
         partialNotifyTask?.cancel()
         partialNotifyTask = nil
+        idleClearTask?.cancel()
+        idleClearTask = nil
         map.removeAll()
         segments = []
         errorMessage = nil
@@ -54,6 +82,8 @@ final class SubtitleStore {
     func hide() {
         partialNotifyTask?.cancel()
         partialNotifyTask = nil
+        idleClearTask?.cancel()
+        idleClearTask = nil
         map.removeAll()
         segments = []
         errorMessage = nil
@@ -97,6 +127,7 @@ final class SubtitleStore {
         let ordered = map.values.sorted { Int($0.id) ?? 0 < Int($1.id) ?? 0 }
         segments = Array(ordered.suffix(maxLines))
         statusMessage = ""
+        scheduleIdleClear()
         scheduleNotify(isFinal: isFinal || prev == nil)
     }
 }

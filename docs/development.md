@@ -26,8 +26,13 @@ VoiceBridgeAI/
   .env.example           引擎配置模板
   cloud-ui.json.example  云端卡片隐藏偏好模板
   server/                FastAPI 侧车（见 server/README.md）
+    main.py              入口
+    app_bootstrap.py     启动与 lifespan
+    routes/              HTTP / WS 路由
+    config/ core/ providers/
   desktop/macos/         Swift App 源码与打包脚本
   docs/                  架构与开发说明
+  transcripts/           开发时字幕记录（gitignore）
 ```
 
 主分支仅维护 **macOS App + Python 引擎**。旧 Web UI / 浏览器扩展在其它分支，根目录不含 `extension/`、`static/`。
@@ -39,6 +44,7 @@ VoiceBridgeAI/
 | `.env` | 仓库根 | `~/Library/Application Support/VoiceBridgeAI/` |
 | `cloud-ui.json` | 仓库根 | 同上 |
 | `models/` | 仓库根 | 同上 |
+| `transcripts/` | 仓库根 | 同上（可自定义目录） |
 | `server.log` | — | 同上 |
 
 开发时 Swift 通过 `VOICEBRIDGE_ROOT` / `VOICEBRIDGE_DATA_DIR` 指向仓库根，与引擎一致。
@@ -56,7 +62,7 @@ VoiceBridgeAI/
 
 下载在后台线程执行，App 可关闭设置页；`GET /api/health` 的 `activeDownload` 可恢复进行中的任务。
 
-## 主窗口与设置
+## 主窗口、悬浮字幕与记录
 
 | 位置 | 行为 |
 |------|------|
@@ -65,6 +71,22 @@ VoiceBridgeAI/
 | 主窗口 · 观看场景 | 切换断句/润色预设；字幕运行中**即时生效** |
 | 设置 → 引擎 · 观看场景 | 同上；保存后运行中也会通过 WebSocket 热更新 |
 | 设置 → 引擎 · ASR/翻译 | 保存后若字幕在运行，**更换 ASR 或翻译接口**需停止再开始 |
+| 悬浮字幕 · 记 | 开关字幕记录；与设置 → 字幕记录 同步 |
+| 悬浮字幕 · 背景/文字 | 调节面板与字幕透明度 |
+| 设置 → 字幕记录 | 保存目录、文件名模板、内容形式；可转换已有 md/txt |
+| 菜单栏 · 打开字幕记录 | 在 Finder 中打开记录目录 |
+
+暂停或切视频时，约 **2.5s** 静音会自动清空悬浮字幕（会话不中断）。
+
+### 字幕记录内容形式
+
+| 形式 | 说明 |
+|------|------|
+| 中英对照（分区） | 每句分「英文」「中文」块 |
+| 中英结合（连续） | 每句英文+中文连续排列 |
+| 纯英文 / 纯中文 | 只保留一种语言 |
+
+转换已有文件时，在同目录生成带后缀的新文件（如 `_en`、`_zh`、`_mix`），原文件保留。
 
 ## 观看场景
 

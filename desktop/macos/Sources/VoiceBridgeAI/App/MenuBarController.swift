@@ -37,6 +37,12 @@ final class MenuBarController {
 
         menu.addItem(.separator())
 
+        let transcriptsItem = NSMenuItem(title: "打开字幕记录…", action: #selector(openTranscripts), keyEquivalent: "")
+        transcriptsItem.target = self
+        menu.addItem(transcriptsItem)
+
+        menu.addItem(.separator())
+
         let quitItem = NSMenuItem(title: "退出 VoiceBridgeAI", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
         menu.addItem(quitItem)
@@ -102,6 +108,10 @@ final class MenuBarController {
         SettingsWindowController.shared?.showAndLoad()
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func openTranscripts() {
+        TranslationRecorder.shared.openTranscriptsDirectory()
     }
 
     @objc private func quit() {
