@@ -31,12 +31,15 @@ cd desktop/macos && ./run.sh      # 终端 2：Swift UI
 ## 结构
 
 ```
-desktop/macos/     Swift App、build-app.sh、scripts/run-server.sh
-server/            FastAPI + WebSocket（ASR / 翻译 / 纠正）
+desktop/macos/     Swift App（见 desktop/README.md）
+server/            FastAPI 引擎（见 server/README.md）
+docs/              架构说明
 run.sh             开发时启动引擎
 ```
 
-App  bundle：`Contents/Resources/{server, python-venv, run-server.sh}`
+App bundle：`Contents/Resources/{server, python-venv, run-server.sh}`
+
+更多细节：[docs/architecture.md](docs/architecture.md)
 
 ## 架构
 
