@@ -33,16 +33,53 @@ if (-not (Test-Path $venvPython)) {
 & $venvPython -m pip install -q -r requirements.txt
 
 $port = if ($env:VOICEBRIDGE_PORT) { $env:VOICEBRIDGE_PORT } else { "8765" }
-try {
-    $listener = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
-    if ($listener) {
-        Write-Error "Port $port is already in use."
+
+function Test-EnginePortInUse {
+    param([string]$Port)
+    try {
+        return Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1
+    }
+    catch {
+        return $null
     }
 }
-catch {
-    # Get-NetTCPConnection unavailable on some SKUs; server will fail loudly if port busy.
+
+function Show-PortBusyHelp {
+    param([string]$Port, [int]$OwningProcess)
+    $proc = Get-Process -Id $OwningProcess -ErrorAction SilentlyContinue
+    $name = if ($proc) { $proc.ProcessName } else { "unknown" }
+    Write-Host ""
+    Write-Host "Port $Port is already in use by $name (PID $OwningProcess)."
+    try {
+        $health = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/api/health" -TimeoutSec 2
+        if ($health.status -eq "ok") {
+            Write-Host "VoiceBridgeAI engine is already running — skip terminal 1 and start the client:"
+            Write-Host "  cd $Root\desktop\windows"
+            Write-Host "  .\run.ps1"
+            exit 0
+        }
+    }
+    catch {
+        # Not our engine — fall through to error below.
+    }
+    Write-Host "Stop the other process or pick another port: `$env:VOICEBRIDGE_PORT=8766; .\run.ps1"
+    exit 1
+}
+
+$listener = Test-EnginePortInUse -Port $port
+if ($listener) {
+    Show-PortBusyHelp -Port $port -OwningProcess $listener.OwningProcess
 }
 
 Write-Host "VoiceBridgeAI engine - http://127.0.0.1:$port"
-Set-Location (Join-Path $Root "server")
-& $venvPython main.py
+Write-Host "(Keep this terminal open. Start the WinUI client in a second terminal: cd desktop\windows; .\run.ps1)"
+Write-Host ""
+
+$serverDir = Join-Path $Root "server"
+Push-Location $serverDir
+try {
+    & $venvPython main.py
+}
+finally {
+    Pop-Location
+}

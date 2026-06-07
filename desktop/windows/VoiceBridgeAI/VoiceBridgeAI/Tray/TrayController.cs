@@ -7,8 +7,9 @@ public sealed class TrayController : IDisposable
     private const int MenuShow = 1;
     private const int MenuToggleSession = 2;
     private const int MenuEngine = 3;
-    private const int MenuSettings = 4;
-    private const int MenuQuit = 5;
+    private const int MenuOpenTranscripts = 5;
+    private const int MenuSettings = 6;
+    private const int MenuQuit = 7;
 
     private readonly Tray.NativeTrayIcon _icon;
     private readonly Action _showMainWindow;
@@ -75,6 +76,10 @@ public sealed class TrayController : IDisposable
             !_engineRunning));
 
         items.Add(Tray.NativeTrayIcon.TrayMenuItem.Separator());
+        items.Add(new Tray.NativeTrayIcon.TrayMenuItem(
+            MenuOpenTranscripts,
+            "打开字幕记录…",
+            () => TranslationRecorder.Shared.OpenTranscriptsDirectory()));
         items.Add(new Tray.NativeTrayIcon.TrayMenuItem(MenuSettings, "设置…", _showSettings));
 
         items.Add(Tray.NativeTrayIcon.TrayMenuItem.Separator());
@@ -99,7 +104,7 @@ public sealed class TrayController : IDisposable
             var err = await session.StartAsync();
             if (err is not null)
             {
-                _showMainWindow();
+                App.CurrentApp?.ShowMainWindow(err);
             }
         }
 
@@ -114,8 +119,13 @@ public sealed class TrayController : IDisposable
             return;
         }
 
-        _ = await ServerManager.Shared.EnsureRunningAsync();
-        SetEngineRunning(await ServerManager.Shared.PingAsync());
+        var err = await ServerManager.Shared.EnsureRunningAsync();
+        var running = await ServerManager.Shared.PingAsync();
+        SetEngineRunning(running);
+        if (err is not null)
+        {
+            App.CurrentApp?.ShowMainWindow(err);
+        }
     }
 
     private void UpdateTooltip()

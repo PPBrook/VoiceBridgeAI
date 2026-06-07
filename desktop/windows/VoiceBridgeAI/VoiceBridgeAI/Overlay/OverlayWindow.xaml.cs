@@ -4,104 +4,38 @@ using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using VoiceBridgeAI.Session;
+using VoiceBridgeAI.Settings;
+using Windows.UI;
 
 namespace VoiceBridgeAI.Overlay;
 
 public sealed partial class OverlayWindow : Window
 {
     private bool _configured;
-    private bool _updatingSliders;
+    private bool _syncingControls;
     private SubtitleStore? _lastStore;
-    private Slider? _bgOpacitySlider;
-    private Slider? _textOpacitySlider;
-    private ToggleButton? _enToggle;
+    private double _textOpacity = 1.0;
+    private Brush ChromeBrush => (Brush)Resources["ChromeBrush"];
+
+    private Brush ChromeMutedBrush => (Brush)Resources["ChromeMutedBrush"];
 
     public OverlayWindow()
     {
         InitializeComponent();
-        BuildHeaderChrome();
-        ApplyBackgroundOpacity(OverlayPreferences.BackgroundOpacity);
+        _textOpacity = OverlayPreferences.TextOpacity;
         OverlayPreferences.Changed += OnPreferencesChanged;
+        TranscriptPreferences.Changed += OnTranscriptPreferencesChanged;
         Activated += OnFirstActivated;
-        Closed += (_, _) => OverlayPreferences.Changed -= OnPreferencesChanged;
-    }
-
-    private void BuildHeaderChrome()
-    {
-        HeaderHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        HeaderHost.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        HeaderHost.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-        var title = new TextBlock
+        Closed += (_, _) =>
         {
-            Text = "VoiceBridgeAI",
-            Opacity = 0.55,
-            VerticalAlignment = VerticalAlignment.Center,
+            OverlayPreferences.Changed -= OnPreferencesChanged;
+            TranscriptPreferences.Changed -= OnTranscriptPreferencesChanged;
         };
-        title.PointerPressed += DragHandle_PointerPressed;
-        Grid.SetColumn(title, 0);
-        HeaderHost.Children.Add(title);
 
-        var dragSpacer = new Border { Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
-        dragSpacer.PointerPressed += DragHandle_PointerPressed;
-        Grid.SetColumn(dragSpacer, 1);
-        HeaderHost.Children.Add(dragSpacer);
-
-        var toolPanel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        Grid.SetColumn(toolPanel, 2);
-        HeaderHost.Children.Add(toolPanel);
-
-        toolPanel.Children.Add(MakeSliderGroup("背景", 0.15, 1.0, out _bgOpacitySlider, "背景不透明度"));
-        toolPanel.Children.Add(MakeSliderGroup("文字", 0.25, 1.0, out _textOpacitySlider, "字幕文字不透明度"));
-
-        _enToggle = new ToggleButton
-        {
-            Content = "EN",
-            MinWidth = 34,
-            MinHeight = 26,
-            FontSize = 10,
-            FontWeight = Microsoft.UI.Text.FontWeights.Bold,
-        };
-        ToolTipService.SetToolTip(_enToggle, "切换英文显示");
-        _enToggle.Checked += EnToggle_Changed;
-        _enToggle.Unchecked += EnToggle_Changed;
-        toolPanel.Children.Add(_enToggle);
-
-        var stopButton = new Button
-        {
-            Content = "×",
-            Width = 28,
-            Height = 28,
-        };
-        ToolTipService.SetToolTip(stopButton, "停止字幕");
-        stopButton.Click += StopClicked;
-        toolPanel.Children.Add(stopButton);
-
-        _bgOpacitySlider!.ValueChanged += BgOpacitySlider_ValueChanged;
-        _textOpacitySlider!.ValueChanged += TextOpacitySlider_ValueChanged;
-    }
-
-    private static StackPanel MakeSliderGroup(string label, double min, double max, out Slider slider, string tip)
-    {
-        var panel = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-        panel.Children.Add(new TextBlock
-        {
-            Text = label,
-            FontSize = 10,
-            Opacity = 0.55,
-            VerticalAlignment = VerticalAlignment.Center,
-        });
-        slider = new Slider
-        {
-            Width = label == "背景" ? 64 : 52,
-            Minimum = min,
-            Maximum = max,
-            StepFrequency = 0.01,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        ToolTipService.SetToolTip(slider, tip);
-        panel.Children.Add(slider);
-        return panel;
+        TitleLabel.PointerPressed += DragArea_PointerPressed;
+        ApplyBackgroundOpacity(OverlayPreferences.BackgroundOpacity);
+        SyncControlsFromPreferences();
+        ApplyTextOpacityToAllVisibleContent();
     }
 
     private void OnFirstActivated(object sender, WindowActivatedEventArgs args)
@@ -115,8 +49,11 @@ public sealed partial class OverlayWindow : Window
         try
         {
             OverlayWindowHelper.ConfigureOverlay(this);
+            CardShell.Shadow = new ThemeShadow();
+            CardShell.Translation = new System.Numerics.Vector3(0, 0, 24);
             SyncControlsFromPreferences();
             ApplyBackgroundOpacity(OverlayPreferences.BackgroundOpacity);
+            ApplyTextOpacityToAllVisibleContent();
         }
         catch
         {
@@ -128,37 +65,77 @@ public sealed partial class OverlayWindow : Window
     {
         SyncControlsFromPreferences();
         ApplyBackgroundOpacity(OverlayPreferences.BackgroundOpacity);
-        if (_lastStore is not null)
-        {
-            Update(_lastStore);
-        }
+        ApplyTextOpacityToAllVisibleContent();
+    }
+
+    private void OnTranscriptPreferencesChanged()
+    {
+        SyncRecordToggle();
     }
 
     private void SyncControlsFromPreferences()
     {
-        if (_bgOpacitySlider is null || _textOpacitySlider is null || _enToggle is null)
-        {
-            return;
-        }
+        _syncingControls = true;
+        BgOpacitySlider.Value = OverlayPreferences.BackgroundOpacity;
+        TextOpacitySlider.Value = OverlayPreferences.TextOpacity;
+        EnToggle.IsChecked = OverlayPreferences.ShowEnglish;
+        var showEn = OverlayPreferences.ShowEnglish;
+        EnToggle.Opacity = showEn ? 1.0 : 0.55;
+        EnToggle.Foreground = showEn ? ChromeBrush : ChromeMutedBrush;
+        SyncRecordToggle();
+        _syncingControls = false;
+    }
 
-        _updatingSliders = true;
-        _bgOpacitySlider.Value = OverlayPreferences.BackgroundOpacity;
-        _textOpacitySlider.Value = OverlayPreferences.TextOpacity;
-        _enToggle.IsChecked = OverlayPreferences.ShowEnglish;
-        _updatingSliders = false;
+    private void SyncRecordToggle()
+    {
+        var enabled = TranscriptPreferences.RecordEnabled;
+        RecordToggle.IsChecked = enabled;
+        RecordToggle.Opacity = enabled ? 1.0 : 0.55;
+        RecordToggle.Foreground = enabled ? ChromeBrush : ChromeMutedBrush;
     }
 
     private void ApplyBackgroundOpacity(double opacity)
     {
-        TintLayer.Opacity = opacity;
+        var value = Math.Clamp(opacity, 0.15, 1.0);
+
+        BackdropFill.Fill = new SolidColorBrush(Color.FromArgb(
+            (byte)Math.Round(value * 210),
+            18,
+            18,
+            24));
+
+        TintOverlay.Fill = new SolidColorBrush(Color.FromArgb(
+            (byte)Math.Round(value * 135),
+            0,
+            0,
+            0));
     }
 
     private double TextAlpha(double baseAlpha) =>
-        Math.Min(1.0, Math.Max(0, baseAlpha * OverlayPreferences.TextOpacity));
+        Math.Clamp(baseAlpha * _textOpacity, 0, 1);
+
+    private void ApplyTextOpacityToAllVisibleContent()
+    {
+        _textOpacity = OverlayPreferences.TextOpacity;
+
+        if (_lastStore is not null)
+        {
+            RenderStore(_lastStore);
+            return;
+        }
+
+        ZhLabel.Opacity = TextAlpha(0.9);
+        HistoryZhLabel.Opacity = TextAlpha(0.55);
+        HistoryEnLabel.Opacity = TextAlpha(0.45);
+        EnLabel.Opacity = TextAlpha(0.92);
+        ErrorLabel.Opacity = TextAlpha(0.95);
+    }
 
     public void Update(SubtitleStore store)
     {
         _lastStore = store;
+        SyncRecordToggle();
+        UpdateModeBadge();
 
         if (!store.IsVisible)
         {
@@ -167,13 +144,18 @@ public sealed partial class OverlayWindow : Window
         }
 
         Show();
+        RenderStore(store);
+    }
 
+    private void RenderStore(SubtitleStore store)
+    {
         if (!string.IsNullOrEmpty(store.ErrorMessage))
         {
             ErrorLabel.Text = store.ErrorMessage;
             ErrorLabel.Opacity = TextAlpha(0.95);
             ErrorLabel.Visibility = Visibility.Visible;
             HistoryZhLabel.Visibility = Visibility.Collapsed;
+            HistoryEnLabel.Visibility = Visibility.Collapsed;
             EnLabel.Visibility = Visibility.Collapsed;
             ZhLabel.Text = "";
             return;
@@ -184,11 +166,15 @@ public sealed partial class OverlayWindow : Window
         if (store.Segments.Count == 0)
         {
             HistoryZhLabel.Visibility = Visibility.Collapsed;
+            HistoryEnLabel.Visibility = Visibility.Collapsed;
             EnLabel.Visibility = Visibility.Collapsed;
             ZhLabel.Text = store.StatusMessage;
+            ZhLabel.Foreground = ChromeBrush;
             ZhLabel.Opacity = TextAlpha(0.9);
             return;
         }
+
+        ZhLabel.Foreground = new SolidColorBrush(Microsoft.UI.Colors.WhiteSmoke);
 
         if (store.Segments.Count >= 2)
         {
@@ -198,6 +184,7 @@ public sealed partial class OverlayWindow : Window
         else
         {
             HistoryZhLabel.Visibility = Visibility.Collapsed;
+            HistoryEnLabel.Visibility = Visibility.Collapsed;
             ApplyCurrent(store.Segments[^1]);
         }
     }
@@ -205,15 +192,23 @@ public sealed partial class OverlayWindow : Window
     private void ApplyHistory(SubtitleSegment seg)
     {
         var zh = DisplayChinese(seg);
-        if (string.IsNullOrEmpty(zh))
+        var en = seg.Text;
+        var showEn = OverlayPreferences.ShowEnglish && !string.IsNullOrEmpty(en);
+
+        if (string.IsNullOrEmpty(zh) && !showEn)
         {
             HistoryZhLabel.Visibility = Visibility.Collapsed;
+            HistoryEnLabel.Visibility = Visibility.Collapsed;
             return;
         }
 
-        HistoryZhLabel.Text = zh;
-        HistoryZhLabel.Opacity = TextAlpha(1);
-        HistoryZhLabel.Visibility = Visibility.Visible;
+        HistoryZhLabel.Text = string.IsNullOrEmpty(zh) ? "" : zh;
+        HistoryZhLabel.Opacity = TextAlpha(string.IsNullOrEmpty(zh) ? 0 : 0.55);
+        HistoryZhLabel.Visibility = string.IsNullOrEmpty(zh) ? Visibility.Collapsed : Visibility.Visible;
+
+        HistoryEnLabel.Text = showEn ? en : "";
+        HistoryEnLabel.Opacity = TextAlpha(showEn ? 0.45 : 0);
+        HistoryEnLabel.Visibility = showEn ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void ApplyCurrent(SubtitleSegment seg)
@@ -224,11 +219,13 @@ public sealed partial class OverlayWindow : Window
         if (string.IsNullOrEmpty(zh) && seg.Partial)
         {
             ZhLabel.Text = "…";
+            ZhLabel.Foreground = ChromeBrush;
             ZhLabel.Opacity = TextAlpha(0.78);
         }
         else
         {
             ZhLabel.Text = string.IsNullOrEmpty(zh) ? "…" : zh;
+            ZhLabel.Foreground = new SolidColorBrush(Microsoft.UI.Colors.WhiteSmoke);
             ZhLabel.Opacity = TextAlpha(seg.Partial ? 0.78 : 1);
         }
 
@@ -244,6 +241,21 @@ public sealed partial class OverlayWindow : Window
         }
     }
 
+    private void UpdateModeBadge()
+    {
+        if (!SessionController.Shared.IsRunning)
+        {
+            ModeBadge.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var modeId = SettingsStore.Shared.Engine.ReviseMode;
+        var label = ProviderOption.List(SettingsStore.Shared.Health, "reviseModes")
+            .FirstOrDefault(p => p.Id == modeId).Label ?? modeId;
+        ModeBadge.Text = label;
+        ModeBadge.Visibility = Visibility.Visible;
+    }
+
     private static string DisplayChinese(SubtitleSegment seg)
     {
         if (!string.IsNullOrWhiteSpace(seg.Translation))
@@ -254,7 +266,7 @@ public sealed partial class OverlayWindow : Window
         return seg.Partial ? "" : seg.Text;
     }
 
-    private void DragHandle_PointerPressed(object sender, PointerRoutedEventArgs e)
+    private void DragArea_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
         {
@@ -264,7 +276,7 @@ public sealed partial class OverlayWindow : Window
 
     private void BgOpacitySlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
-        if (_updatingSliders)
+        if (_syncingControls)
         {
             return;
         }
@@ -275,29 +287,57 @@ public sealed partial class OverlayWindow : Window
 
     private void TextOpacitySlider_ValueChanged(object sender, RangeBaseValueChangedEventArgs e)
     {
-        if (_updatingSliders)
+        if (_syncingControls)
         {
             return;
         }
 
         OverlayPreferences.TextOpacity = e.NewValue;
-        if (_lastStore is not null)
-        {
-            Update(_lastStore);
-        }
+        ApplyTextOpacityToAllVisibleContent();
     }
 
     private void EnToggle_Changed(object sender, RoutedEventArgs e)
     {
-        if (_updatingSliders || _enToggle is null)
+        if (_syncingControls)
         {
             return;
         }
 
-        OverlayPreferences.ShowEnglish = _enToggle.IsChecked == true;
+        var on = EnToggle.IsChecked == true;
+        OverlayPreferences.ShowEnglish = on;
+        EnToggle.Opacity = on ? 1.0 : 0.55;
+        EnToggle.Foreground = on ? ChromeBrush : ChromeMutedBrush;
+
         if (_lastStore is not null)
         {
-            Update(_lastStore);
+            RenderStore(_lastStore);
+        }
+    }
+
+    private void RecordToggle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_syncingControls)
+        {
+            return;
+        }
+
+        var enabled = RecordToggle.IsChecked == true;
+        TranscriptPreferences.RecordEnabled = enabled;
+        SyncRecordToggle();
+
+        if (enabled && SessionController.Shared.IsRunning)
+        {
+            try
+            {
+                var modeId = SettingsStore.Shared.Engine.ReviseMode;
+                var label = ProviderOption.List(SettingsStore.Shared.Health, "reviseModes")
+                    .FirstOrDefault(p => p.Id == modeId).Label ?? modeId;
+                TranslationRecorder.Shared.BeginSessionIfNeeded(modeId, label);
+            }
+            catch
+            {
+                TranslationRecorder.Shared.BeginSessionIfNeeded("speech", "speech");
+            }
         }
     }
 

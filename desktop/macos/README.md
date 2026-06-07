@@ -35,7 +35,7 @@ desktop/macos/
 cd desktop/macos && ./run.sh
 ```
 
-详见 [docs/development.md](../../docs/development.md)。
+详见 [docs/development.md](../../docs/development.md)。Windows 客户端见 [windows/README.md](../windows/README.md)。
 
 ## App 变体
 

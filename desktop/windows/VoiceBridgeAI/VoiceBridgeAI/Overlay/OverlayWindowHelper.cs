@@ -10,12 +10,10 @@ public static class OverlayWindowHelper
 {
     private static readonly IntPtr HWND_TOPMOST = new(-1);
     private const uint SWP_SHOWWINDOW = 0x0040;
-    private const int GWL_EXSTYLE = -20;
-    private const int WS_EX_LAYERED = 0x00080000;
     private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
     private const int DWMSBT_NONE = 3;
     public const int DefaultWidth = 760;
-    public const int DefaultHeight = 212;
+    public const int DefaultHeight = 200;
 
     public static void ConfigureOverlay(Window window)
     {
@@ -68,9 +66,7 @@ public static class OverlayWindowHelper
             return;
         }
 
-        var exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-        SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
-
+        // Do not set WS_EX_LAYERED here — it breaks WinUI per-pixel alpha unless UpdateLayeredWindow is used.
         var margins = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
         _ = DwmExtendFrameIntoClientArea(hwnd, ref margins);
 
@@ -158,12 +154,6 @@ public static class OverlayWindowHelper
     }
 
     private const uint SPI_GETWORKAREA = 0x0030;
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS margins);

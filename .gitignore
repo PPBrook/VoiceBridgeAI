@@ -22,6 +22,7 @@ transcripts/
 # macOS desktop build artifacts
 desktop/macos/.build/
 desktop/macos/dist/
+desktop/windows/dist/
 desktop/macos/scripts/bundle-seed/local.secrets.env
 desktop/macos/scripts/bundle-seed/cloud.secrets.env
 
@@ -37,3 +38,4 @@ desktop/windows/dist/
 
 # logs (local dev / App Support copies)
 *.log
+*.binlog

@@ -19,6 +19,9 @@ public sealed class SettingsWindow : Window
         Visibility = Visibility.Collapsed,
     };
 
+    private readonly CloudSettingsPanel _cloudPanel = new();
+    private readonly TranscriptSettingsPanel _transcriptPanel = new();
+    private readonly LocalModelsSettingsPanel? _localModelsPanel = BundleVariant.IncludesLocalModels ? new() : null;
     private JsonDocument? _healthDoc;
     private EngineConfig _engine = new();
     private bool _loaded;
@@ -35,18 +38,55 @@ public sealed class SettingsWindow : Window
         var root = new Grid { Padding = new Thickness(28, 24, 28, 24) };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
-        var header = new StackPanel { Spacing = 4, Margin = new Thickness(0, 0, 0, 16) };
-        header.Children.Add(new TextBlock { Text = "引擎设置", FontSize = 22, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
+        var header = new StackPanel { Spacing = 4, Margin = new Thickness(0, 0, 0, 12) };
+        header.Children.Add(new TextBlock { Text = "VoiceBridgeAI 设置", FontSize = 22, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold });
         header.Children.Add(new TextBlock
         {
-            Text = "默认可直接用本地 Whisper + Argos。云端推荐句中 MT + 句末 LLM。",
+            Text = "引擎 / 本地模型 / 字幕记录 / 接口密钥 — 各 Tab 对应 macOS 设置面板。",
             TextWrapping = TextWrapping.WrapWholeWords,
             Opacity = 0.8,
         });
         Grid.SetRow(header, 0);
         root.Children.Add(header);
+
+        var tabs = new TabView { HorizontalAlignment = HorizontalAlignment.Stretch };
+        tabs.TabItems.Add(new TabViewItem
+        {
+            Header = "引擎",
+            Content = BuildEngineTab(),
+            IsSelected = true,
+        });
+        if (_localModelsPanel is not null)
+        {
+            _localModelsPanel.OnEngineRefreshNeeded = RefreshEngineFromStore;
+            tabs.TabItems.Add(new TabViewItem
+            {
+                Header = "本地模型",
+                Content = _localModelsPanel.Root,
+            });
+        }
+        tabs.TabItems.Add(new TabViewItem
+        {
+            Header = "字幕记录",
+            Content = _transcriptPanel.Root,
+        });
+        tabs.TabItems.Add(new TabViewItem
+        {
+            Header = "接口密钥",
+            Content = _cloudPanel.Root,
+        });
+        Grid.SetRow(tabs, 1);
+        root.Children.Add(tabs);
+
+        return root;
+    }
+
+    private UIElement BuildEngineTab()
+    {
+        var root = new Grid();
+        root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
 
         var scroll = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         var form = new StackPanel { Spacing = 16 };
@@ -55,7 +95,7 @@ public sealed class SettingsWindow : Window
         form.Children.Add(MakeField("句末润色", "推荐 LLM · 句末润色与断句", _finalCombo));
         form.Children.Add(MakeField("观看场景", null, _reviseCombo));
         scroll.Content = form;
-        Grid.SetRow(scroll, 1);
+        Grid.SetRow(scroll, 0);
         root.Children.Add(scroll);
 
         var footer = new StackPanel { Spacing = 10, Margin = new Thickness(0, 16, 0, 0) };
@@ -68,7 +108,7 @@ public sealed class SettingsWindow : Window
         footer.Children.Add(buttons);
         _statusPanel.Child = _statusText;
         footer.Children.Add(_statusPanel);
-        Grid.SetRow(footer, 2);
+        Grid.SetRow(footer, 1);
         root.Children.Add(footer);
 
         return root;
@@ -104,11 +144,28 @@ public sealed class SettingsWindow : Window
 
         try
         {
+            if (Content is FrameworkElement root)
+            {
+                if (_localModelsPanel is not null)
+                {
+                    _localModelsPanel.HostRoot = root.XamlRoot;
+                }
+
+                _transcriptPanel.AttachHostWindow(this);
+            }
+
             await SettingsStore.Shared.RefreshAsync();
             _healthDoc?.Dispose();
             _healthDoc = JsonDocument.Parse(SettingsStore.Shared.Health.GetRawText());
             _engine = Clone(SettingsStore.Shared.Engine);
             PopulateCombos();
+            if (_localModelsPanel is not null)
+            {
+                await _localModelsPanel.ReloadAsync();
+            }
+
+            _transcriptPanel.Reload();
+            await _cloudPanel.ReloadAsync();
             ShowStatus(null, StatusKind.Info);
             _loaded = true;
         }
@@ -119,6 +176,21 @@ public sealed class SettingsWindow : Window
         finally
         {
             _saveButton.IsEnabled = true;
+        }
+    }
+
+    private void RefreshEngineFromStore()
+    {
+        try
+        {
+            _healthDoc?.Dispose();
+            _healthDoc = JsonDocument.Parse(SettingsStore.Shared.Health.GetRawText());
+            _engine = Clone(SettingsStore.Shared.Engine);
+            PopulateCombos();
+        }
+        catch
+        {
+            // health already merged by local model actions
         }
     }
 

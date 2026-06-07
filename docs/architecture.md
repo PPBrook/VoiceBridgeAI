@@ -38,7 +38,9 @@ flowchart LR
 | 字幕记录 | UserDefaults | 目录、模板、形式、记录开关 |
 
 **开发模式**：数据在仓库根（须同时存在 `run.sh` 与 `server/main.py`）。  
-**App 模式**：`~/Library/Application Support/VoiceBridgeAI{,-Cloud,-Local}/`（由 `BundleVariant` / `VOICEBRIDGE_BUNDLE_VARIANT` 区分）。
+**App 模式**：`~/Library/Application Support/VoiceBridgeAI{,-Cloud,-Local}/` 或 Windows `%APPDATA%\VoiceBridgeAI{,-Cloud,-Local}\`（由 `BundleVariant` / `VOICEBRIDGE_BUNDLE_VARIANT` 区分）。
+
+客户端偏好：macOS 用 UserDefaults；Windows 用 App 数据目录下 `overlay-prefs.json`、`transcript-prefs.json`。
 
 ## 引擎三层
 
@@ -85,6 +87,19 @@ main.py → app_bootstrap.create_app() → routes/*
 | 记录定稿 | `TranslationRecorder` + `TranscriptPreferences` |
 | 云端版 UI | `BundleVariant` 隐藏本地模型 Tab |
 
+## Windows 模块要点
+
+| 机制 | 实现 |
+|------|------|
+| 系统音频 | WASAPI loopback（`SystemAudioCapture` / NAudio） |
+| 侧车启动 | `ServerManager` → `run-server.ps1` 或 dev 根目录 `run.ps1` |
+| 悬浮 UI | `OverlayWindow` + `OverlayPreferences` |
+| 设置 | `SettingsWindow`（引擎 / 本地模型 / 字幕记录 / 接口密钥） |
+| 托盘 | `TrayController` |
+| 记录定稿 | `TranslationRecorder` + `TranscriptPreferences`（同 macOS 逻辑） |
+
+详见 [desktop/windows/README.md](../desktop/windows/README.md)。
+
 ## 本地模型存储
 
 | 模型 | 标记 | 数据 |
@@ -99,5 +114,6 @@ main.py → app_bootstrap.create_app() → routes/*
 | 分支 | 说明 |
 |------|------|
 | `main` | macOS App + Python 侧车（当前） |
+| `feat/winapp` | Windows WinUI 客户端（与 main 并行开发） |
 | `legacy/web-only` | 浏览器版备份 |
 | `feat/chrome-extension` | Chrome 扩展实验 |

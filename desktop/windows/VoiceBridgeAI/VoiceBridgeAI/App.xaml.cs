@@ -39,7 +39,7 @@ public partial class App : Application
 
             try
             {
-                _tray = new TrayController(ShowMainWindow, ShowSettingsWindow, Quit);
+                _tray = new TrayController(() => ShowMainWindow(), ShowSettingsWindow, Quit);
                 _mainWindow.AttachTray(_tray);
             }
             catch (Exception ex)
@@ -93,7 +93,7 @@ public partial class App : Application
         _overlay?.Update(SessionController.Shared.Store);
     }
 
-    public void ShowMainWindow()
+    public void ShowMainWindow(string? errorMessage = null)
     {
         if (_mainWindow is null)
         {
@@ -101,6 +101,10 @@ public partial class App : Application
         }
 
         _mainWindow.Activate();
+        if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            _mainWindow.ShowError(errorMessage);
+        }
     }
 
     public void ShowSettingsWindow()

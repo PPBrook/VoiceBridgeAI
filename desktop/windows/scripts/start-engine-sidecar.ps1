@@ -1,7 +1,8 @@
 # Sidecar bootstrap: ensure .venv then start server (called from WinUI app)
 $ErrorActionPreference = "Stop"
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = if ($env:VOICEBRIDGE_DATA_DIR) { $env:VOICEBRIDGE_DATA_DIR } else {
-    Split-Path -Parent $MyInvocation.MyCommand.Path
+    (Resolve-Path (Join-Path $ScriptDir "../../..")).Path
 }
 $Log = Join-Path $Root "sidecar-bootstrap.log"
 

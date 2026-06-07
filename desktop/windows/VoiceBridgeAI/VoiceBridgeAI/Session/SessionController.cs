@@ -16,7 +16,7 @@ public sealed class SessionController
     private readonly WebSocketSession _webSocket = new();
     private SystemAudioCapture? _capture;
     private EngineConfig _engineConfig = new();
-    private PcmSilenceMonitor _silenceMonitor;
+    private PcmSilenceMonitor _silenceMonitor = new();
     private readonly SynchronizationContext? _uiContext;
 
     private SessionController()
@@ -29,6 +29,7 @@ public sealed class SessionController
         {
             _silenceMonitor.Reset();
             Store.ApplyAsr(payload);
+            RecordTranslationIfNeeded(payload);
         });
 
         _webSocket.ErrorReceived += message => PostToUi(() =>
@@ -122,6 +123,7 @@ public sealed class SessionController
             IsRunning = true;
             _silenceMonitor.Reset();
             Store.Reset();
+            BeginTranslationRecordingIfNeeded();
             return null;
         }
         finally
@@ -139,6 +141,7 @@ public sealed class SessionController
         _ = _webSocket.DisconnectAsync();
         IsRunning = false;
         IsStarting = false;
+        TranslationRecorder.Shared.EndSession();
         Store.Hide();
         NotifyStateChanged();
     }
@@ -157,5 +160,63 @@ public sealed class SessionController
         }
 
         _uiContext.Post(_ => action(), null);
+    }
+
+    private void BeginTranslationRecordingIfNeeded()
+    {
+        if (!TranscriptPreferences.RecordEnabled)
+        {
+            return;
+        }
+
+        var modeId = _engineConfig.ReviseMode;
+        var label = ReviseModeLabel(modeId);
+        TranslationRecorder.Shared.BeginSession(modeId, label);
+    }
+
+    private static void RecordTranslationIfNeeded(IReadOnlyDictionary<string, object?> payload)
+    {
+        if (!TranscriptPreferences.RecordEnabled)
+        {
+            return;
+        }
+
+        if (payload.TryGetValue("final", out var finalVal) && finalVal is not true)
+        {
+            return;
+        }
+
+        var english = payload.TryGetValue("text", out var textVal)
+            ? Convert.ToString(textVal)?.Trim() ?? ""
+            : "";
+        if (string.IsNullOrEmpty(english))
+        {
+            return;
+        }
+
+        var segmentId = payload.TryGetValue("segmentId", out var segVal)
+            ? Convert.ToString(segVal) ?? ""
+            : "";
+        var chinese = payload.TryGetValue("translation", out var trVal)
+            ? Convert.ToString(trVal) ?? ""
+            : "";
+        var revised = (payload.TryGetValue("revise", out var reviseVal) && reviseVal is true)
+            || (payload.TryGetValue("lookback", out var lookbackVal) && lookbackVal is true);
+
+        TranslationRecorder.Shared.Record(segmentId, english, chinese, revised);
+    }
+
+    private static string ReviseModeLabel(string modeId)
+    {
+        try
+        {
+            var health = SettingsStore.Shared.Health;
+            return ProviderOption.List(health, "reviseModes")
+                .FirstOrDefault(p => p.Id == modeId).Label ?? modeId;
+        }
+        catch
+        {
+            return modeId;
+        }
     }
 }

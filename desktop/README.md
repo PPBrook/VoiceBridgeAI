@@ -3,7 +3,7 @@
 | 平台 | 目录 | 技术栈 | 状态 |
 |------|------|--------|------|
 | macOS | [macos/](macos/) | Swift + AppKit + ScreenCaptureKit | ✅ 主分支维护，含 releases |
-| Windows | [windows/](windows/) | C# / WinUI 3 + WASAPI (NAudio) | ✅ `feat/winapp`，功能对齐 macOS 壳 |
+| Windows | [windows/](windows/) | C# / WinUI 3 + WASAPI (NAudio) | ✅ 功能对齐 macOS 壳；打包脚本就绪 |
 
 两端共用 **同一 Python 引擎**（`server/`）：`http://127.0.0.1:8765` + `ws://127.0.0.1:8765/ws`。
 
@@ -13,7 +13,11 @@
 |------|-------|---------|
 | 系统音频采集 | ScreenCaptureKit | WASAPI loopback |
 | 悬浮字幕 | NSPanel | WinUI 置顶窗 |
-| 设置 · 引擎 / 本地模型 / 字幕记录 / 接口密钥 | ✅ | ✅ |
+| 设置 · 引擎 | ✅ | ✅ |
+| 设置 · 本地模型 | ✅（cloud 无 Tab） | ✅（cloud 无 Tab） |
+| 设置 · 字幕记录 | ✅ | ✅ |
+| 设置 · 接口密钥 | ✅ | ✅ |
+| 托盘 / 菜单栏 | 菜单栏 | 通知区托盘 |
 | Cloud / Local 打包 | `build-app.sh` | `build-app.ps1` |
 
 ## 开发入口
@@ -115,3 +119,12 @@ cd desktop\windows
 | local | `VoiceBridgeAI-Local.app` | `VoiceBridgeAI-Local/` + zip |
 
 构建产物在 `dist/`（gitignore）；macOS releases 见 `releases/`（LFS）。
+
+## 文档
+
+| 文档 | 内容 |
+|------|------|
+| [macos/README.md](macos/README.md) | macOS 目录与变体 |
+| [windows/README.md](windows/README.md) | Windows 目录、进度、双终端 |
+| [docs/development.md](../docs/development.md) | 双端开发流程 |
+| [docs/windows.md](../docs/windows.md) | Windows 打包与排错 |

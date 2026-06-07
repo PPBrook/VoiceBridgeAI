@@ -157,9 +157,15 @@ public sealed class SettingsStore
     public async Task<string> SaveEngineAsync(EngineConfig engine, CancellationToken ct = default)
     {
         using var doc = await ApiClient.PostJsonAsync("api/engine/settings", engine.ToEnginePayload(), ct);
-        _healthDoc?.Dispose();
-        _healthDoc = JsonDocument.Parse(doc.RootElement.GetRawText());
-        Engine = EngineConfig.FromHealth(_healthDoc.RootElement);
+        MergeHealth(doc.RootElement);
+        Engine = EngineConfig.FromHealth(Health);
         return "引擎已保存";
+    }
+
+    public void MergeHealth(JsonElement response)
+    {
+        _healthDoc?.Dispose();
+        _healthDoc = JsonDocument.Parse(response.GetRawText());
+        Engine = EngineConfig.FromHealth(_healthDoc.RootElement);
     }
 }

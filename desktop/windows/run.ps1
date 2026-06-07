@@ -9,6 +9,14 @@ $LogPath = Join-Path $env:LOCALAPPDATA "VoiceBridgeAI\client-startup.log"
 
 Write-Host "VoiceBridgeAI Windows client - repo: $RepoRoot"
 
+& (Join-Path $Root "check-build-env.ps1")
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "Build environment incomplete — dotnet build may fail. Continue anyway? (y/N)"
+    $answer = Read-Host
+    if ($answer -notmatch '^[yY]') { exit 1 }
+}
+
 $Project = Join-Path $Root "VoiceBridgeAI/VoiceBridgeAI/VoiceBridgeAI.csproj"
 if (-not (Test-Path $Project)) {
     Write-Error "Missing project: $Project"

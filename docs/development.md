@@ -2,6 +2,8 @@
 
 ## 日常流程（两个终端）
 
+**macOS**
+
 ```bash
 # 终端 1 — 引擎
 cd VoiceBridgeAI
@@ -14,8 +16,24 @@ cd VoiceBridgeAI/desktop/macos
 ./run.sh
 ```
 
-改 **Python**（`server/`）后：终端 1 `Ctrl+C` → `./run.sh`。  
-改 **Swift** 后：终端 2 `Ctrl+C` → `./run.sh`（自动重新编译）。
+**Windows**
+
+```powershell
+# 终端 1 — 引擎（保持运行，不要关）
+cd C:\Users\pengp\VoiceBridgeAI
+.\run.ps1
+
+# 终端 2 — WinUI 客户端（新开一个 PowerShell 窗口，不要和终端 1 粘在同一段里执行）
+cd C:\Users\pengp\VoiceBridgeAI\desktop\windows
+.\run.ps1
+```
+
+若终端 1 提示端口 8765 已被占用且 health 正常，说明引擎已在跑，**直接开终端 2** 即可。
+
+引擎脚本结束时会自动把当前目录从 `server\` 还原到仓库根，避免 `cd desktop\windows` 找不到路径。
+
+改 **Python**（`server/`）后：终端 1 `Ctrl+C` → 重新运行引擎脚本。  
+改 **客户端** 后：终端 2 `Ctrl+C` → 重新运行 `run.ps1`（自动重新编译）。
 
 ## 仓库结构
 
@@ -32,6 +50,7 @@ VoiceBridgeAI/
     routes/
     config/ core/ providers/
   desktop/macos/
+  desktop/windows/   WinUI 客户端（feat/winapp）
   docs/
   models/          开发时本地模型（gitignore）
   transcripts/     开发时字幕记录（gitignore）
@@ -74,13 +93,18 @@ VoiceBridgeAI/
 
 Swift 开发模式通过 `VOICEBRIDGE_ROOT` / `RepoRoot` 定位仓库根；引擎通过 `VOICEBRIDGE_DATA_DIR` 读写配置。
 
-Application Support 目录名：
+**Windows** 开发时引擎同样使用仓库根；安装版使用 `%APPDATA%\VoiceBridgeAI\`（Cloud/Local 变体见 [windows.md](windows.md)）。
+
+Application Support / AppData 目录名：
 
 | 场景 | 路径 |
 |------|------|
 | 开发 / 标准 App | `~/Library/Application Support/VoiceBridgeAI/` |
 | Cloud 变体 | `~/Library/Application Support/VoiceBridgeAI-Cloud/` |
 | Local 变体 | `~/Library/Application Support/VoiceBridgeAI-Local/` |
+| Windows 标准 | `%APPDATA%\VoiceBridgeAI\` |
+| Windows Cloud | `%APPDATA%\VoiceBridgeAI-Cloud\` |
+| Windows Local | `%APPDATA%\VoiceBridgeAI-Local\` |
 
 ## 本地模型
 
@@ -98,6 +122,8 @@ Argos 标记在 `models/argos/.installed-en-zh`；语言包默认在 `~/.local/s
 
 ## 界面行为
 
+### macOS
+
 | 位置 | 行为 |
 |------|------|
 | 主窗口 × | 退出 App |
@@ -109,7 +135,17 @@ Argos 标记在 `models/argos/.installed-en-zh`；语言包默认在 `~/.local/s
 | 设置 → 字幕记录 | 目录、模板、内容形式、格式转换 |
 | 菜单栏 · 打开字幕记录 | Finder 打开记录目录 |
 
-暂停或切视频约 **2.5s** 静音会清空悬浮字幕（会话不中断）。
+### Windows
+
+| 位置 | 行为 |
+|------|------|
+| 主窗口关闭 | 退出 App（暂无「收起到托盘」） |
+| 观看场景 / 引擎 | 主窗口或 设置 → 引擎 |
+| 悬浮 · 记 / EN / 背景 / 文字 | 同 macOS |
+| 设置四 Tab | 引擎、本地模型、字幕记录、接口密钥 |
+| 托盘 · 打开字幕记录 | 资源管理器打开 `transcripts\` |
+
+两端：暂停或切视频约 **2.5s** 静音会清空悬浮字幕（会话不中断）。
 
 ### 字幕记录形式
 
@@ -132,11 +168,22 @@ Argos 标记在 `models/argos/.installed-en-zh`；语言包默认在 `~/.local/s
 
 ## 故障排查
 
-**端口占用**
+### 通用
+
+**端口占用（macOS）**
 
 ```bash
 kill $(lsof -t -iTCP:8765 -sTCP:LISTEN)
 ./run.sh
+```
+
+**端口占用（Windows）**
+
+```powershell
+Get-NetTCPConnection -LocalPort 8765 -ErrorAction SilentlyContinue |
+  Select-Object -ExpandProperty OwningProcess -Unique |
+  ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }
+.\run.ps1
 ```
 
 **改代码后行为不对** — 重启对应终端进程。
@@ -144,3 +191,7 @@ kill $(lsof -t -iTCP:8765 -sTCP:LISTEN)
 **本地模型状态异常** — 重启引擎；Argos 删除后需重启以刷新语言列表。
 
 **Whisper 标记与权重分离** — 标记在 `models/whisper/`，HF 缓存可能在 `models/hf/hub/` 或 `~/.cache/huggingface/`；App Support 下若缺标记但 hub 有数据，可 `touch models/whisper/.installed-tiny.en`。
+
+### Windows 专项
+
+Smart App Control、未签名 exe、WinApp Runtime 缺失、双终端误粘贴命令等见 [windows.md](windows.md)。

@@ -73,25 +73,30 @@ public sealed class SystemAudioCapture : IDisposable
                 samples = new WdlResamplingSampleProvider(samples, 48000);
             }
 
-            var frameCount = e.BytesRecorded / _capture.WaveFormat.BlockAlign;
-            var floatBuffer = new float[Math.Max(frameCount, 4800)];
-            var read = samples.Read(floatBuffer, 0, floatBuffer.Length);
-            if (read <= 0)
+            var floatBuffer = new float[4096];
+            using var pcmStream = new MemoryStream();
+            int read;
+            while ((read = samples.Read(floatBuffer, 0, floatBuffer.Length)) > 0)
+            {
+                var pcm = new byte[read * 2];
+                for (var i = 0; i < read; i++)
+                {
+                    var clamped = Math.Clamp(floatBuffer[i], -1f, 1f);
+                    var sample = clamped < 0
+                        ? (short)(clamped * 32768f)
+                        : (short)(clamped * 32767f);
+                    BitConverter.TryWriteBytes(pcm.AsSpan(i * 2, 2), sample);
+                }
+
+                pcmStream.Write(pcm, 0, pcm.Length);
+            }
+
+            if (pcmStream.Length == 0)
             {
                 return;
             }
 
-            var pcm = new byte[read * 2];
-            for (var i = 0; i < read; i++)
-            {
-                var clamped = Math.Clamp(floatBuffer[i], -1f, 1f);
-                var sample = clamped < 0
-                    ? (short)(clamped * 32768f)
-                    : (short)(clamped * 32767f);
-                BitConverter.TryWriteBytes(pcm.AsSpan(i * 2, 2), sample);
-            }
-
-            PcmAvailable?.Invoke(pcm);
+            PcmAvailable?.Invoke(pcmStream.ToArray());
         }
         catch (Exception ex)
         {
