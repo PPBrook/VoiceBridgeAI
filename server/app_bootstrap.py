@@ -132,6 +132,9 @@ async def lifespan(_app: FastAPI):
 
 def create_app() -> FastAPI:
     load_env_file()
+    from config.bundle_variant import configure_bundled_runtime
+
+    configure_bundled_runtime()
     logging.basicConfig(level=logging.INFO)
     app = FastAPI(title="VoiceBridgeAI", version="0.1.0", lifespan=lifespan)
     from routes import register_routes

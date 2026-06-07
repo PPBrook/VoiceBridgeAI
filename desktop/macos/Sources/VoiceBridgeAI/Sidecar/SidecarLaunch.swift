@@ -31,7 +31,7 @@ struct SidecarLaunch {
         var env = ProcessInfo.processInfo.environment
         env["VOICEBRIDGE_DATA_DIR"] = AppSupport.dataDirectory.path
         env["VOICEBRIDGE_PORT"] = String(AppSettings.port)
-        env["VOICEBRIDGE_OPTIONAL_LOCAL_MODELS"] = "1"
+        applyBundleVariant(&env)
         return Plan(
             executable: URL(fileURLWithPath: "/bin/bash"),
             arguments: [script.path],
@@ -48,7 +48,7 @@ struct SidecarLaunch {
         var env = ProcessInfo.processInfo.environment
         env["VOICEBRIDGE_PORT"] = String(AppSettings.port)
         env["VOICEBRIDGE_DATA_DIR"] = root.path
-        env["VOICEBRIDGE_OPTIONAL_LOCAL_MODELS"] = "1"
+        applyBundleVariant(&env)
         return Plan(
             executable: URL(fileURLWithPath: "/bin/bash"),
             arguments: [runSh.path],
@@ -56,5 +56,18 @@ struct SidecarLaunch {
             environment: env,
             modeLabel: "dev"
         )
+    }
+
+    private static func applyBundleVariant(_ env: inout [String: String]) {
+        switch BundleVariant.current {
+        case .cloud:
+            env["VOICEBRIDGE_BUNDLE_VARIANT"] = "cloud"
+            env["VOICEBRIDGE_OPTIONAL_LOCAL_MODELS"] = "1"
+        case .local:
+            env["VOICEBRIDGE_BUNDLE_VARIANT"] = "local"
+            env["VOICEBRIDGE_OPTIONAL_LOCAL_MODELS"] = "0"
+        case .standard:
+            env["VOICEBRIDGE_OPTIONAL_LOCAL_MODELS"] = "1"
+        }
     }
 }
