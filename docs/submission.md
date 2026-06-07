@@ -4,7 +4,7 @@
 
 ## 快速试用
 
-1. 下载 [releases/VoiceBridgeAI-Local.zip](../releases/VoiceBridgeAI-Local.zip)（Git LFS，约 442 MB）
+1. 下载 [releases/VoiceBridgeAI-Local.zip](../releases/VoiceBridgeAI-Local.zip)（Git LFS，约 428 MB）
    - 浏览器：打开上述链接 → **Download**
    - 若 clone 仓库：执行 `git lfs pull`，文件在 `releases/` 目录
 2. 解压得到 `VoiceBridgeAI-Local.app`
