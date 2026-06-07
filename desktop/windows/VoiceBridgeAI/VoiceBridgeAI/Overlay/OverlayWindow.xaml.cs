@@ -4,7 +4,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
-using System.Numerics;
 using VoiceBridgeAI.Session;
 
 namespace VoiceBridgeAI.Overlay;
@@ -34,7 +33,6 @@ public sealed partial class OverlayWindow : Window
         try
         {
             OverlayWindowHelper.ConfigureOverlay(this);
-            OverlayBorder.Translation = new Vector3(0, 0, 24);
             SyncControlsFromPreferences();
             ApplyBackgroundOpacity(OverlayPreferences.BackgroundOpacity);
         }

@@ -10,10 +10,6 @@
             BorderBrush="#24FFFFFF"
             BorderThickness="1"
             CornerRadius="16">
-            <Border.Shadow>
-                <ThemeShadow />
-            </Border.Shadow>
-
             <Grid Padding="16,12,16,18" RowSpacing="8">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -103,7 +99,8 @@
                             <Button
                                 Click="StopClicked"
                                 Content="×"
-                                Style="{StaticResource OverlayStopButtonStyle}" />
+                                Style="{StaticResource OverlayStopButtonStyle}"
+                                ToolTipService.ToolTip="停止字幕" />
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -113,7 +110,6 @@
                     Grid.Row="1"
                     FontSize="14"
                     Foreground="#8FC7C7C7"
-                    LineHeight="20"
                     TextAlignment="Center"
                     TextWrapping="WrapWholeWords"
                     Visibility="Collapsed" />
@@ -124,7 +120,6 @@
                     FontSize="26"
                     FontWeight="SemiBold"
                     Foreground="#FAFAFA"
-                    LineHeight="34"
                     Text="等待字幕…"
                     TextAlignment="Center"
                     TextWrapping="WrapWholeWords" />
@@ -134,7 +129,6 @@
                     Grid.Row="3"
                     FontSize="13"
                     Foreground="#D0D0D0"
-                    LineHeight="18"
                     TextAlignment="Center"
                     TextWrapping="WrapWholeWords"
                     Visibility="Collapsed" />
