@@ -1,4 +1,4 @@
-using Microsoft.UI.Input;
+using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -39,15 +39,11 @@ public sealed partial class OverlayWindow : Window
             VerticalAlignment = VerticalAlignment.Center,
         };
         title.PointerPressed += DragHandle_PointerPressed;
-        title.PointerEntered += DragHandle_PointerEntered;
-        title.PointerExited += DragHandle_PointerExited;
         Grid.SetColumn(title, 0);
         HeaderHost.Children.Add(title);
 
         var dragSpacer = new Border { Background = new SolidColorBrush(Colors.Transparent) };
         dragSpacer.PointerPressed += DragHandle_PointerPressed;
-        dragSpacer.PointerEntered += DragHandle_PointerEntered;
-        dragSpacer.PointerExited += DragHandle_PointerExited;
         Grid.SetColumn(dragSpacer, 1);
         HeaderHost.Children.Add(dragSpacer);
 
@@ -264,22 +260,6 @@ public sealed partial class OverlayWindow : Window
         if (e.GetCurrentPoint(null).Properties.IsLeftButtonPressed)
         {
             WindowDragHelper.Drag(this);
-        }
-    }
-
-    private void DragHandle_PointerEntered(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is UIElement element)
-        {
-            element.ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.SizeAll);
-        }
-    }
-
-    private void DragHandle_PointerExited(object sender, PointerRoutedEventArgs e)
-    {
-        if (sender is UIElement element)
-        {
-            element.ProtectedCursor = InputSystemCursor.Create(InputSystemCursorShape.Arrow);
         }
     }
 
