@@ -7,6 +7,8 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Platforms>x64</Platforms>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <!-- Avoid unsigned apphost .exe blocked by Smart App Control / WDAC -->
+    <UseAppHost>false</UseAppHost>
     <UseWinUI>true</UseWinUI>
     <UseWPF>false</UseWPF>
     <UseWindowsForms>false</UseWindowsForms>

@@ -26,7 +26,7 @@ public static class Program
         catch (Exception ex)
         {
             StartupDiagnostics.Log(
-                "Bootstrap.Initialize failed — install Windows App Runtime 1.6 (x64)",
+                "Bootstrap.Initialize failed - install Windows App Runtime 1.6 (x64)",
                 ex);
             Environment.Exit(1);
             return;
