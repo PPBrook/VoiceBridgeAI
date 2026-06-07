@@ -4,6 +4,7 @@
 |------|------|
 | [development.md](development.md) | 开发流程、数据目录、功能说明、故障排查 |
 | [architecture.md](architecture.md) | 数据流、引擎、侧车、App 变体 |
+| [submission.md](submission.md) | **作品提交 / 评审说明**（安装包与合并归档） |
 
 代码说明：
 
