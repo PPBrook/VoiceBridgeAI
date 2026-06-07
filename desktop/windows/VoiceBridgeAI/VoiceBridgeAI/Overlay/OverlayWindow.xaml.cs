@@ -151,7 +151,7 @@ public sealed partial class OverlayWindow : Window
     private void ApplyBackgroundOpacity(double opacity)
     {
         var alpha = (byte)Math.Round(opacity * 255);
-        OverlayBorder.Background = new SolidColorBrush(Color.FromArgb(alpha, 0, 0, 0));
+        OverlayBorder.Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(alpha, 0, 0, 0));
     }
 
     private double TextAlpha(double baseAlpha) =>
