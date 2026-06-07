@@ -25,7 +25,6 @@
    - 在 **GitHub 网页**打开链接 → 点右上角 **Download**（勿复制 raw 链接到浏览器）
    - 若 clone 仓库：执行 `git lfs pull`
    - 下载后校验：`file VoiceBridgeAI-Cloud.zip` 应显示 `Zip archive`；体积约 25 MB（不是 133 B 或几百 KB 的 HTML/LFS 指针）
-   - SHA256 见 [releases/SHA256SUMS](../releases/SHA256SUMS)
 2. 解压 → **右键打开** `VoiceBridgeAI-Cloud.app`
 3. 其余步骤同上（屏幕录制 → 开始字幕）
 
@@ -39,14 +38,13 @@
 |----------|----------|
 | ~133 B，内容为 `version https://git-lfs.github.com/...` | clone 后未执行 `git lfs pull` |
 | ~300 KB，用文本打开是 HTML | 用了 raw 直链或 404 页面，需在 GitHub 文件页点 **Download** |
-| 与 [SHA256SUMS](../releases/SHA256SUMS) 不一致 | 下载不完整，请重新下载 |
+| 体积明显偏小（如几 MB） | 下载不完整，请重新下载 |
 
 终端校验示例：
 
 ```bash
 file ~/Downloads/VoiceBridgeAI-Cloud.zip
-shasum -a 256 ~/Downloads/VoiceBridgeAI-Cloud.zip
-# 应与 releases/SHA256SUMS 中 VoiceBridgeAI-Cloud.zip 一致
+ls -lh ~/Downloads/VoiceBridgeAI-Cloud.zip
 ```
 
 也可在终端解压：`ditto -xk ~/Downloads/VoiceBridgeAI-Cloud.zip ~/Desktop/`
