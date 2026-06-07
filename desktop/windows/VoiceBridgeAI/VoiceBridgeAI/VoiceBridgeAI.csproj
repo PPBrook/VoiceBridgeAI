@@ -10,7 +10,9 @@
     <UseWinUI>true</UseWinUI>
     <UseWPF>false</UseWPF>
     <UseWindowsForms>false</UseWindowsForms>
-    <EnableMsixTooling>false</EnableMsixTooling>
+    <!-- true = dotnet CLI compatible PRI tasks (still unpackaged via WindowsPackageType=None) -->
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <EnableDefaultPriItems>false</EnableDefaultPriItems>
     <WindowsPackageType>None</WindowsPackageType>
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <Nullable>enable</Nullable>

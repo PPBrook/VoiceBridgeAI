@@ -88,6 +88,14 @@ server/  （与 macOS 共用）
 
 内置布局：`server/`、`python-venv/`、`run-server.ps1`、`bundle-seed.env`。
 
+## 仅用 dotnet CLI 编译（无 Visual Studio）
+
+WinUI 项目在 `dotnet build` 时若报 `ExpandPriContent` / `Microsoft.Build.Packaging.Pri.Tasks.dll` 找不到：
+
+- 工程已设 **`EnableMsixTooling=true`** + **`WindowsPackageType=None`**（仍是 unpackaged 运行，只是借用 WinApp SDK 自带的 dotnet 兼容构建任务）
+- 需要 **.NET 8 SDK**，不必装完整 Visual Studio
+- 若仍失败，可装 [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/downloads/) → 工作负载 **「Windows 应用程序开发」**
+
 ## 参考
 
 - macOS 实现：`desktop/macos/Sources/VoiceBridgeAI/`
