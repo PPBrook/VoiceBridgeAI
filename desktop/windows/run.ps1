@@ -36,6 +36,9 @@ if (-not (Test-Path $Exe)) {
 
 Get-ChildItem $OutDir -File -Recurse -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
 
+# Help the exe find repo root when launched without inherited env
+Set-Content -Path (Join-Path $OutDir "voicebridge-repo-path") -Value $RepoRoot -Encoding utf8NoBOM
+
 Write-Host "Starting $Exe ..."
 Write-Host ""
 
@@ -49,6 +52,7 @@ try {
 catch {
     $msg = $_.Exception.Message
     if ($msg -match "Application Control|应用控制|4551") {
+        $blockedByPolicy = $true
         Write-Host "============================================================"
         Write-Host " BLOCKED: Smart App Control (unsigned dev build)"
         Write-Host "============================================================"
@@ -80,7 +84,7 @@ finally {
     Pop-Location
 }
 
-if ($exitCode -ne 0 -and -not ($msg -match "Application Control|应用控制|4551")) {
+if ($exitCode -ne 0 -and -not $blockedByPolicy) {
     Write-Host "Client exited with code: $exitCode"
     if (Test-Path $LogPath) {
         Get-Content $LogPath -Tail 20

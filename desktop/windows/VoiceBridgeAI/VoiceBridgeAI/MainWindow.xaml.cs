@@ -96,7 +96,7 @@ public sealed partial class MainWindow : Window
     private async void StartEngineClicked(object sender, RoutedEventArgs e)
     {
         StartEngineButton.IsEnabled = false;
-        StatusText.Text = "正在启动引擎…";
+        StatusText.Text = "正在启动引擎（首次可能需要几分钟）…";
         ClearError();
 
         var error = await ServerManager.Shared.EnsureRunningAsync();

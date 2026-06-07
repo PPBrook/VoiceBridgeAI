@@ -8,7 +8,7 @@ public sealed class ServerManager
 {
     public static ServerManager Shared { get; } = new();
 
-    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(2) };
+    private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(3) };
     private Process? _process;
 
     private ServerManager()
@@ -53,8 +53,11 @@ public sealed class ServerManager
         {
             return """
                 无法启动引擎侧车。
-                · 若使用安装包：请重新运行 build-app.ps1 完整打包（含 Python 环境）
-                · 若开发模式：设置 VOICEBRIDGE_ROOT 指向含 run.ps1 的仓库根
+                · 开发模式：在 PowerShell 运行一次：
+                  cd <仓库根目录>
+                  .\run.ps1
+                  （Ctrl+C 停掉后再用 App「启动引擎」）
+                · 或设置环境变量 VOICEBRIDGE_ROOT 指向仓库根目录
                 """;
         }
 
@@ -64,8 +67,6 @@ public sealed class ServerManager
             WorkingDirectory = plan.WorkingDirectory,
             UseShellExecute = false,
             CreateNoWindow = true,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
         };
 
         foreach (var arg in plan.Arguments)
@@ -92,7 +93,8 @@ public sealed class ServerManager
             return "启动引擎侧车失败：Process.Start 返回 null";
         }
 
-        for (var i = 0; i < 120; i++)
+        // First pip/venv setup can take several minutes
+        for (var i = 0; i < 300; i++)
         {
             if (await PingAsync())
             {
@@ -125,6 +127,7 @@ public sealed class ServerManager
         if (timedOut)
         {
             lines.Add($"引擎侧车启动超时（端口 {port}）。");
+            lines.Add("· 首次启动需 pip 安装依赖，可在仓库根目录手动 .\\run.ps1 查看进度");
         }
         else if (exitCode.HasValue)
         {
@@ -136,14 +139,21 @@ public sealed class ServerManager
             lines.Add($"· 端口 {port} 可能被占用");
         }
 
-        if (plan.ModeLabel == "bundled")
+        lines.Add("· 确认已安装 Python 3.10+ 并加入 PATH（或 py -3 可用）");
+
+        if (plan.ModeLabel is "dev" or "dev-setup")
         {
-            lines.Add($"· 查看日志：{AppSupport.ServerLogPath}");
-            lines.Add("· 可尝试删除后重启 App，或重新 build-app.ps1 打包");
+            lines.Add("· 在仓库根目录手动 .\\run.ps1 查看错误");
+            var logTail = SidecarLaunch.ReadBootstrapLogTail();
+            if (!string.IsNullOrWhiteSpace(logTail))
+            {
+                lines.Add("· 最近日志 sidecar-bootstrap.log：");
+                lines.Add(logTail);
+            }
         }
         else
         {
-            lines.Add("· 在仓库根目录手动 .\\run.ps1 查看错误");
+            lines.Add($"· 查看日志：{AppSupport.ServerLogPath}");
         }
 
         return string.Join('\n', lines);
@@ -163,7 +173,6 @@ public sealed class ServerManager
         }
         catch
         {
-            // Best effort on shutdown.
         }
 
         _process = null;
