@@ -18,7 +18,7 @@ final class SettingsWindowController: NSWindowController {
             backing: .buffered,
             defer: false
         )
-        window.title = "VoiceBridgeAI 设置"
+        window.title = "VoiceBridgeAI 设置\(BundleVariant.displaySuffix)"
         window.center()
         window.minSize = NSSize(width: 520, height: 520)
         window.setContentSize(NSSize(width: 540, height: 660))
@@ -53,7 +53,9 @@ final class SettingsWindowController: NSWindowController {
         transcriptItem.view = transcriptPanel
 
         tabView.addTabViewItem(engineItem)
-        tabView.addTabViewItem(modelsItem)
+        if BundleVariant.includesLocalModels {
+            tabView.addTabViewItem(modelsItem)
+        }
         tabView.addTabViewItem(transcriptItem)
         tabView.addTabViewItem(cloudItem)
 

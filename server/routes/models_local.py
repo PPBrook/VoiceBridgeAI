@@ -8,6 +8,7 @@ import logging
 from fastapi import APIRouter, Body
 
 from config.asr_config import get_status as get_asr_status
+from config.bundle_variant import local_models_feature_enabled
 from config.engine_config import get_engine_status
 import core.local_models as local_models
 from core.local_model_jobs import get_active_download, get_job, job_public_view, start_download
@@ -17,6 +18,14 @@ router = APIRouter()
 log = logging.getLogger(__name__)
 
 
+def _local_models_disabled_response():
+    return {
+        "ok": False,
+        "message": "当前为云端版 App，不包含本地模型。请使用接口密钥配置云端 ASR/翻译。",
+        **get_local_models_status(),
+    }
+
+
 @router.get("/api/models/local")
 def get_local_models():
     return {"ok": True, **get_local_models_status()}
@@ -24,6 +33,8 @@ def get_local_models():
 
 @router.post("/api/models/local/download")
 async def post_local_model_download(payload: dict = Body(default_factory=dict)):
+    if not local_models_feature_enabled():
+        return _local_models_disabled_response()
     model_id = (payload.get("id") or "").strip()
     whisper_model = (payload.get("whisperModel") or "").strip() or None
     if not model_id:
@@ -67,6 +78,8 @@ def get_local_model_download_job(job_id: str):
 
 @router.post("/api/models/local/settings")
 async def post_local_model_settings(payload: dict = Body(default_factory=dict)):
+    if not local_models_feature_enabled():
+        return _local_models_disabled_response()
     try:
         await asyncio.to_thread(local_models.apply_local_model_settings, payload)
         return {
@@ -83,6 +96,8 @@ async def post_local_model_settings(payload: dict = Body(default_factory=dict)):
 
 @router.post("/api/models/local/delete")
 async def post_local_model_delete(payload: dict = Body(default_factory=dict)):
+    if not local_models_feature_enabled():
+        return _local_models_disabled_response()
     model_id = (payload.get("id") or "").strip()
     whisper_model = (payload.get("whisperModel") or "").strip() or None
     if not model_id:

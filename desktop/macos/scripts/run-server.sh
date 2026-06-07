@@ -12,6 +12,14 @@ if [[ ! -x "$VENV/bin/python" ]]; then
   exit 1
 fi
 
+if [[ -f "$DIR/bundle-variant.txt" ]]; then
+  export VOICEBRIDGE_BUNDLE_VARIANT="$(tr -d '[:space:]' < "$DIR/bundle-variant.txt")"
+fi
+
+if [[ "${VOICEBRIDGE_BUNDLE_VARIANT:-}" == "local" && -d "$DIR/bundled-models" ]]; then
+  export VOICEBRIDGE_MODELS_DIR="$DIR/bundled-models"
+fi
+
 # shellcheck disable=SC1091
 source "$VENV/bin/activate"
 
@@ -23,11 +31,29 @@ if [[ -f "$ENV_FILE" ]]; then
   set +a
 fi
 
-export VOICEBRIDGE_OPTIONAL_LOCAL_MODELS="${VOICEBRIDGE_OPTIONAL_LOCAL_MODELS:-1}"
 export VOICEBRIDGE_DATA_DIR="$DATA"
 
+case "${VOICEBRIDGE_BUNDLE_VARIANT:-}" in
+  cloud)
+    export VOICEBRIDGE_OPTIONAL_LOCAL_MODELS="${VOICEBRIDGE_OPTIONAL_LOCAL_MODELS:-1}"
+    export LOCAL_WHISPER_ENABLED="${LOCAL_WHISPER_ENABLED:-0}"
+    export LOCAL_ARGOS_ENABLED="${LOCAL_ARGOS_ENABLED:-0}"
+    ;;
+  local)
+    export VOICEBRIDGE_OPTIONAL_LOCAL_MODELS="${VOICEBRIDGE_OPTIONAL_LOCAL_MODELS:-0}"
+    export LOCAL_WHISPER_ENABLED="${LOCAL_WHISPER_ENABLED:-1}"
+    export LOCAL_ARGOS_ENABLED="${LOCAL_ARGOS_ENABLED:-1}"
+    if [[ -d "$DIR/bundled-models" ]]; then
+      export VOICEBRIDGE_MODELS_DIR="$DIR/bundled-models"
+    fi
+    ;;
+  *)
+    export VOICEBRIDGE_OPTIONAL_LOCAL_MODELS="${VOICEBRIDGE_OPTIONAL_LOCAL_MODELS:-1}"
+    ;;
+esac
+
 {
-  echo "=== $(date) VoiceBridgeAI sidecar start ==="
+  echo "=== $(date) VoiceBridgeAI sidecar start (variant=${VOICEBRIDGE_BUNDLE_VARIANT:-dev}) ==="
   cd "$DIR/server"
   exec python main.py
 } >>"$LOG" 2>&1

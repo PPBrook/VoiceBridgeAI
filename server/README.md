@@ -38,6 +38,7 @@ server/
 | `revise_config.py` | 观看场景预设（VAD + 润色提示） |
 | `cloud_config.py` | 云端密钥持久化 |
 | `cloud_ui_prefs.py` | `cloud-ui.json` 卡片隐藏 |
+| `bundle_variant.py` | App 变体 cloud / local |
 
 ### core/
 
@@ -75,8 +76,8 @@ server/
 ./run.sh
 ```
 
-数据目录（开发）：仓库根（须含 `run.sh` 与 `server/main.py`）。  
-生产 / App：`~/Library/Application Support/VoiceBridgeAI/`（`.env`、`cloud-ui.json`、`models/`、`server.log`）。
+数据目录（开发）：仓库根。  
+App：`~/Library/Application Support/VoiceBridgeAI/`（或 `-Cloud` / `-Local` 变体）。
 
 ## 主要 API
 

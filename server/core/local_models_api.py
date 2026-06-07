@@ -30,6 +30,12 @@ from core.local_models_whisper import (
 )
 
 
+def _bundle_variant_label() -> str:
+    from config.bundle_variant import bundle_variant
+
+    return bundle_variant() or "standard"
+
+
 def is_installed(model_id: str) -> bool:
     if model_id == "whisper":
         return is_whisper_any_installed()
@@ -114,6 +120,7 @@ def get_status() -> dict[str, Any]:
         models.append(entry)
     return {
         "optionalLocalModels": optional_local_models_enabled(),
+        "bundleVariant": _bundle_variant_label(),
         "modelsDir": str(models_root()),
         "whisperModel": whisper,
         "whisperChoices": list(WHISPER_CHOICES),
