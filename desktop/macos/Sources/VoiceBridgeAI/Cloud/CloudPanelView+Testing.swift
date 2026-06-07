@@ -151,6 +151,11 @@ extension CloudPanelView {
         results.forEach { storeTestResult(from: $0) }
     }
 
+    func notifyEnginePanelOfHealthChange() {
+        SettingsWindowController.shared?.reloadEnginePanel()
+        AppDelegate.shared?.control?.refreshEngineSummary()
+    }
+
     @objc func saveClicked() {
         let payload = collectCredentials()
         guard !payload.isEmpty else {
@@ -167,7 +172,7 @@ extension CloudPanelView {
                 noteLabel.textColor = .systemGreen
                 noteLabel.stringValue = msg
                 reload()
-                AppDelegate.shared?.control?.refreshEngineSummary()
+                notifyEnginePanelOfHealthChange()
             } catch {
                 noteLabel.textColor = .systemRed
                 noteLabel.stringValue = error.localizedDescription
@@ -198,6 +203,7 @@ extension CloudPanelView {
             noteLabel.textColor = .labelColor
             noteLabel.stringValue = msg
             results.forEach { storeTestResult(from: $0) }
+            notifyEnginePanelOfHealthChange()
         }
     }
 
@@ -226,7 +232,9 @@ extension CloudPanelView {
                 payload: collectTestPayload()
             )
             finishSingleTest(key: key, ok: ok, message: msg)
-            if !ok {
+            if ok {
+                notifyEnginePanelOfHealthChange()
+            } else {
                 noteLabel.textColor = .systemRed
                 noteLabel.stringValue = msg
             }

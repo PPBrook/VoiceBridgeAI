@@ -73,8 +73,7 @@ final class SettingsStore {
 
     func saveCloud(_ payload: [String: Any]) async throws -> String {
         let json = try await APIClient.postJSON(path: "api/cloud/settings", body: payload)
-        health.merge(json) { _, new in new }
-        engine = EngineConfig.from(health: health)
+        applyHealthResponse(json)
         return "密钥已保存到 .env"
     }
 
@@ -164,7 +163,7 @@ final class SettingsStore {
         body["providerId"] = providerId
         do {
             let json = try await APIClient.postJSON(path: "api/cloud/test", body: body)
-            health.merge(json) { _, new in new }
+            applyHealthResponse(json)
             let ok = json["ok"] as? Bool ?? false
             let msg = json["message"] as? String ?? (ok ? "已通过" : "失败")
             return (ok, msg)
@@ -176,13 +175,18 @@ final class SettingsStore {
     func testAllCloud(_ payload: [String: Any]) async -> (String, [[String: Any]]) {
         do {
             let json = try await APIClient.postJSON(path: "api/cloud/test-all", body: payload)
-            health.merge(json) { _, new in new }
+            applyHealthResponse(json)
             let msg = json["message"] as? String ?? "测试完成"
             let results = json["results"] as? [[String: Any]] ?? []
             return (msg, results)
         } catch {
             return (error.localizedDescription, [])
         }
+    }
+
+    private func applyHealthResponse(_ json: [String: Any]) {
+        health.merge(json) { _, new in new }
+        engine = EngineConfig.from(health: health)
     }
 
     func isVerified(layer: String, providerId: String) -> Bool {
