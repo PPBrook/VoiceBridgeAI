@@ -1,4 +1,3 @@
-using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
@@ -42,7 +41,7 @@ public sealed partial class OverlayWindow : Window
         Grid.SetColumn(title, 0);
         HeaderHost.Children.Add(title);
 
-        var dragSpacer = new Border { Background = new SolidColorBrush(Colors.Transparent) };
+        var dragSpacer = new Border { Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
         dragSpacer.PointerPressed += DragHandle_PointerPressed;
         Grid.SetColumn(dragSpacer, 1);
         HeaderHost.Children.Add(dragSpacer);
