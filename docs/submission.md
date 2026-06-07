@@ -19,36 +19,56 @@
 
 ### 云端版（可选）
 
-体积更小（约 24 MB），**不含** Whisper/Argos，默认使用云端 ASR/翻译（安装包内已合并演示用 API 配置）。
+体积约 77 MB，**不含** Whisper/Argos，默认使用云端 ASR/翻译（安装包内已合并演示用 API 配置）。**不压缩**，仓库内直接提供 `.app`，无需解压 zip。
 
-1. 下载 **[VoiceBridgeAI-Cloud.tar.gz](../releases/VoiceBridgeAI-Cloud.tar.gz)**（约 22 MB，**推荐**，Finder 双击解压）
-   - 备选：[VoiceBridgeAI-Cloud.zip](../releases/VoiceBridgeAI-Cloud.zip)（约 24 MB）
-   - 在 **GitHub 网页**打开链接 → 点 **Raw** 旁的 **下载图标**
-2. 解压 → **右键打开** `VoiceBridgeAI-Cloud.app`
-3. 其余步骤同上（屏幕录制 → 开始字幕）
+**方式 A — 已有仓库 clone（最简单）**
 
-若 zip 双击仍提示损坏，请改用 **tar.gz**，或终端：`ditto -xk ~/Downloads/VoiceBridgeAI-Cloud.zip ~/Desktop/`
+```bash
+cd VoiceBridgeAI
+git pull
+cp -R releases/VoiceBridgeAI-Cloud.app ~/Desktop/
+xattr -cr ~/Desktop/VoiceBridgeAI-Cloud.app
+open ~/Desktop/VoiceBridgeAI-Cloud.app
+```
+
+**方式 B — 只拉 Cloud App（sparse checkout）**
+
+```bash
+git clone --depth 1 --filter=blob:none --sparse https://github.com/PPBrook/VoiceBridgeAI.git
+cd VoiceBridgeAI
+git sparse-checkout set releases/VoiceBridgeAI-Cloud.app
+git checkout
+open releases/VoiceBridgeAI-Cloud.app
+```
+
+**方式 C — svn export（无需 git lfs）**
+
+```bash
+svn export https://github.com/PPBrook/VoiceBridgeAI/trunk/releases/VoiceBridgeAI-Cloud.app ~/Desktop/VoiceBridgeAI-Cloud.app
+xattr -cr ~/Desktop/VoiceBridgeAI-Cloud.app
+open ~/Desktop/VoiceBridgeAI-Cloud.app
+```
+
+然后：**右键打开** App → 授予 **屏幕录制** → **开始悬浮字幕**。
 
 配置目录：`~/Library/Application Support/VoiceBridgeAI-Cloud/`
 
-### 无法解压（提示已损坏）
-
-**Cloud 版优先用 `.tar.gz`**。若仍失败，常见原因是下到错误文件：
+### 无法解压 Local zip（提示已损坏）
 
 | 实际大小 | 可能原因 |
 |----------|----------|
 | ~133 B，内容为 `version https://git-lfs.github.com/...` | 误把 **Local** zip 当普通文件 clone（Local 需 `git lfs pull`） |
-| ~300 KB，用文本打开是 HTML | 用了错误链接；请在 GitHub 文件页点 **下载图标** |
+| ~300 KB，用文本打开是 HTML | 用了错误链接；Local 请在 GitHub 文件页点 **下载图标** |
 | 体积明显偏小（如几 MB） | 下载不完整，请重新下载 |
 
 终端校验示例：
 
 ```bash
-file ~/Downloads/VoiceBridgeAI-Cloud.tar.gz
-ls -lh ~/Downloads/VoiceBridgeAI-Cloud.tar.gz
+file ~/Downloads/VoiceBridgeAI-Local.zip
+ls -lh ~/Downloads/VoiceBridgeAI-Local.zip
 ```
 
-终端解压：`ditto -xk ~/Downloads/VoiceBridgeAI-Cloud.zip ~/Desktop/` 或 `tar -xzf ~/Downloads/VoiceBridgeAI-Cloud.tar.gz -C ~/Desktop`
+终端解压：`ditto -xk ~/Downloads/VoiceBridgeAI-Local.zip ~/Desktop/`
 
 ### 无法打开 App
 
@@ -88,8 +108,8 @@ ScreenCaptureKit → Swift App → Python 引擎 → 悬浮字幕
 ```
 VoiceBridgeAI/
   releases/VoiceBridgeAI-Local.zip   # 评审推荐：离线完整版
-  releases/VoiceBridgeAI-Cloud.tar.gz # 云端版（推荐）
-  releases/VoiceBridgeAI-Cloud.zip    # 云端版（备选）
+  releases/VoiceBridgeAI-Cloud.app/    # 云端版（不压缩，直接使用）
+  releases/VoiceBridgeAI-Local.zip     # 离线完整版（Git LFS）
   server/                            # Python 引擎
   desktop/macos/                     # Swift 客户端
   docs/                              # 开发与架构文档
