@@ -73,33 +73,94 @@ if [[ "$SKIP_VENV" == "1" ]]; then
   echo "SKIP_VENV=1 — 跳过 venv（.app 无法独立运行）"
 else
   echo "创建内置 Python 环境（${VARIANT}）…"
-  if [[ -d "$REPO_ROOT/.venv/bin/python" && "${BUNDLE_COPY_VENV:-1}" == "1" ]]; then
-    echo "复用仓库 .venv → python-venv（跳过 pip 下载，推荐）"
-    rsync -a "$REPO_ROOT/.venv/" "$RES/python-venv/"
-  else
+
+  bundled_python() {
+    if [[ -x "$RES/python-venv/bin/python" ]]; then
+      echo "$RES/python-venv/bin/python"
+    elif [[ -x "$RES/python-venv/bin/python3" ]]; then
+      echo "$RES/python-venv/bin/python3"
+    fi
+  }
+
+  verify_bundled_venv() {
+    local py
+    py="$(bundled_python)" || return 1
+    "$py" -c "import uvicorn, fastapi, websockets" || return 1
+    if [[ "$VARIANT" == "local" ]]; then
+      "$py" -c "import faster_whisper, argostranslate" || return 1
+    fi
+  }
+
+  pip_install_with_retry() {
+    local req="$1"
+    local max="${PIP_INSTALL_ATTEMPTS:-4}"
+    local n=1
+    pip install --upgrade pip
+    while (( n <= max )); do
+      echo "pip install (${n}/${max}) …"
+      if pip install --retries 5 --default-timeout=180 -r "$req"; then
+        return 0
+      fi
+      echo "pip 网络中断，${n}/${max} 失败，重试…" >&2
+      ((n++)) || true
+      sleep 3
+    done
+    echo "pip install 多次失败。若仓库已有可用 .venv，可设 BUNDLE_COPY_VENV=1 后重试。" >&2
+    return 1
+  }
+
+  create_fresh_bundled_venv() {
     rm -rf "$RES/python-venv"
     python3 -m venv "$RES/python-venv"
     # shellcheck disable=SC1091
     source "$RES/python-venv/bin/activate"
-    pip_install_with_retry() {
-      local req="$1"
-      local max="${PIP_INSTALL_ATTEMPTS:-4}"
-      local n=1
-      pip install --upgrade pip
-      while (( n <= max )); do
-        echo "pip install (${n}/${max}) …"
-        if pip install --retries 5 --default-timeout=180 -r "$req"; then
-          return 0
-        fi
-        echo "pip 网络中断，${n}/${max} 失败，重试…" >&2
-        ((n++)) || true
-        sleep 3
-      done
-      echo "pip install 多次失败。若仓库已有 .venv，可设 BUNDLE_COPY_VENV=1 后重试。" >&2
-      return 1
-    }
     pip_install_with_retry "$RES/requirements.txt"
     deactivate
+  }
+
+  # cloud 默认不复用仓库 .venv（开发 .venv 含 Whisper/Argos，体积 ~1GB）
+  default_copy_venv=1
+  if [[ "$VARIANT" == "cloud" ]]; then
+    default_copy_venv=0
+  fi
+
+  repo_venv_ready=0
+  if [[ "${BUNDLE_COPY_VENV:-$default_copy_venv}" == "1" ]]; then
+    if [[ -x "$REPO_ROOT/.venv/bin/python" || -x "$REPO_ROOT/.venv/bin/python3" ]]; then
+      repo_venv_ready=1
+    fi
+  fi
+
+  if [[ "$repo_venv_ready" == "1" ]]; then
+    echo "复用仓库 .venv → python-venv（跳过 pip 下载，推荐）"
+    rm -rf "$RES/python-venv"
+    rsync -a \
+      --exclude '__pycache__' \
+      --exclude '*.pyc' \
+      "$REPO_ROOT/.venv/" "$RES/python-venv/"
+    if ! verify_bundled_venv; then
+      echo "复用 .venv 校验失败（可能 Python 版本或依赖不完整），改为在 .app 内重新 pip install …" >&2
+      create_fresh_bundled_venv
+    fi
+  else
+    create_fresh_bundled_venv
+  fi
+
+  if ! verify_bundled_venv; then
+    echo "错误: 内置 python-venv 不可用，请先在仓库根目录 ./run.sh 创建 .venv，或检查网络后重试打包。" >&2
+    exit 1
+  fi
+  echo "内置 python-venv 校验通过: $(bundled_python)"
+  # Python 3.14 venv 的 Unicode 别名 𝜋thon 会导致 Finder 解压 zip 失败
+  if [[ -d "$RES/python-venv/bin" ]]; then
+    for _vb in "$RES/python-venv/bin"/*; do
+      [[ -e "$_vb" ]] || continue
+      _name=$(basename "$_vb")
+      if ! LC_ALL=C printf '%s' "$_name" | grep -qE '^[!-~]+$'; then
+        echo "移除 venv 非 ASCII 条目: $_name"
+        rm -f "$_vb"
+      fi
+    done
   fi
 fi
 
