@@ -50,6 +50,14 @@ cd desktop/macos
 
 `build-app.sh` 会编译 Swift release、复制 Python 侧车与 venv、合并演示用 `.env` 种子；local 变体额外下载并内置 Whisper + Argos 模型。产物在 `dist/`（gitignore）。
 
+更新 `releases/` 供他人下载：
+
+```bash
+./scripts/publish-release.sh local    # 或 cloud
+```
+
+仅复制 `.app` 到 `releases/`，**不压缩**。
+
 ## 模块
 
 ### App/

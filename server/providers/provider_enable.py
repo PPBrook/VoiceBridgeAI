@@ -40,6 +40,9 @@ def set_verified(layer: str, provider_id: str, verified: bool) -> None:
         os.environ[key] = "1"
     else:
         os.environ.pop(key, None)
+    from config.env_persist import persist_single_env
+
+    persist_single_env(key, "1" if verified else None)
 
 
 def credentials_ok(layer: str, provider_id: str) -> bool:

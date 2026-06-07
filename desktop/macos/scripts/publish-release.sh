@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# 发布安装包到 releases/
-#   cloud — 直接复制 VoiceBridgeAI-Cloud.app（不压缩）
-#   local — 打 VoiceBridgeAI-Local.zip（Git LFS）
+# 将 dist/*.app 复制到 releases/（不压缩、不打 zip）
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$ROOT/../.." && pwd)"
@@ -18,7 +16,6 @@ esac
 
 APP="$ROOT/dist/$APP_NAME.app"
 RELEASE_APP="$REPO_ROOT/releases/$APP_NAME.app"
-ZIP="$REPO_ROOT/releases/$APP_NAME.zip"
 STAGE="$(mktemp -d)"
 
 cleanup() { rm -rf "$STAGE"; }
@@ -62,20 +59,8 @@ sanitize_venv_bin "$STAGE/$APP_NAME.app/Contents/Resources/python-venv/bin"
 rm -f "$STAGE/$APP_NAME.app/Contents/Resources/python-venv/.gitignore"
 test -x "$STAGE/$APP_NAME.app/Contents/MacOS/VoiceBridgeAI"
 
-if [[ "$VARIANT" == "cloud" ]]; then
-  rm -rf "$RELEASE_APP"
-  rm -f "$REPO_ROOT/releases/$APP_NAME.zip" "$REPO_ROOT/releases/$APP_NAME.tar.gz" "$REPO_ROOT/releases/$APP_NAME.tar"
-  ditto "$STAGE/$APP_NAME.app" "$RELEASE_APP"
-  echo "已发布: $RELEASE_APP ($(du -sh "$RELEASE_APP" | awk '{print $1}'))"
-  echo "无需解压，可直接右键打开或拖入「应用程序」"
-  exit 0
-fi
-
-rm -f "$ZIP"
-(
-  cd "$STAGE"
-  COPYFILE_DISABLE=1 zip -r -X "$ZIP" "$APP_NAME.app"
-)
-echo "已生成: $ZIP ($(du -sh "$ZIP" | awk '{print $1}'))"
-unzip -t "$ZIP" >/dev/null
-echo "zip 校验通过"
+rm -rf "$RELEASE_APP"
+rm -f "$REPO_ROOT/releases/$APP_NAME.zip" "$REPO_ROOT/releases/$APP_NAME.tar.gz" "$REPO_ROOT/releases/$APP_NAME.tar"
+ditto "$STAGE/$APP_NAME.app" "$RELEASE_APP"
+echo "已发布: $RELEASE_APP ($(du -sh "$RELEASE_APP" | awk '{print $1}'))"
+echo "无需解压，可直接右键打开或拖入「应用程序」"

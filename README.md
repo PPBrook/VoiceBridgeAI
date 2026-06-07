@@ -6,18 +6,35 @@ macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 
 ### 安装包试用
 
-| 版本 | 获取 | 说明 |
-|------|------|------|
-| **Local**（推荐） | [releases/VoiceBridgeAI-Local.zip](releases/VoiceBridgeAI-Local.zip) | 内置 Whisper + Argos，离线可用（Git LFS，约 428 MB） |
-| **Cloud** | [releases/VoiceBridgeAI-Cloud.app](releases/VoiceBridgeAI-Cloud.app) | 仅云端 ASR/翻译（约 77 MB，clone 后直接使用） |
+仓库 [`releases/`](releases/) 提供**未压缩**的 `.app`，无需解压 zip：
 
-下载与试用步骤见 [docs/submission.md](docs/submission.md)。
+| 版本 | 路径 | 体积 | 说明 |
+|------|------|------|------|
+| **Local**（推荐） | [VoiceBridgeAI-Local.app](releases/VoiceBridgeAI-Local.app) | ~1.2 GB | 内置 Whisper + Argos，离线可用 |
+| **Cloud** | [VoiceBridgeAI-Cloud.app](releases/VoiceBridgeAI-Cloud.app) | ~77 MB | 仅云端 ASR/翻译 |
+
+**获取方式（任选其一）**
+
+```bash
+# clone 后直接使用
+git clone https://github.com/PPBrook/VoiceBridgeAI.git
+open VoiceBridgeAI/releases/VoiceBridgeAI-Local.app   # 或 Cloud
+
+# 只拉某一个 App（sparse checkout，省流量）
+git clone --depth 1 --filter=blob:none --sparse https://github.com/PPBrook/VoiceBridgeAI.git
+cd VoiceBridgeAI
+git sparse-checkout set releases/VoiceBridgeAI-Local.app   # 或 Cloud
+git checkout
+```
+
+详细步骤与故障排查：[docs/submission.md](docs/submission.md)
 
 **快速开始**
 
-1. **右键打开** `.app`（未签名，首次不能双击）
-2. **系统设置 → 隐私与安全性 → 屏幕录制** → 勾选 VoiceBridgeAI
-3. 打开 App → **开始悬浮字幕**
+1. 将 `.app` 拖入「应用程序」，或 `cp -R releases/VoiceBridgeAI-*.app ~/Applications/`
+2. **右键 → 打开**（未签名，首次不能双击）
+3. **系统设置 → 隐私与安全性 → 屏幕录制** → 勾选 VoiceBridgeAI
+4. 打开 App → **开始悬浮字幕**
 
 ### 源码开发
 
@@ -38,7 +55,7 @@ cd desktop/macos
 ./build-app-cloud.sh              # → dist/VoiceBridgeAI-Cloud.app
 ```
 
-产物在 `desktop/macos/dist/`（gitignore），本地安装：拖入「应用程序」即可。
+产物在 `desktop/macos/dist/`（gitignore）。需要更新 `releases/` 供他人下载时，复制 `.app` 即可（**不要打 zip**），见 `scripts/publish-release.sh`。
 
 ---
 
