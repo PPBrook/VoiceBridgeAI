@@ -84,10 +84,11 @@
         <StackPanel Grid.Row="2" Spacing="10">
             <Button
                 x:Name="StartSubtitleButton"
+                Background="{ThemeResource AccentFillColorDefaultBrush}"
                 Click="StartSubtitleClicked"
                 Content="开始悬浮字幕"
-                HorizontalAlignment="Stretch"
-                Style="{StaticResource AccentButtonStyle}" />
+                Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}"
+                HorizontalAlignment="Stretch" />
 
             <Grid ColumnSpacing="8">
                 <Grid.ColumnDefinitions>

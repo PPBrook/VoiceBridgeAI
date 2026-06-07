@@ -27,10 +27,4 @@
     <PackageReference Include="Microsoft.Windows.SDK.BuildTools" Version="10.0.26100.4654" />
     <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
-
-  <!-- Standalone ResourceDictionary: exclude from Page compile, keep as app content -->
-  <ItemGroup>
-    <Page Remove="App\UiStyles.xaml" />
-    <Content Include="App\UiStyles.xaml" />
-  </ItemGroup>
 </Project>

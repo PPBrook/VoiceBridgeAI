@@ -6,8 +6,34 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
-                <ResourceDictionary Source="App/UiStyles.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- 主窗口 / 设置 -->
+            <SolidColorBrush x:Key="VbaCardBackgroundBrush" Color="#0F000000" />
+            <SolidColorBrush x:Key="VbaCardBorderBrush" Color="#18000000" />
+            <SolidColorBrush x:Key="VbaStatusOkBrush" Color="#FF22C55E" />
+            <SolidColorBrush x:Key="VbaStatusWarnBrush" Color="#FFF59E0B" />
+            <SolidColorBrush x:Key="VbaStatusIdleBrush" Color="#FF9CA3AF" />
+
+            <Style x:Key="VbaCardStyle" TargetType="Border">
+                <Setter Property="Background" Value="{StaticResource VbaCardBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{StaticResource VbaCardBorderBrush}" />
+                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="CornerRadius" Value="12" />
+                <Setter Property="Padding" Value="16" />
+            </Style>
+
+            <Style x:Key="VbaSectionTitleStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+            </Style>
+
+            <Style x:Key="VbaCaptionStyle" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+                <Setter Property="TextWrapping" Value="WrapWholeWords" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
