@@ -45,15 +45,15 @@ desktop/windows/
 - [x] 分支 `feat/winapp`
 - [x] Windows 数据目录（`server/config/app_paths.py`）
 - [x] 根目录 `run.ps1` 启动引擎
-- [ ] WinUI 客户端项目
+- [x] WinUI 3 客户端（Phase 1：托盘 + 侧车 + 健康检查）
 - [ ] WASAPI 系统音频采集
 - [ ] 悬浮字幕 Overlay
-- [ ] 设置窗 / 托盘
+- [ ] 设置窗
 - [ ] `build-app.ps1` 打包
 
-## 开发（现阶段：仅引擎）
+## 开发
 
-在 Windows 上可先验证 Python 引擎：
+**仅引擎（任意平台可先验 Python）：**
 
 ```powershell
 cd <repo-root>
@@ -61,4 +61,11 @@ cd <repo-root>
 curl http://127.0.0.1:8765/api/health
 ```
 
-客户端 UI 落地后：`cd desktop\windows && .\run.ps1`（待实现）。
+**Windows 客户端（需 Windows 10+、.NET 8 SDK、Windows App SDK）：**
+
+```powershell
+cd desktop\windows
+.\run.ps1
+```
+
+托盘图标 + 主窗口可启动/检测引擎侧车；WebSocket 字幕与 WASAPI 采集见 Phase 2–3（[docs/windows.md](../../docs/windows.md)）。

@@ -1,0 +1,41 @@
+<Window
+    x:Class="VoiceBridgeAI.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="VoiceBridgeAI">
+
+    <Grid Padding="24" RowSpacing="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            x:Name="StatusText"
+            Grid.Row="0"
+            Text="检测引擎…"
+            TextWrapping="WrapWholeWords" />
+
+        <TextBlock
+            x:Name="EngineText"
+            Grid.Row="1"
+            Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+            Text="引擎：—"
+            TextWrapping="WrapWholeWords" />
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="8">
+            <Button x:Name="StartEngineButton" Click="StartEngineClicked" Content="启动引擎" />
+            <Button x:Name="RefreshButton" Click="RefreshClicked" Content="刷新" />
+        </StackPanel>
+
+        <TextBlock
+            x:Name="ErrorText"
+            Grid.Row="3"
+            Foreground="DarkRed"
+            Text=""
+            TextWrapping="WrapWholeWords"
+            Visibility="Collapsed" />
+    </Grid>
+</Window>

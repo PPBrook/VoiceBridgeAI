@@ -24,6 +24,10 @@ desktop/macos/.build/
 desktop/macos/dist/
 desktop/macos/scripts/bundle-seed/local.secrets.env
 desktop/macos/scripts/bundle-seed/cloud.secrets.env
+# Windows / .NET build artifacts
+desktop/windows/VoiceBridgeAI/**/bin/
+desktop/windows/VoiceBridgeAI/**/obj/
+desktop/windows/VoiceBridgeAI/.vs/
 # releases/*.zip tracked via Git LFS (see .gitattributes)
 .swiftpm/
 *.dSYM/
