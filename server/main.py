@@ -185,6 +185,12 @@ async def post_local_model_download(payload: dict = Body(default_factory=dict)):
         )
         if model_id == "whisper" and whisper_model:
             os.environ["WHISPER_MODEL"] = whisper_model
+            from config.env_persist import persist_local_model_settings
+
+            persist_local_model_settings({"whisperModel": whisper_model})
+            from providers.whisper_asr import unload_model
+
+            unload_model()
         return {
             "ok": True,
             "message": "下载完成",
@@ -194,6 +200,42 @@ async def post_local_model_download(payload: dict = Body(default_factory=dict)):
         }
     except Exception as exc:
         log.exception("local model download failed: %s", model_id)
+        return {"ok": False, "message": str(exc), **get_local_models_status()}
+
+
+@app.post("/api/models/local/settings")
+async def post_local_model_settings(payload: dict = Body(default_factory=dict)):
+    try:
+        await asyncio.to_thread(local_models.apply_local_model_settings, payload)
+        return {
+            "ok": True,
+            "message": "本地模型设置已保存",
+            **get_local_models_status(),
+            **get_asr_status(),
+            **get_engine_status(),
+        }
+    except Exception as exc:
+        log.exception("local model settings failed")
+        return {"ok": False, "message": str(exc), **get_local_models_status()}
+
+
+@app.post("/api/models/local/delete")
+async def post_local_model_delete(payload: dict = Body(default_factory=dict)):
+    model_id = (payload.get("id") or "").strip()
+    whisper_model = (payload.get("whisperModel") or "").strip() or None
+    if not model_id:
+        return {"ok": False, "message": "缺少 id（whisper 或 argos）", **get_local_models_status()}
+    try:
+        await asyncio.to_thread(local_models.uninstall, model_id, whisper_model=whisper_model)
+        return {
+            "ok": True,
+            "message": "已删除",
+            **get_local_models_status(),
+            **get_asr_status(),
+            **get_engine_status(),
+        }
+    except Exception as exc:
+        log.exception("local model delete failed: %s", model_id)
         return {"ok": False, "message": str(exc), **get_local_models_status()}
 
 

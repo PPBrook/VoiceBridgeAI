@@ -61,6 +61,11 @@ def load_model() -> None:
     log.info("Argos translate ready")
 
 
+def reset_ready() -> None:
+    global _ready
+    _ready = False
+
+
 def translate(text: str) -> str:
     text = text.strip()
     if not text:

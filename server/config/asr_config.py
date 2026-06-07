@@ -7,7 +7,7 @@ from typing import Any
 
 from providers.openai_asr import asr_model as openai_asr_model
 from providers.tencent_asr import configured as tencent_configured, engine_model
-from providers.whisper_asr import MODEL_NAME as WHISPER_MODEL
+from providers.whisper_asr import current_model_name
 
 from providers.provider_registry import ASR_MODES
 
@@ -59,7 +59,7 @@ def get_status(mode: str | None = None) -> dict[str, Any]:
     elif current == "openai":
         engine = openai_asr_model()
     else:
-        engine = WHISPER_MODEL
+        engine = current_model_name()
 
     return {
         "asrMode": current,
@@ -68,6 +68,6 @@ def get_status(mode: str | None = None) -> dict[str, Any]:
         "asrProviders": modes,
         "tencentConfigured": tencent_configured(),
         "openaiAsrConfigured": openai_configured(),
-        "whisperModel": WHISPER_MODEL,
+        "whisperModel": current_model_name(),
         "asrEngine": engine,
     }
