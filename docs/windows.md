@@ -117,6 +117,12 @@ Get-ChildItem -Recurse desktop\windows\VoiceBridgeAI | Unblock-File
 
 正式对外发布需购买代码签名证书并签名 exe；评审/自用开发可不上签名。
 
+**闪退 / 退出码 `-532462766`（0xE0434352）：**
+
+1. 安装 [Windows App Runtime 1.6 x64](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads)（与 WinApp SDK 1.6 匹配）
+2. 查看日志：`%LOCALAPPDATA%\VoiceBridgeAI\client-startup.log`
+3. 若弹出错误对话框，按提示处理（常见为 Runtime 未装或 Bootstrap 失败）
+
 ## 参考
 
 - macOS 实现：`desktop/macos/Sources/VoiceBridgeAI/`
