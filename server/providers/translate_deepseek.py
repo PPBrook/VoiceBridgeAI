@@ -2,32 +2,24 @@
 
 from __future__ import annotations
 
-import os
 from typing import Optional
 
-from core.llm_compat import chat_translate
+from providers.llm_openai_compat import OpenAICompatConfig, OpenAICompatProvider
 
-
-def configured() -> bool:
-    return bool(os.getenv("DEEPSEEK_API_KEY", "").strip())
-
-
-def base_url() -> str:
-    return os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1").strip().rstrip(
-        "/"
+_provider = OpenAICompatProvider(
+    OpenAICompatConfig(
+        api_key_env="DEEPSEEK_API_KEY",
+        base_url_env="DEEPSEEK_BASE_URL",
+        base_url_default="https://api.deepseek.com/v1",
+        model_env="DEEPSEEK_MODEL",
+        model_default="deepseek-chat",
     )
+)
 
-
-def model_name() -> str:
-    return os.getenv("DEEPSEEK_MODEL", "deepseek-chat").strip() or "deepseek-chat"
+configured = _provider.configured
+base_url = _provider.base_url
+model_name = _provider.model_name
 
 
 def translate(text: str, draft_zh: Optional[str] = None, *, polish: bool = True) -> str:
-    return chat_translate(
-        api_key=os.getenv("DEEPSEEK_API_KEY", ""),
-        base_url=base_url(),
-        model=model_name(),
-        text=text,
-        draft_zh=draft_zh,
-        polish=polish,
-    )
+    return _provider.translate(text, draft_zh, polish=polish)

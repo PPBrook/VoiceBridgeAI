@@ -42,13 +42,31 @@ App 模式为 `~/Library/Application Support/VoiceBridgeAI/`。
 2. **句中翻译** — partial provider（TMT、百度、Argos 等）
 3. **句末润色** — final provider（LLM 或同 partial）
 
+LLM 句末润色提示（`server/core/llm_compat.py`）面向悬浮字幕，并按当前**观看场景**追加 `polishHint`（定义于 `revise_config.py`）。有句中草稿时在其基础上润色；只要求模型输出译文。
+
+## 观看场景（断句 + 润色）
+
+App **设置 → 引擎** 或 **主窗口** 选择预设，影响：
+
+- **断句**：本地 Whisper / OpenAI 的静音 VAD；腾讯云由云端 VAD 切句
+- **润色**：句末 LLM 按场景调整译文风格（`server/config/revise_config.py` 中 `polishHint`）
+
+| 模式 | 适用 | 静音切句 | 单段最长 | 润色侧重 |
+|------|------|----------|----------|----------|
+| 演讲 | keynote、发布会 | ~1.0s | 14s | 口语有节奏 |
+| 技术分享 | Meetup、架构讲解 | ~0.9s | 18s | 术语一致 |
+| 会议 | 峰会 Q&A、多人轮替 | ~0.6s | 10s | 短句直译 |
+| 网课 | MOOC、培训录播 | ~1.5s | 22s | 知识点整段 |
+
+配置项 `REVISE_MODE`（`.env`）与引擎页保存同步。旧值 `balanced` / `speed` / `accuracy` 分别映射为演讲 / 会议 / 网课。
+
 本地模型默认须在 App 内下载（`VOICEBRIDGE_OPTIONAL_LOCAL_MODELS=1` 时可跳过预装检查）。
 
 ## 分支
 
-- `main`：macOS App + Python sidecar（当前默认）
+- `main` / `feat/macapp`：macOS App + Python sidecar（当前默认）
 - `legacy/web-only`：浏览器版备份
-- `feat/macapp`：App 功能开发分支
+- `feat/chrome-extension`：Chrome 扩展实验（其它分支）
 
 ## 本地模型存储
 

@@ -116,6 +116,18 @@ final class WebSocketSession {
         try await task.send(.data(pcm))
     }
 
+    func reconfigure(config: EngineConfig) async throws {
+        guard task != nil else {
+            throw URLError(.networkConnectionLost)
+        }
+        let payload = config.wsConfigPayload()
+        let data = try encoder.data(withJSONObject: payload)
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw URLError(.cannotParseResponse)
+        }
+        try await send(text: text)
+    }
+
     private func send(text: String) async throws {
         guard let task else { return }
         try await task.send(.string(text))

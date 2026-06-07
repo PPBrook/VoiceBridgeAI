@@ -115,4 +115,18 @@ final class SessionController {
         AppDelegate.shared?.overlay.update(with: store)
         AppDelegate.shared?.refreshControlUI()
     }
+
+    func applyReviseMode(_ mode: String) async throws {
+        SettingsStore.shared.engine.reviseMode = mode
+        _ = try await SettingsStore.shared.saveEngine()
+        try await reconfigureEngine()
+    }
+
+    func reconfigureEngine() async throws {
+        try await SettingsStore.shared.refresh()
+        engineConfig = SettingsStore.shared.engine
+        if isRunning {
+            try await webSocket.reconfigure(config: engineConfig)
+        }
+    }
 }

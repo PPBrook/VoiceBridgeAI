@@ -20,6 +20,7 @@ from config.revise_config import get_params as get_revise_params
 from config.revise_config import get_status as get_revise_status
 from config.revise_config import normalize_mode as normalize_revise_mode
 from providers.tencent_asr import TencentAsrStream, configured as tencent_configured
+from core.revise_context import set_revise_mode
 from core.translate import translate_final, translate_partial
 from core.vad import ReviseEngine
 from providers.whisper_asr import load_model as load_whisper
@@ -420,7 +421,8 @@ async def websocket_pcm(ws: WebSocket):
             mark_dead()
             return False
 
-    def bind_revise(params) -> ReviseScheduler:
+    def bind_revise(params, mode: str) -> ReviseScheduler:
+        set_revise_mode(mode)
         return ReviseScheduler(
             translate_partial,
             translate_final,
@@ -428,7 +430,7 @@ async def websocket_pcm(ws: WebSocket):
             params,
         )
 
-    revise = bind_revise(revise_params)
+    revise = bind_revise(revise_params, revise_mode)
 
     def cancel_local_task(seg_id: int) -> None:
         task = local_tasks.pop(seg_id, None)
@@ -493,7 +495,7 @@ async def websocket_pcm(ws: WebSocket):
         framer = PcmFramer()
         tencent_pcm_acc.clear()
         revise.clear()
-        revise = bind_revise(revise_params)
+        revise = bind_revise(revise_params, revise_mode)
         for seg_id in list(local_tasks):
             cancel_local_task(seg_id)
         if tencent:
@@ -535,7 +537,7 @@ async def websocket_pcm(ws: WebSocket):
                     }
                 )
                 return False
-            engine = ReviseEngine(sample_rate, revise_params.refine_interval_s)
+            engine = ReviseEngine(sample_rate, revise_params.vad_params())
         else:
             if local_models.optional_local_models_enabled() and not local_models.is_whisper_installed():
                 await send_json(
@@ -546,7 +548,7 @@ async def websocket_pcm(ws: WebSocket):
                 )
                 return False
             await asyncio.to_thread(load_whisper)
-            engine = ReviseEngine(sample_rate, revise_params.refine_interval_s)
+            engine = ReviseEngine(sample_rate, revise_params.vad_params())
         await _preload_translate(None)
         await send_json(
             {
@@ -585,7 +587,7 @@ async def websocket_pcm(ws: WebSocket):
                     rv_mode = data.get("reviseMode", revise_mode)
                     pending = get_revise_params(rv_mode)
                     if engine:
-                        engine.reset(sample_rate, pending.refine_interval_s)
+                        engine.reset(sample_rate, pending.vad_params())
                     ok = await start_asr(mode, rv_mode)
                     if not ok:
                         mark_dead()

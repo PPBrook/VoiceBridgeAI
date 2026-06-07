@@ -405,24 +405,6 @@ final class OverlayPanelController {
             enLabel.stringValue = ""
             enLabel.isHidden = true
         }
-
-        if cur.revised {
-            flashRevise(lookback: cur.lookback)
-        }
-    }
-
-    private func flashRevise(lookback: Bool) {
-        let accent = lookback ? NSColor.systemOrange : NSColor.systemBlue
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.18
-            zhLabel.animator().textColor = accent
-        } completionHandler: { [weak self] in
-            guard let self else { return }
-            NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.28
-                self.zhLabel.animator().textColor = Style.zhPrimary
-            }
-        }
     }
 
     private func displayZH(_ cur: SubtitleSegment, fallback: SubtitleSegment?) -> String {

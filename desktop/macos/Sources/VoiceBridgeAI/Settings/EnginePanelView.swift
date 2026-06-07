@@ -6,6 +6,8 @@ final class EnginePanelView: NSView {
     private let partialPopup = EnginePopUpButton()
     private let finalPopup = EnginePopUpButton()
     private let revisePopup = EnginePopUpButton()
+    private let reviseSceneNoteLabel = FormBuilder.label("")
+    private let reviseDetailLabel = FormBuilder.label("")
     private let noteLabel = FormBuilder.label(
         "默认可直接用本地 Whisper + Argos，无需 Key。云端推荐句中 MT + 句末 LLM；请先在「接口密钥」填写并测试。"
     )
@@ -31,6 +33,17 @@ final class EnginePanelView: NSView {
         statusLabel.lineBreakMode = .byWordWrapping
         statusLabel.textColor = .secondaryLabelColor
 
+        reviseSceneNoteLabel.maximumNumberOfLines = 0
+        reviseSceneNoteLabel.lineBreakMode = .byWordWrapping
+        reviseSceneNoteLabel.textColor = .secondaryLabelColor
+        reviseSceneNoteLabel.font = .systemFont(ofSize: 11)
+
+        reviseDetailLabel.maximumNumberOfLines = 0
+        reviseDetailLabel.lineBreakMode = .byWordWrapping
+        reviseDetailLabel.textColor = .secondaryLabelColor
+        reviseDetailLabel.font = .systemFont(ofSize: 10)
+        reviseDetailLabel.preferredMaxLayoutWidth = 420
+
         saveButton.target = self
         saveButton.action = #selector(saveClicked)
         saveButton.bezelStyle = .rounded
@@ -50,13 +63,23 @@ final class EnginePanelView: NSView {
             popup.controlSize = .regular
         }
 
+        let reviseBlock = NSStackView(views: [
+            settingRow(title: "观看场景", recommend: "按内容选断句", popup: revisePopup),
+            reviseDetailLabel,
+        ])
+        reviseBlock.orientation = .vertical
+        reviseBlock.alignment = .leading
+        reviseBlock.spacing = 4
+
         let stack = NSStackView(views: [
             FormBuilder.sectionHeader("引擎设置"),
             noteLabel,
             settingRow(title: "语音识别", recommend: nil, popup: asrPopup),
             settingRow(title: "句中翻译", recommend: "推荐 MT", popup: partialPopup),
             settingRow(title: "句末润色", recommend: "推荐 LLM", popup: finalPopup),
-            settingRow(title: "纠正模式", recommend: nil, popup: revisePopup),
+            FormBuilder.sectionHeader("观看场景"),
+            reviseSceneNoteLabel,
+            reviseBlock,
             saveButton,
             statusLabel,
         ])
@@ -113,6 +136,8 @@ final class EnginePanelView: NSView {
             selected: store.engine.asrProvider
         )
         fillRevisePopup(from: health, selected: store.engine.reviseMode)
+        reviseSceneNoteLabel.stringValue = ReviseModeGuides.intro(from: health)
+        updateReviseDetail(from: health)
         reconcileAndFillPopups()
         var status = "当前：\(store.engine.summary(from: health))"
         if let rules = health["engineRules"] as? [String: Any],
@@ -124,20 +149,13 @@ final class EnginePanelView: NSView {
     }
 
     private func fillRevisePopup(from health: [String: Any], selected: String) {
-        let modes = ProviderOption.list(from: health, key: "reviseModes")
-        if modes.isEmpty {
-            EngineSelectGroups.fillFlatPopup(
-                revisePopup,
-                providers: [
-                    ProviderOption(id: "speed", label: "实时优先 · 低延迟"),
-                    ProviderOption(id: "balanced", label: "标准纠正 · 推荐"),
-                    ProviderOption(id: "accuracy", label: "精准纠正 · 深度回溯"),
-                ],
-                selected: selected
-            )
-        } else {
-            EngineSelectGroups.fillFlatPopup(revisePopup, providers: modes, selected: selected)
-        }
+        ReviseModeGuides.fillPopup(revisePopup, health: health, selected: selected)
+    }
+
+    private func updateReviseDetail(from health: [String: Any]) {
+        let id = EngineSelectGroups.selectedId(revisePopup)
+            ?? SettingsStore.shared.engine.reviseMode
+        reviseDetailLabel.stringValue = ReviseModeGuides.detailText(for: id, health: health)
     }
 
     private func reconcileAndFillPopups() {
@@ -186,6 +204,7 @@ final class EnginePanelView: NSView {
         if let id = EngineSelectGroups.selectedId(finalPopup) { store.engine.finalProvider = id }
         if let id = EngineSelectGroups.selectedId(revisePopup) { store.engine.reviseMode = id }
         reconcileAndFillPopups()
+        updateReviseDetail(from: SettingsStore.shared.health)
     }
 
     @objc private func saveClicked() {
@@ -201,7 +220,9 @@ final class EnginePanelView: NSView {
             do {
                 let msg = try await store.saveEngine()
                 if SessionController.shared.isRunning {
-                    statusLabel.stringValue = "\(msg)；请停止并重新开始字幕后，引擎设置才会生效"
+                    try await SessionController.shared.reconfigureEngine()
+                    statusLabel.stringValue =
+                        "\(msg)；观看场景与断句已应用到当前字幕。若更换 ASR 或翻译接口，请停止后重新开始"
                 } else {
                     statusLabel.stringValue = msg
                 }

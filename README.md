@@ -51,7 +51,9 @@ App bundle：`Contents/Resources/{server, python-venv, run-server.sh}`
 ScreenCaptureKit → Swift App → ws://127.0.0.1:8765/ws → server/ → 字幕 overlay
 ```
 
-三层引擎：ASR（Whisper / 腾讯 / OpenAI）→ 句中翻译 → 句末润色。本地模型须在 App 内下载（`VOICEBRIDGE_OPTIONAL_LOCAL_MODELS=1`）。
+三层引擎：ASR（Whisper / 腾讯 / OpenAI）→ 句中翻译 → 句末润色。本地模型须在 App 内下载。
+
+**观看场景**（主窗口或设置 → 引擎）：演讲 / 技术分享 / 会议 / 网课 — 影响断句节奏与 LLM 润色风格。字幕运行中切换即时生效；更换 ASR 或翻译接口需停止再开始。
 
 ## API（节选）
 
