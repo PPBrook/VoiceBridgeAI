@@ -2,6 +2,10 @@
 
 面向评审老师：clone 或 sparse-checkout 后**直接使用 `.app`**，无需配置 Python、无需下载模型、**无需解压 zip**。
 
+**Demo 视频**（带配音，覆盖主要功能）：[哔哩哔哩 →](https://space.bilibili.com/34746379)
+
+> Demo 仅涉及 **macOS 端**；Windows 版（`feat/winapp`）因时间有限未完成测试与录制，视频未展示 Windows 端。
+
 ## 快速试用（Local 推荐）
 
 1. 获取 `releases/VoiceBridgeAI-Local.app`（约 1.2 GB，**不压缩**）
