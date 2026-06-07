@@ -16,6 +16,13 @@ if (-not (Test-Path $Project)) {
 
 Set-Location $Root
 
+$existing = Get-Process -Name "VoiceBridgeAI" -ErrorAction SilentlyContinue
+if ($existing) {
+    Write-Host "Closing running VoiceBridgeAI (PID $($existing.Id -join ',')) ..."
+    $existing | Stop-Process -Force
+    Start-Sleep -Seconds 1
+}
+
 $Runtime = Get-AppxPackage -Name "Microsoft.WindowsAppRuntime.1.6*" -ErrorAction SilentlyContinue
 if (-not $Runtime) {
     Write-Host ""
