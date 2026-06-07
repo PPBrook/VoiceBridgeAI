@@ -20,6 +20,7 @@ public sealed partial class OverlayWindow : Window
     {
         InitializeComponent();
         BuildHeaderChrome();
+        ApplyBackgroundOpacity(OverlayPreferences.BackgroundOpacity);
         OverlayPreferences.Changed += OnPreferencesChanged;
         Activated += OnFirstActivated;
         Closed += (_, _) => OverlayPreferences.Changed -= OnPreferencesChanged;
@@ -149,8 +150,7 @@ public sealed partial class OverlayWindow : Window
 
     private void ApplyBackgroundOpacity(double opacity)
     {
-        var alpha = (byte)Math.Round(opacity * 255);
-        OverlayBorder.Background = new SolidColorBrush(Microsoft.UI.ColorHelper.FromArgb(alpha, 0, 0, 0));
+        TintLayer.Opacity = opacity;
     }
 
     private double TextAlpha(double baseAlpha) =>
@@ -308,6 +308,7 @@ public sealed partial class OverlayWindow : Window
 
     private void Show()
     {
+        ApplyBackgroundOpacity(OverlayPreferences.BackgroundOpacity);
         Activate();
         AppWindow.Show();
     }

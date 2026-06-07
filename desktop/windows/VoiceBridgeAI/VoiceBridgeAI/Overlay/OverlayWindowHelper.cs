@@ -10,12 +10,25 @@ public static class OverlayWindowHelper
 {
     private static readonly IntPtr HWND_TOPMOST = new(-1);
     private const uint SWP_SHOWWINDOW = 0x0040;
+    private const int GWL_EXSTYLE = -20;
+    private const int WS_EX_LAYERED = 0x00080000;
+    private const int DWMWA_SYSTEMBACKDROP_TYPE = 38;
+    private const int DWMSBT_NONE = 3;
     public const int DefaultWidth = 760;
     public const int DefaultHeight = 212;
 
     public static void ConfigureOverlay(Window window)
     {
         window.ExtendsContentIntoTitleBar = true;
+
+        try
+        {
+            window.SystemBackdrop = null;
+        }
+        catch
+        {
+            // Older Windows builds may not expose SystemBackdrop.
+        }
 
         if (window.AppWindow.Presenter is OverlappedPresenter presenter)
         {
@@ -24,12 +37,17 @@ public static class OverlayWindowHelper
             presenter.IsResizable = false;
         }
 
-        window.AppWindow.TitleBar.ExtendsContentIntoTitleBar = true;
+        var titleBar = window.AppWindow.TitleBar;
+        titleBar.ExtendsContentIntoTitleBar = true;
         if (AppWindowTitleBar.IsCustomizationSupported())
         {
-            window.AppWindow.TitleBar.ButtonBackgroundColor = Colors.Transparent;
-            window.AppWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+            titleBar.ButtonBackgroundColor = Colors.Transparent;
+            titleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
+            titleBar.BackgroundColor = Colors.Transparent;
+            titleBar.InactiveBackgroundColor = Colors.Transparent;
         }
+
+        EnableTransparentWindowChrome(window);
 
         window.AppWindow.Changed += (_, args) =>
         {
@@ -40,6 +58,24 @@ public static class OverlayWindowHelper
         };
 
         PositionOverlay(window);
+    }
+
+    private static void EnableTransparentWindowChrome(Window window)
+    {
+        var hwnd = WindowNative.GetWindowHandle(window);
+        if (hwnd == IntPtr.Zero)
+        {
+            return;
+        }
+
+        var exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
+        SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_LAYERED);
+
+        var margins = new MARGINS { Left = -1, Right = -1, Top = -1, Bottom = -1 };
+        _ = DwmExtendFrameIntoClientArea(hwnd, ref margins);
+
+        var backdrop = DWMSBT_NONE;
+        _ = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, ref backdrop, Marshal.SizeOf<int>());
     }
 
     public static void PositionOverlay(Window window)
@@ -101,6 +137,15 @@ public static class OverlayWindowHelper
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    private struct MARGINS
+    {
+        public int Left;
+        public int Right;
+        public int Top;
+        public int Bottom;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     private struct RECT
     {
         public int Left;
@@ -113,6 +158,18 @@ public static class OverlayWindowHelper
     }
 
     private const uint SPI_GETWORKAREA = 0x0030;
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS margins);
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, ref RECT pvParam, uint fWinIni);
