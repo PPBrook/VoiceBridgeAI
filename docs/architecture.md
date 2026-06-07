@@ -46,5 +46,15 @@ App 模式为 `~/Library/Application Support/VoiceBridgeAI/`。
 
 ## 分支
 
-- `main`（或当前默认）：macOS App + Python sidecar
-- `legacy/web-only`：仅浏览器版备份，不参与 App 打包
+- `main`：macOS App + Python sidecar（当前默认）
+- `legacy/web-only`：浏览器版备份
+- `feat/macapp`：App 功能开发分支
+
+## 本地模型存储
+
+| 模型 | 标记文件 | 数据 |
+|------|----------|------|
+| Whisper | `models/whisper/.installed-{规格}` | `models/hf/hub/`（HF 缓存） |
+| Argos | `models/argos/.installed-en-zh` | Argos 包目录（`~/.local/share/argos-translate/packages`） |
+
+可选模式下以 marker 为准判断 App 内「已安装」；删除时同步清理缓存并刷新 Argos 语言列表。

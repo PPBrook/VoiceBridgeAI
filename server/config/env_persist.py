@@ -176,3 +176,35 @@ def persist_engine_config(payload: dict[str, Any]) -> None:
             updates,
             section_comment="# --- engine settings (console) ---",
         )
+
+
+LOCAL_MODEL_ENV_KEYS: dict[str, str] = {
+    "whisperModel": "WHISPER_MODEL",
+    "whisperEnabled": "LOCAL_WHISPER_ENABLED",
+    "argosEnabled": "LOCAL_ARGOS_ENABLED",
+}
+
+
+def local_model_env_updates(payload: dict[str, Any]) -> dict[str, str]:
+    updates: dict[str, str] = {}
+    for field, env_key in LOCAL_MODEL_ENV_KEYS.items():
+        if field not in payload:
+            continue
+        value = payload[field]
+        if field in ("whisperEnabled", "argosEnabled"):
+            updates[env_key] = "1" if bool(value) else "0"
+        else:
+            text = str(value).strip()
+            if text:
+                updates[env_key] = text
+    return updates
+
+
+def persist_local_model_settings(payload: dict[str, Any]) -> None:
+    updates = local_model_env_updates(payload)
+    if updates:
+        merge_env_file(
+            env_file_path(),
+            updates,
+            section_comment="# --- local models ---",
+        )

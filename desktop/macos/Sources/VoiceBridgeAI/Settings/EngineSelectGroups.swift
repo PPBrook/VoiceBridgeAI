@@ -34,9 +34,7 @@ enum EngineSelectGroups {
             if !menu.items.isEmpty {
                 menu.addItem(.separator())
             }
-            let header = NSMenuItem(title: group.label, action: nil, keyEquivalent: "")
-            header.isEnabled = false
-            menu.addItem(header)
+            menu.addItem(sectionHeaderItem(title: group.label))
             for provider in items {
                 let item = NSMenuItem(title: provider.label, action: nil, keyEquivalent: "")
                 item.representedObject = provider.id
@@ -67,22 +65,63 @@ enum EngineSelectGroups {
     }
 
     static func selectedId(_ popup: NSPopUpButton) -> String? {
-        popup.selectedItem?.representedObject as? String
+        guard let item = popup.selectedItem, isSelectableItem(item) else { return nil }
+        return item.representedObject as? String
+    }
+
+    /// 分组标题等非选项被点后，恢复到 fallbackId 或第一个可选项。
+    static func ensureValidSelection(_ popup: NSPopUpButton, fallbackId: String) {
+        if selectedId(popup) != nil { return }
+        reselect(popup, providerId: fallbackId)
+    }
+
+    private static let nonSelectableTag = -1
+
+    static func isSelectableMenuItem(_ item: NSMenuItem) -> Bool {
+        item.tag != nonSelectableTag && !item.isSeparatorItem && item.representedObject is String
+    }
+
+    private static func sectionHeaderItem(title: String) -> NSMenuItem {
+        let item = NSMenuItem()
+        item.tag = nonSelectableTag
+        item.isEnabled = false
+
+        let label = NSTextField(labelWithString: title)
+        label.font = .systemFont(ofSize: 11, weight: .semibold)
+        label.textColor = .secondaryLabelColor
+        label.lineBreakMode = .byTruncatingTail
+
+        let width: CGFloat = 320
+        let height: CGFloat = 22
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
+        label.frame = NSRect(x: 16, y: 3, width: width - 24, height: height - 6)
+        label.autoresizingMask = [.width, .minYMargin]
+        container.addSubview(label)
+        item.view = container
+        return item
+    }
+
+    private static func isSelectableItem(_ item: NSMenuItem) -> Bool {
+        isSelectableMenuItem(item)
     }
 
     private static func select(_ popup: NSPopUpButton, providerId: String, providers: [ProviderOption]) {
-        for item in popup.itemArray {
+        reselect(popup, providerId: providerId)
+        if selectedId(popup) != nil { return }
+        if let fallback = providers.first?.id {
+            reselect(popup, providerId: fallback)
+        }
+    }
+
+    private static func reselect(_ popup: NSPopUpButton, providerId: String) {
+        for item in popup.itemArray where isSelectableItem(item) {
             if item.representedObject as? String == providerId {
                 popup.select(item)
                 return
             }
         }
-        let fallback = providers.first?.id ?? providerId
-        for item in popup.itemArray {
-            if item.representedObject as? String == fallback {
-                popup.select(item)
-                return
-            }
+        if let first = popup.itemArray.first(where: isSelectableItem) {
+            popup.select(first)
         }
     }
 }

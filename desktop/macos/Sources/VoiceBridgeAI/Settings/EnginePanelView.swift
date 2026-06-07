@@ -2,10 +2,10 @@ import AppKit
 
 @MainActor
 final class EnginePanelView: NSView {
-    private let asrPopup = NSPopUpButton()
-    private let partialPopup = NSPopUpButton()
-    private let finalPopup = NSPopUpButton()
-    private let revisePopup = NSPopUpButton()
+    private let asrPopup = EnginePopUpButton()
+    private let partialPopup = EnginePopUpButton()
+    private let finalPopup = EnginePopUpButton()
+    private let revisePopup = EnginePopUpButton()
     private let noteLabel = FormBuilder.label(
         "默认可直接用本地 Whisper + Argos，无需 Key。云端推荐句中 MT + 句末 LLM；请先在「接口密钥」填写并测试。"
     )
@@ -74,7 +74,7 @@ final class EnginePanelView: NSView {
     }
 
     /// 与 Web `label.setting` 布局一致：左侧标签（含推荐小字），右侧下拉。
-    private func settingRow(title: String, recommend: String?, popup: NSPopUpButton) -> NSView {
+    private func settingRow(title: String, recommend: String?, popup: EnginePopUpButton) -> NSView {
         let labelColumn = NSStackView()
         labelColumn.orientation = .vertical
         labelColumn.alignment = .leading
@@ -177,6 +177,10 @@ final class EnginePanelView: NSView {
 
     @objc private func popupChanged() {
         let store = SettingsStore.shared
+        EngineSelectGroups.ensureValidSelection(asrPopup, fallbackId: store.engine.asrProvider)
+        EngineSelectGroups.ensureValidSelection(partialPopup, fallbackId: store.engine.partialProvider)
+        EngineSelectGroups.ensureValidSelection(finalPopup, fallbackId: store.engine.finalProvider)
+        EngineSelectGroups.ensureValidSelection(revisePopup, fallbackId: store.engine.reviseMode)
         if let id = EngineSelectGroups.selectedId(asrPopup) { store.engine.asrProvider = id }
         if let id = EngineSelectGroups.selectedId(partialPopup) { store.engine.partialProvider = id }
         if let id = EngineSelectGroups.selectedId(finalPopup) { store.engine.finalProvider = id }

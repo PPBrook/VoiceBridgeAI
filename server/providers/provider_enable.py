@@ -20,13 +20,13 @@ def is_verified(layer: str, provider_id: str) -> bool:
 
     if optional_local_models_enabled():
         if layer == "asr" and provider_id == "local":
-            from core.local_models import is_whisper_installed
+            from core.local_models import is_model_available
 
-            return is_whisper_installed()
+            return is_model_available("whisper")
         if provider_id == "argos":
-            from core.local_models import is_argos_installed
+            from core.local_models import is_model_available
 
-            return is_argos_installed()
+            return is_model_available("argos")
     if is_default_available(layer, provider_id):
         return True
     return os.getenv(_verified_key(layer, provider_id), "").strip() == "1"
@@ -69,13 +69,18 @@ def credentials_ok(layer: str, provider_id: str) -> bool:
         from providers.translate_qiniu import configured
 
         return configured()
-    if provider_id in ("aliyun", "deepseek", "openai"):
-        mod = {
-            "aliyun": "translate_aliyun",
-            "deepseek": "translate_deepseek",
-            "openai": "translate_openai",
-        }[provider_id]
-        return __import__(mod, fromlist=["configured"]).configured()
+    if provider_id == "aliyun":
+        from providers.translate_aliyun import configured
+
+        return configured()
+    if provider_id == "deepseek":
+        from providers.translate_deepseek import configured
+
+        return configured()
+    if provider_id == "openai":
+        from providers.translate_openai import configured
+
+        return configured()
     return False
 
 

@@ -9,6 +9,14 @@ __pycache__/
 # local UI prefs (dev repo root / App Support)
 cloud-ui.json
 
+# dev / App Support downloaded models (Whisper markers, HF cache)
+models/
+
+# Python type/check caches
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+
 # macOS desktop build artifacts
 desktop/macos/.build/
 desktop/macos/dist/

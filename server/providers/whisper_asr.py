@@ -15,27 +15,44 @@ log = logging.getLogger(__name__)
 
 MODEL_NAME = os.getenv("WHISPER_MODEL", "tiny.en").strip() or "tiny.en"
 _model: Optional[WhisperModel] = None
+_loaded_name: Optional[str] = None
+
+
+def current_model_name() -> str:
+    return os.getenv("WHISPER_MODEL", "tiny.en").strip() or "tiny.en"
+
+
+def unload_model() -> None:
+    global _model, _loaded_name
+    _model = None
+    _loaded_name = None
 
 
 def load_model() -> None:
-    global _model
-    if _model is not None:
+    global _model, _loaded_name
+    name = current_model_name()
+    if _model is not None and _loaded_name == name:
         return
+    unload_model()
     from core.local_models import (
         configure_model_cache_env,
+        is_whisper_enabled,
         is_whisper_installed,
         mark_whisper_installed,
         optional_local_models_enabled,
     )
 
+    if not is_whisper_enabled():
+        raise RuntimeError("本地 Whisper 已关闭。请在「本地模型」中启用，或改用云端 ASR。")
     configure_model_cache_env()
-    if optional_local_models_enabled() and not is_whisper_installed(MODEL_NAME):
+    if optional_local_models_enabled() and not is_whisper_installed(name):
         raise RuntimeError(
-            f"Whisper 模型 {MODEL_NAME} 未安装。请在设置中下载本地模型，或改用云端 ASR。"
+            f"Whisper 模型 {name} 未安装。请在设置中下载本地模型，或改用云端 ASR。"
         )
-    log.info("Loading Whisper %s (cpu, int8) …", MODEL_NAME)
-    _model = WhisperModel(MODEL_NAME, device="cpu", compute_type="int8")
-    mark_whisper_installed(MODEL_NAME)
+    log.info("Loading Whisper %s (cpu, int8) …", name)
+    _model = WhisperModel(name, device="cpu", compute_type="int8")
+    _loaded_name = name
+    mark_whisper_installed(name)
     log.info("Whisper ready")
 
 

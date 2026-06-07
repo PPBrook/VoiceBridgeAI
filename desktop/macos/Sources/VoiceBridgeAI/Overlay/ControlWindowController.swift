@@ -1,19 +1,25 @@
 import AppKit
 
 @MainActor
+private final class ControlWindow: NSWindow {
+    override func miniaturize(_ sender: Any?) {
+        MenuBarController.shared.collapseControlWindow()
+    }
+}
+
+@MainActor
 final class ControlWindowController: NSWindowController, NSWindowDelegate {
     private let statusLabel = NSTextField(labelWithString: "检测服务端…")
     private let engineLabel = NSTextField(wrappingLabelWithString: "引擎：—")
     private let startButton = NSButton(title: "开始悬浮字幕", target: nil, action: nil)
     private let stopButton = NSButton(title: "停止", target: nil, action: nil)
     private let settingsButton = NSButton(title: "设置…", target: nil, action: nil)
-    private let collapseButton = NSButton(title: "收起到菜单栏", target: nil, action: nil)
     private let errorLabel = NSTextField(wrappingLabelWithString: "")
 
     init() {
-        let window = NSWindow(
+        let window = ControlWindow(
             contentRect: NSRect(x: 0, y: 0, width: 380, height: 340),
-            styleMask: [.titled, .closable],
+            styleMask: [.titled, .closable, .miniaturizable],
             backing: .buffered,
             defer: false
         )
@@ -21,6 +27,7 @@ final class ControlWindowController: NSWindowController, NSWindowDelegate {
         window.center()
         super.init(window: window)
         window.delegate = self
+        window.standardWindowButton(.miniaturizeButton)?.toolTip = "收起到菜单栏"
         setupUI()
         refresh()
         Task { try? await SettingsStore.shared.refresh(); refreshEngineSummary() }
@@ -54,10 +61,6 @@ final class ControlWindowController: NSWindowController, NSWindowDelegate {
         settingsButton.action = #selector(openSettings)
         settingsButton.bezelStyle = .rounded
 
-        collapseButton.target = self
-        collapseButton.action = #selector(collapseToMenuBar)
-        collapseButton.bezelStyle = .rounded
-
         let subtitle = NSTextField(labelWithString: "macOS 原生客户端")
         subtitle.font = .systemFont(ofSize: 11)
         subtitle.textColor = .secondaryLabelColor
@@ -67,7 +70,7 @@ final class ControlWindowController: NSWindowController, NSWindowDelegate {
         footnote.textColor = .secondaryLabelColor
 
         let stack = NSStackView(views: [
-            subtitle, statusLabel, engineLabel, startButton, stopButton, settingsButton, collapseButton, errorLabel, footnote,
+            subtitle, statusLabel, engineLabel, startButton, stopButton, settingsButton, errorLabel, footnote,
         ])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -83,13 +86,12 @@ final class ControlWindowController: NSWindowController, NSWindowDelegate {
             startButton.widthAnchor.constraint(equalTo: stack.widthAnchor),
             stopButton.widthAnchor.constraint(equalTo: stack.widthAnchor),
             settingsButton.widthAnchor.constraint(equalTo: stack.widthAnchor),
-            collapseButton.widthAnchor.constraint(equalTo: stack.widthAnchor),
         ])
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        MenuBarController.shared.collapseControlWindow()
-        return false
+        NSApp.terminate(nil)
+        return true
     }
 
     func refresh() {
@@ -154,9 +156,5 @@ final class ControlWindowController: NSWindowController, NSWindowDelegate {
             _ = SettingsWindowController()
         }
         SettingsWindowController.shared?.showAndLoad()
-    }
-
-    @objc private func collapseToMenuBar() {
-        MenuBarController.shared.collapseControlWindow()
     }
 }
