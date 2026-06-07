@@ -9,13 +9,13 @@ macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 | 版本 | 下载 | 体积 | 说明 |
 |------|------|------|------|
 | **Local**（推荐） | [VoiceBridgeAI-Local.zip](releases/VoiceBridgeAI-Local.zip) | ~428 MB | 内置 Whisper + Argos，离线可用 |
-| **Cloud** | [VoiceBridgeAI-Cloud.zip](releases/VoiceBridgeAI-Cloud.zip) | ~25 MB | 仅云端 ASR/翻译，需网络（**直接下载**，无需 LFS） |
+| **Cloud** | [VoiceBridgeAI-Cloud.tar.gz](releases/VoiceBridgeAI-Cloud.tar.gz)（[zip](releases/VoiceBridgeAI-Cloud.zip)） | ~22 MB | 仅云端 ASR/翻译；**推荐 tar.gz 双击解压** |
 
 **Local** 安装包通过 Git LFS 托管（clone 后需 `git lfs pull`）；**Cloud** 为普通文件，GitHub 页面点 **Download** 即可。
 
 **快速开始**
 
-1. 解压 zip → **右键打开** 对应 `.app`（未签名，首次不能双击）
+1. 解压安装包 → **右键打开** 对应 `.app`（未签名，首次不能双击）
 2. **系统设置 → 隐私与安全性 → 屏幕录制** → 勾选 VoiceBridgeAI
 3. 打开 App → **开始悬浮字幕**（播放含英文的系统音频，如浏览器视频）
 

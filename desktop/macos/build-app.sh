@@ -151,6 +151,17 @@ else
     exit 1
   fi
   echo "内置 python-venv 校验通过: $(bundled_python)"
+  # Python 3.14 venv 的 Unicode 别名 𝜋thon 会导致 Finder 解压 zip 失败
+  if [[ -d "$RES/python-venv/bin" ]]; then
+    for _vb in "$RES/python-venv/bin"/*; do
+      [[ -e "$_vb" ]] || continue
+      _name=$(basename "$_vb")
+      if ! LC_ALL=C printf '%s' "$_name" | grep -qE '^[!-~]+$'; then
+        echo "移除 venv 非 ASCII 条目: $_name"
+        rm -f "$_vb"
+      fi
+    done
+  fi
 fi
 
 if [[ "$VARIANT" == "local" && "$SKIP_VENV" != "1" && "$SKIP_MODELS" != "1" ]]; then

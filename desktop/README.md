@@ -46,7 +46,7 @@ cd desktop/macos && ./run.sh
 cd desktop/macos
 ./build-app-local.sh    # dist/VoiceBridgeAI-Local.app（内置 Whisper + Argos）
 ./build-app-cloud.sh    # dist/VoiceBridgeAI-Cloud.app（仅云端 API）
-./scripts/package-release-zip.sh cloud   # → releases/VoiceBridgeAI-Cloud.zip
+./scripts/package-release-zip.sh cloud   # → releases/VoiceBridgeAI-Cloud.zip + .tar.gz
 ./scripts/package-release-zip.sh local   # → releases/VoiceBridgeAI-Local.zip
 ```
 
