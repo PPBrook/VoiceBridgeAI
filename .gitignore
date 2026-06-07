@@ -6,6 +6,9 @@ __pycache__/
 .DS_Store
 **/.DS_Store
 
+# local UI prefs (dev repo root / App Support)
+cloud-ui.json
+
 # macOS desktop build artifacts
 desktop/macos/.build/
 desktop/macos/dist/

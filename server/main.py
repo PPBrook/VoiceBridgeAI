@@ -10,23 +10,23 @@ from pathlib import Path
 
 from fastapi import Body, FastAPI, WebSocket, WebSocketDisconnect
 
-from cloud_config import apply_cloud, cloud_status, test_all_and_verify, test_and_verify
-from asr_config import default_mode, get_status as get_asr_status, normalize_mode
-from engine_config import apply_settings, get_engine_status
-from pcm import PcmFramer, resample_to_16k
-from revise import ReviseScheduler
-from revise_config import default_mode as default_revise_mode
-from revise_config import get_params as get_revise_params
-from revise_config import get_status as get_revise_status
-from revise_config import normalize_mode as normalize_revise_mode
-from tencent_asr import TencentAsrStream, configured as tencent_configured
-from translate import translate_final, translate_partial
-from vad import ReviseEngine
-from whisper_asr import load_model as load_whisper
-from local_models import get_status as get_local_models_status
-import local_models
+from config.cloud_config import apply_cloud, cloud_status, test_all_and_verify, test_and_verify
+from config.asr_config import default_mode, get_status as get_asr_status, normalize_mode
+from config.engine_config import apply_settings, get_engine_status
+from core.pcm import PcmFramer, resample_to_16k
+from core.revise import ReviseScheduler
+from config.revise_config import default_mode as default_revise_mode
+from config.revise_config import get_params as get_revise_params
+from config.revise_config import get_status as get_revise_status
+from config.revise_config import normalize_mode as normalize_revise_mode
+from providers.tencent_asr import TencentAsrStream, configured as tencent_configured
+from core.translate import translate_final, translate_partial
+from core.vad import ReviseEngine
+from providers.whisper_asr import load_model as load_whisper
+from core.local_models import get_status as get_local_models_status
+import core.local_models as local_models
 
-from app_paths import env_file_path
+from config.app_paths import env_file_path
 
 
 def _load_env_file() -> None:
@@ -53,8 +53,8 @@ log = logging.getLogger(__name__)
 
 
 async def _preload_translate(payload: dict | None = None) -> None:
-    from final_config import normalize_provider as normalize_final
-    from partial_config import normalize_provider as normalize_partial
+    from config.final_config import normalize_provider as normalize_final
+    from config.partial_config import normalize_provider as normalize_partial
 
     partial = normalize_partial(
         payload.get("partialProvider") if payload else None
@@ -62,7 +62,7 @@ async def _preload_translate(payload: dict | None = None) -> None:
     final = normalize_final(payload.get("finalProvider") if payload else None)
     if partial == "argos" or final == "argos":
         if not local_models.optional_local_models_enabled() or local_models.is_argos_installed():
-            from translate_argos import load_model as load_argos
+            from providers.translate_argos import load_model as load_argos
 
             await asyncio.to_thread(load_argos)
 
@@ -92,7 +92,7 @@ async def _preload_after_provider_test(layer: str, provider_id: str) -> None:
         return
     if layer in ("partial", "final") and provider_id == "argos":
         if not local_models.optional_local_models_enabled() or local_models.is_argos_installed():
-            from translate_argos import load_model
+            from providers.translate_argos import load_model
 
             await asyncio.to_thread(load_model)
 
@@ -107,7 +107,7 @@ async def _run_startup_tests() -> None:
             "results": [],
         }
         return
-    _startup_test = {"running": True, "done": False, "summary": "正在测试已配置接口…", "results": []}
+    _startup_test = {"running": True, "done": False, "summary": "正在测试已配置且未隐藏的接口…", "results": []}
     try:
         results, summary = await asyncio.to_thread(test_all_and_verify, None)
         for item in results:
@@ -249,6 +249,23 @@ async def post_cloud_test_all(payload: dict = Body(default_factory=dict)):
     }
 
 
+@app.get("/api/cloud/ui-prefs")
+def get_cloud_ui_prefs():
+    from config.cloud_ui_prefs import ui_prefs_status
+
+    return {"ok": True, **ui_prefs_status()}
+
+
+@app.post("/api/cloud/ui-prefs")
+async def post_cloud_ui_prefs(payload: dict = Body(default_factory=dict)):
+    from config.cloud_ui_prefs import save_hidden_providers, ui_prefs_status
+
+    raw = payload.get("hiddenProviders")
+    ids = [str(x).strip() for x in raw] if isinstance(raw, list) else []
+    save_hidden_providers(ids)
+    return {"ok": True, **ui_prefs_status()}
+
+
 @app.post("/api/cloud/settings")
 async def post_cloud_settings(payload: dict = Body(...)):
     errors = apply_cloud(payload)
@@ -363,9 +380,9 @@ async def websocket_pcm(ws: WebSocket):
             if not alive:
                 return
             if asr_mode == "openai":
-                from openai_asr import transcribe as cloud_transcribe
+                from providers.openai_asr import transcribe as cloud_transcribe
             else:
-                from whisper_asr import transcribe as cloud_transcribe
+                from providers.whisper_asr import transcribe as cloud_transcribe
 
             text = await asyncio.to_thread(cloud_transcribe, pcm, sample_rate)
             if not text or not alive:
@@ -442,7 +459,7 @@ async def websocket_pcm(ws: WebSocket):
                 )
                 return False
         elif asr_mode == "openai":
-            from openai_asr import configured as openai_ok
+            from providers.openai_asr import configured as openai_ok
 
             if not openai_ok():
                 await send_json(
@@ -473,8 +490,8 @@ async def websocket_pcm(ws: WebSocket):
                 **get_revise_status(revise_mode),
             }
         )
-        from partial_config import normalize_provider as np
-        from final_config import normalize_provider as nf
+        from config.partial_config import normalize_provider as np
+        from config.final_config import normalize_provider as nf
 
         log.info(
             "asr ready asr=%s partial=%s final=%s revise=%s sampleRate=%s",
