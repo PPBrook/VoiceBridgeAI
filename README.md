@@ -6,12 +6,7 @@ macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 
 带配音的功能演示，覆盖系统音频采集、实时悬浮字幕、三层引擎（ASR → 句中翻译 → 句末润色）、观看场景、字幕记录与 Local/Cloud 变体：
 
-| 平台 | 链接 | 状态 |
-|------|------|------|
-| **哔哩哔哩** | [澎湃brooks 空间](https://space.bilibili.com/34746379) | **审核中**（通过后更新 BV 链接） |
-| **备用（仓库内，可直接播放）** | [VoiceBridgeAI-demo.mp4](docs/demo/VoiceBridgeAI-demo.mp4) | 可用 |
-
-GitHub 上点击 mp4 链接即可在线播放；clone 后也可本地打开 `docs/demo/VoiceBridgeAI-demo.mp4`。
+**[哔哩哔哩观看 →](https://www.bilibili.com/video/BV1C4Et6PESe/)**
 
 > Demo 仅演示 **macOS 端**。Windows 客户端在 `feat/winapp` 分支有初步实现，因时间有限未做充分测试与录制。
 
