@@ -22,7 +22,7 @@ server/  （与 macOS 共用）
 | **1** | WinUI 托盘 + 启动/停止 + `ServerManager` 等价物（已完成） |
 | **2** | WebSocket 会话 + 最小悬浮字幕（已完成） |
 | **3** | WASAPI 系统音频采集（已完成） |
-| **4** | 设置窗（引擎 / 云端密钥），对齐 REST API |
+| **4** | 设置窗（引擎 / 云端密钥），对齐 REST API（引擎 Tab 已完成） |
 | **5** | 本地模型 Tab、字幕记录、Cloud/Local 打包变体 |
 
 ## 数据目录
@@ -71,11 +71,11 @@ server/  （与 macOS 共用）
 - 库候选：NAudio、` CSCore`，或 P/Invoke `IAudioClient`
 - 输出格式与 macOS 对齐：48 kHz，mono，Int16，再按现有协议发送
 
-## 悬浮字幕（计划）
+## 悬浮字幕
 
-- 无边框、置顶、透背景
-- WinUI 3 `Window` + `ExtendsContentIntoTitleBar` / 透明 Acrylic，或 Win32 `WS_EX_LAYERED`
-- 行为对齐 `OverlayPanelController`：2 行字幕、透明度、EN 开关、静音清屏
+- 无边框、置顶、可调透明背景
+- WinUI 3 `Window` + `ExtendsContentIntoTitleBar`
+- 行为对齐 `OverlayPanelController`：2 行字幕、背景/文字透明度滑块、EN 开关、标题区拖拽（位置持久化）、静音清屏
 
 ## 打包（计划）
 

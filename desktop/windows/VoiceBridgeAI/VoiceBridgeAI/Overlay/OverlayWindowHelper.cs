@@ -10,6 +10,8 @@ public static class OverlayWindowHelper
 {
     private static readonly IntPtr HWND_TOPMOST = new(-1);
     private const uint SWP_SHOWWINDOW = 0x0040;
+    public const int DefaultWidth = 760;
+    public const int DefaultHeight = 212;
 
     public static void ConfigureOverlay(Window window)
     {
@@ -29,25 +31,62 @@ public static class OverlayWindowHelper
             window.AppWindow.TitleBar.ButtonInactiveBackgroundColor = Colors.Transparent;
         }
 
+        window.AppWindow.Changed += (_, args) =>
+        {
+            if (args.DidPositionChange)
+            {
+                SavePosition(window);
+            }
+        };
+
+        PositionOverlay(window);
+    }
+
+    public static void PositionOverlay(Window window)
+    {
+        var saved = OverlayPreferences.SavedPosition;
+        if (saved is { } pos)
+        {
+            SetWindowPosition(window, pos.X, pos.Y);
+            return;
+        }
+
         PositionBottomCenter(window);
     }
 
     public static void PositionBottomCenter(Window window)
     {
-        const int width = 760;
-        const int height = 188;
-
         var workArea = GetPrimaryWorkArea();
-        var x = workArea.Left + (workArea.Width - width) / 2;
+        var x = workArea.Left + (workArea.Width - DefaultWidth) / 2;
         var y = workArea.Top + (int)(workArea.Height * 0.12);
+        SetWindowPosition(window, x, y);
+    }
 
+    public static void SavePosition(Window window)
+    {
         var hwnd = WindowNative.GetWindowHandle(window);
         if (hwnd == IntPtr.Zero)
         {
             return;
         }
 
-        SetWindowPos(hwnd, HWND_TOPMOST, x, y, width, height, SWP_SHOWWINDOW);
+        if (!GetWindowRect(hwnd, out var rect))
+        {
+            return;
+        }
+
+        OverlayPreferences.SavePosition(rect.Left, rect.Top);
+    }
+
+    private static void SetWindowPosition(Window window, int x, int y)
+    {
+        var hwnd = WindowNative.GetWindowHandle(window);
+        if (hwnd == IntPtr.Zero)
+        {
+            return;
+        }
+
+        SetWindowPos(hwnd, HWND_TOPMOST, x, y, DefaultWidth, DefaultHeight, SWP_SHOWWINDOW);
     }
 
     private static RECT GetPrimaryWorkArea()
@@ -77,6 +116,9 @@ public static class OverlayWindowHelper
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SystemParametersInfo(uint uiAction, uint uiParam, ref RECT pvParam, uint fWinIni);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool SetWindowPos(

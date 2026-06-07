@@ -7,16 +7,19 @@ public sealed class TrayController : IDisposable
     private const int MenuShow = 1;
     private const int MenuToggleSession = 2;
     private const int MenuEngine = 3;
-    private const int MenuQuit = 4;
+    private const int MenuSettings = 4;
+    private const int MenuQuit = 5;
 
     private readonly Tray.NativeTrayIcon _icon;
     private readonly Action _showMainWindow;
+    private readonly Action _showSettings;
     private readonly Action _quit;
     private bool _engineRunning;
 
-    public TrayController(Action showMainWindow, Action quit)
+    public TrayController(Action showMainWindow, Action showSettings, Action quit)
     {
         _showMainWindow = showMainWindow;
+        _showSettings = showSettings;
         _quit = quit;
 
         _icon = new Tray.NativeTrayIcon(_showMainWindow, BuildMenuItems);
@@ -70,6 +73,9 @@ public sealed class TrayController : IDisposable
             engineLabel,
             () => _ = StartEngineAsync(),
             !_engineRunning));
+
+        items.Add(Tray.NativeTrayIcon.TrayMenuItem.Separator());
+        items.Add(new Tray.NativeTrayIcon.TrayMenuItem(MenuSettings, "设置…", _showSettings));
 
         items.Add(Tray.NativeTrayIcon.TrayMenuItem.Separator());
         items.Add(new Tray.NativeTrayIcon.TrayMenuItem(MenuQuit, "退出 VoiceBridgeAI", _quit));

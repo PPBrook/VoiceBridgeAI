@@ -12,6 +12,7 @@ public partial class App : Application
     private TrayController? _tray;
     private MainWindow? _mainWindow;
     private OverlayWindow? _overlay;
+    private Settings.SettingsWindow? _settingsWindow;
 
     public App()
     {
@@ -38,7 +39,7 @@ public partial class App : Application
 
             try
             {
-                _tray = new TrayController(ShowMainWindow, Quit);
+                _tray = new TrayController(ShowMainWindow, ShowSettingsWindow, Quit);
                 _mainWindow.AttachTray(_tray);
             }
             catch (Exception ex)
@@ -100,6 +101,17 @@ public partial class App : Application
         }
 
         _mainWindow.Activate();
+    }
+
+    public void ShowSettingsWindow()
+    {
+        if (_settingsWindow is null)
+        {
+            _settingsWindow = new Settings.SettingsWindow();
+            _settingsWindow.Closed += (_, _) => _settingsWindow = null;
+        }
+
+        _settingsWindow.Activate();
     }
 
     private void Quit()

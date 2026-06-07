@@ -1,0 +1,91 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- 主窗口 / 设置 -->
+    <SolidColorBrush x:Key="VbaCardBackgroundBrush" Color="#0F000000" />
+    <SolidColorBrush x:Key="VbaCardBorderBrush" Color="#18000000" />
+    <SolidColorBrush x:Key="VbaStatusOkBrush" Color="#FF22C55E" />
+    <SolidColorBrush x:Key="VbaStatusWarnBrush" Color="#FFF59E0B" />
+    <SolidColorBrush x:Key="VbaStatusIdleBrush" Color="#FF9CA3AF" />
+
+    <Style x:Key="VbaCardStyle" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource VbaCardBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource VbaCardBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="12" />
+        <Setter Property="Padding" Value="16" />
+    </Style>
+
+    <Style x:Key="VbaSectionTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimaryBrush}" />
+    </Style>
+
+    <Style x:Key="VbaCaptionStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        <Setter Property="TextWrapping" Value="WrapWholeWords" />
+    </Style>
+
+    <!-- 浮窗 chrome -->
+    <SolidColorBrush x:Key="OverlayChromeForegroundBrush" Color="#B8FFFFFF" />
+    <SolidColorBrush x:Key="OverlayChromeMutedBrush" Color="#8CFFFFFF" />
+    <SolidColorBrush x:Key="OverlayChromeButtonBackgroundBrush" Color="#18FFFFFF" />
+    <SolidColorBrush x:Key="OverlayChromeButtonBorderBrush" Color="#24FFFFFF" />
+    <SolidColorBrush x:Key="OverlayChromeButtonHoverBrush" Color="#28FFFFFF" />
+    <SolidColorBrush x:Key="OverlayChromeToggleOnBrush" Color="#38FFFFFF" />
+    <SolidColorBrush x:Key="OverlaySliderForegroundBrush" Color="#CCFFFFFF" />
+
+    <Style x:Key="OverlayChromeButtonStyle" TargetType="Button">
+        <Setter Property="MinWidth" Value="28" />
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource OverlayChromeForegroundBrush}" />
+        <Setter Property="Background" Value="{StaticResource OverlayChromeButtonBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OverlayChromeButtonBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+
+    <Style x:Key="OverlayStopButtonStyle" TargetType="Button" BasedOn="{StaticResource OverlayChromeButtonStyle}">
+        <Setter Property="FontSize" Value="16" />
+        <Setter Property="ToolTipService.ToolTip" Value="停止字幕" />
+    </Style>
+
+    <Style x:Key="OverlayToggleStyle" TargetType="ToggleButton">
+        <Setter Property="MinWidth" Value="34" />
+        <Setter Property="MinHeight" Value="26" />
+        <Setter Property="Padding" Value="6,0" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="Bold" />
+        <Setter Property="Foreground" Value="{StaticResource OverlayChromeForegroundBrush}" />
+        <Setter Property="Background" Value="{StaticResource OverlayChromeButtonBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource OverlayChromeButtonBorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+
+    <Style x:Key="OverlayMiniSliderStyle" TargetType="Slider">
+        <Setter Property="Foreground" Value="{StaticResource OverlaySliderForegroundBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="OverlayChromeLabelStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="{StaticResource OverlayChromeMutedBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="OverlayTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{StaticResource OverlayChromeMutedBrush}" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+</ResourceDictionary>

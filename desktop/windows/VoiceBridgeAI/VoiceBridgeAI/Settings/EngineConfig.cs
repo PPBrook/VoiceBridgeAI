@@ -99,6 +99,15 @@ public sealed class EngineConfig
         return cfg;
     }
 
+    public Dictionary<string, object> ToEnginePayload() => new()
+    {
+        ["asrMode"] = AsrProvider,
+        ["asrProvider"] = AsrProvider,
+        ["partialProvider"] = PartialProvider,
+        ["finalProvider"] = FinalProvider,
+        ["reviseMode"] = ReviseMode,
+    };
+
     public Dictionary<string, object> ToWsPayload() => new()
     {
         ["type"] = "config",
@@ -143,5 +152,14 @@ public sealed class SettingsStore
         _healthDoc?.Dispose();
         _healthDoc = JsonDocument.Parse(doc.RootElement.GetRawText());
         Engine = EngineConfig.FromHealth(_healthDoc.RootElement);
+    }
+
+    public async Task<string> SaveEngineAsync(EngineConfig engine, CancellationToken ct = default)
+    {
+        using var doc = await ApiClient.PostJsonAsync("api/engine/settings", engine.ToEnginePayload(), ct);
+        _healthDoc?.Dispose();
+        _healthDoc = JsonDocument.Parse(doc.RootElement.GetRawText());
+        Engine = EngineConfig.FromHealth(_healthDoc.RootElement);
+        return "引擎已保存";
     }
 }

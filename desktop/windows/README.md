@@ -48,7 +48,8 @@ desktop/windows/
 - [x] WinUI 3 客户端（Phase 1：托盘 + 侧车 + 健康检查）
 - [x] WebSocket 会话 + 悬浮字幕 Overlay（Phase 2）
 - [x] WASAPI 系统音频环回采集（Phase 3）
-- [ ] 设置窗
+- [x] 设置窗（引擎配置，Phase 4 部分）
+- [x] 悬浮字幕：拖拽移动、背景/文字透明度、EN 开关
 - [ ] `build-app.ps1` 打包
 
 ## 开发
@@ -68,4 +69,4 @@ cd desktop\windows
 .\run.ps1
 ```
 
-托盘图标 + 主窗口 → **开始悬浮字幕** → 采集系统播放声 → 屏幕底部悬浮中文翻译。设置窗与打包见 Phase 4–5（[docs/windows.md](../../docs/windows.md)）。
+托盘图标 + 主窗口 → **开始悬浮字幕** → 采集系统播放声 → 屏幕底部悬浮中文翻译。浮窗标题栏可拖动；**背景** / **文字** 滑块调节透明度；**EN** 切换英文原文。主窗口或托盘 **设置** 可改 ASR / 翻译 / 润色 / 观看场景。打包见 Phase 5（[docs/windows.md](../../docs/windows.md)）。
