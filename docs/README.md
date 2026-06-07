@@ -10,7 +10,7 @@
 
 | 路径 | 内容 |
 |------|------|
-| [../README.md](../README.md) | 项目总览 |
+| [../README.md](../README.md) | 首页（评审入口 + 文档导航） |
 | [../server/README.md](../server/README.md) | Python 引擎与 API |
 | [../desktop/README.md](../desktop/README.md) | macOS 源码结构 |
 

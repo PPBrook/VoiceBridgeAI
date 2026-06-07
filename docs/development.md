@@ -39,6 +39,29 @@ VoiceBridgeAI/
 
 主分支维护 **macOS App + Python 引擎**。旧 Web / 浏览器扩展见其它分支。
 
+## 项目概览
+
+三层引擎：**ASR**（Whisper / 腾讯 / OpenAI）→ **句中翻译** → **句末润色**。
+
+| 功能 | 说明 |
+|------|------|
+| 观看场景 | 演讲 / 技术 / 会议 / 网课 — VAD 断句与 LLM 润色；运行中可热更新 |
+| 悬浮字幕 | 背景/文字透明度、英文显示、场景标签；静音 ~2.5s 自动清屏 |
+| 字幕记录 | 定稿句写入文件，多种中英排版 |
+| 本地模型 | Whisper + Argos，设置页下载与管理 |
+
+### API（节选）
+
+| 路径 | 说明 |
+|------|------|
+| GET `/api/health` | 状态、引擎、本地模型 |
+| POST `/api/models/local/download` | 下载 Whisper / Argos |
+| POST `/api/engine/settings` | 保存引擎与观看场景 |
+| POST `/api/cloud/settings` | 保存云端密钥 |
+| WS `/ws` | config + PCM → 字幕事件 |
+
+完整列表：[server/README.md](../server/README.md)
+
 ## 数据目录
 
 | 内容 | 开发（`./run.sh`） | 独立 App |
