@@ -44,7 +44,7 @@ if (-not (Test-Path $Exe)) {
 Get-ChildItem $OutDir -File -Recurse -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
 
 # Help the exe find repo root when launched without inherited env
-Set-Content -Path (Join-Path $OutDir "voicebridge-repo-path") -Value $RepoRoot -Encoding utf8NoBOM
+Set-Content -Path (Join-Path $OutDir "voicebridge-repo-path") -Value $RepoRoot -Encoding UTF8
 
 Write-Host "Starting $Exe ..."
 Write-Host ""
