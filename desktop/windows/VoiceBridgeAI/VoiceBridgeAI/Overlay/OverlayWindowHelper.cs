@@ -42,6 +42,11 @@ public static class OverlayWindowHelper
         var y = workArea.Top + (int)(workArea.Height * 0.12);
 
         var hwnd = WindowNative.GetWindowHandle(window);
+        if (hwnd == IntPtr.Zero)
+        {
+            return;
+        }
+
         SetWindowPos(hwnd, HWND_TOPMOST, x, y, width, height, SWP_SHOWWINDOW);
     }
 

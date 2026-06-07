@@ -15,35 +15,80 @@ public partial class App : Application
 
     public App()
     {
-        var syncContext = new DispatcherQueueSynchronizationContext(
-            DispatcherQueue.GetForCurrentThread());
-        SynchronizationContext.SetSynchronizationContext(syncContext);
-
         CurrentApp = this;
         InitializeComponent();
+        UnhandledException += (_, args) =>
+        {
+            StartupDiagnostics.Log("未处理异常", args.Exception);
+            args.Handled = true;
+        };
     }
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _overlay = new OverlayWindow();
-        SessionController.Shared.StateChanged += OnSessionStateChanged;
-        SessionController.Shared.Store.Changed += OnSubtitleChanged;
+        try
+        {
+            EnsureUiSynchronizationContext();
 
-        _tray = new TrayController(ShowMainWindow, Quit);
-        _mainWindow = new MainWindow(_tray);
-        _mainWindow.Activate();
+            SessionController.Shared.StateChanged += OnSessionStateChanged;
+            SessionController.Shared.Store.Changed += OnSubtitleChanged;
 
-        _ = _mainWindow.RefreshEngineStatusAsync();
+            _mainWindow = new MainWindow(null);
+            _mainWindow.Activate();
+
+            try
+            {
+                _tray = new TrayController(ShowMainWindow, Quit);
+                _mainWindow.AttachTray(_tray);
+            }
+            catch (Exception ex)
+            {
+                StartupDiagnostics.Log("托盘图标初始化失败（可继续使用主窗口）", ex);
+            }
+
+            _ = _mainWindow.RefreshEngineStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            StartupDiagnostics.Log("OnLaunched", ex);
+            throw;
+        }
+    }
+
+    private static void EnsureUiSynchronizationContext()
+    {
+        var queue = DispatcherQueue.GetForCurrentThread();
+        if (queue is null)
+        {
+            return;
+        }
+
+        SynchronizationContext.SetSynchronizationContext(new DispatcherQueueSynchronizationContext(queue));
+    }
+
+    private void EnsureOverlay()
+    {
+        _overlay ??= new OverlayWindow();
     }
 
     private void OnSessionStateChanged()
     {
         _tray?.RefreshMenu();
+        if (SessionController.Shared.Store.IsVisible)
+        {
+            EnsureOverlay();
+        }
+
         _overlay?.Update(SessionController.Shared.Store);
     }
 
     private void OnSubtitleChanged()
     {
+        if (SessionController.Shared.Store.IsVisible)
+        {
+            EnsureOverlay();
+        }
+
         _overlay?.Update(SessionController.Shared.Store);
     }
 
@@ -51,7 +96,7 @@ public partial class App : Application
     {
         if (_mainWindow is null)
         {
-            _mainWindow = new MainWindow(_tray!);
+            _mainWindow = new MainWindow(_tray);
         }
 
         _mainWindow.Activate();

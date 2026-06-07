@@ -5,10 +5,30 @@ namespace VoiceBridgeAI.Overlay;
 
 public sealed partial class OverlayWindow : Window
 {
+    private bool _configured;
+
     public OverlayWindow()
     {
         InitializeComponent();
-        OverlayWindowHelper.ConfigureOverlay(this);
+        Activated += OnFirstActivated;
+    }
+
+    private void OnFirstActivated(object sender, WindowActivatedEventArgs args)
+    {
+        if (_configured)
+        {
+            return;
+        }
+
+        _configured = true;
+        try
+        {
+            OverlayWindowHelper.ConfigureOverlay(this);
+        }
+        catch
+        {
+            // Position/style failure should not crash the app.
+        }
     }
 
     public void Update(SubtitleStore store)

@@ -20,7 +20,14 @@ public sealed class TrayController : IDisposable
         _quit = quit;
 
         _icon = new Tray.NativeTrayIcon(_showMainWindow, BuildMenuItems);
-        _icon.Show("VoiceBridgeAI");
+        try
+        {
+            _icon.Show("VoiceBridgeAI");
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"托盘图标不可用: {ex.Message}", ex);
+        }
     }
 
     public void SetEngineRunning(bool running)

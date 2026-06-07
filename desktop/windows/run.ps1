@@ -13,3 +13,8 @@ if (-not (Test-Path $Project)) {
 
 Set-Location $Root
 dotnet run --project $Project -c Release
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "客户端退出，代码: $LASTEXITCODE"
+    Read-Host "按 Enter 关闭"
+}

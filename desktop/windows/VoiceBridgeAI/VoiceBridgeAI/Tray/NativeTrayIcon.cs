@@ -76,7 +76,7 @@ internal sealed class NativeTrayIcon : IDisposable
         {
             if (!Shell_NotifyIcon(NIM_ADD, ref data))
             {
-                throw new InvalidOperationException("无法添加托盘图标");
+                throw new InvalidOperationException("Shell_NotifyIcon(NIM_ADD) 失败");
             }
 
             _added = true;
@@ -99,16 +99,17 @@ internal sealed class NativeTrayIcon : IDisposable
 
     private NOTIFYICONDATA CreateNotifyData(string tooltip)
     {
-        return new NOTIFYICONDATA
+        var data = new NOTIFYICONDATA
         {
             cbSize = (uint)Marshal.SizeOf<NOTIFYICONDATA>(),
             hWnd = _hwnd,
             uID = 1,
-            uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP | NIF_SHOWTIP,
+            uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP,
             uCallbackMessage = WM_TRAYICON,
             hIcon = LoadIcon(IntPtr.Zero, IDI_APPLICATION),
             szTip = tooltip.Length > 127 ? tooltip[..127] : tooltip,
         };
+        return data;
     }
 
     private IntPtr WindowProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam)

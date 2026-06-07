@@ -6,7 +6,7 @@ namespace VoiceBridgeAI;
 
 public sealed partial class MainWindow : Window
 {
-    private readonly TrayController? _tray;
+    private TrayController? _tray;
     private readonly DispatcherTimer _pollTimer;
     private bool _refreshing;
 
@@ -28,6 +28,12 @@ public sealed partial class MainWindow : Window
             SessionController.Shared.StateChanged -= RefreshSessionUi;
         };
 
+        RefreshSessionUi();
+    }
+
+    public void AttachTray(TrayController tray)
+    {
+        _tray = tray;
         RefreshSessionUi();
     }
 
