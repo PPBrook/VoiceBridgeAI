@@ -20,7 +20,7 @@ $Runtime = Get-AppxPackage -Name "Microsoft.WindowsAppRuntime.1.6*" -ErrorAction
 if (-not $Runtime) {
     Write-Host ""
     Write-Host "WARNING: Windows App Runtime 1.6 not detected."
-    Write-Host "Run once (as admin if prompted):  .\install-runtime.ps1"
+    Write-Host "Run:  .\install-runtime.ps1"
     Write-Host ""
 }
 
@@ -30,17 +30,33 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $OutDir = Join-Path $Root "VoiceBridgeAI/VoiceBridgeAI/bin/Release/net8.0-windows10.0.19041.0/win-x64"
-$Dll = Join-Path $OutDir "VoiceBridgeAI.dll"
-if (-not (Test-Path $Dll)) {
-    Write-Error "Missing build output: $Dll"
+$Exe = Join-Path $OutDir "VoiceBridgeAI.exe"
+if (-not (Test-Path $Exe)) {
+    Write-Error "Missing build output: $Exe"
 }
 
-# Must run from output dir so WinApp SDK native/bootstrap DLLs resolve (exit 0xC0000145 otherwise)
-Write-Host "Starting from $OutDir ..."
+# WinUI must launch via apphost .exe (dotnet exec -> 0xC0000145 DLL not found)
+Get-ChildItem $OutDir -File -Recurse -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
+
+Write-Host "Starting $Exe ..."
+Write-Host "(If blocked: Settings -> Privacy -> Windows Security -> App control -> Smart App Control -> Off)"
+Write-Host ""
+
 Push-Location $OutDir
 try {
-    dotnet exec VoiceBridgeAI.dll
-    $exitCode = $LASTEXITCODE
+    $proc = Start-Process -FilePath $Exe -WorkingDirectory $OutDir -PassThru -Wait
+    $exitCode = $proc.ExitCode
+}
+catch [System.ComponentModel.Win32Exception] {
+    Write-Host ""
+    Write-Host "Could not start VoiceBridgeAI.exe: $($_.Exception.Message)"
+    Write-Host ""
+    Write-Host "Smart App Control often blocks unsigned dev builds."
+    Write-Host "Turn OFF: Settings -> Privacy and security -> Windows Security"
+    Write-Host "          -> App and browser control -> Smart App Control -> Off (restart PC)"
+    Write-Host ""
+    Write-Host "Then run this script again."
+    $exitCode = 1
 }
 finally {
     Pop-Location
@@ -49,20 +65,10 @@ finally {
 if ($exitCode -ne 0) {
     Write-Host ""
     Write-Host "Client exited with code: $exitCode"
-    if ($exitCode -eq -532462766) {
-        Write-Host "(0xE0434352 = unhandled .NET exception)"
-    }
-    if ($exitCode -eq -1073741189) {
-        Write-Host "(0xC0000145 = DLL not found — try: .\install-runtime.ps1 -Upgrade)"
-    }
     if (Test-Path $LogPath) {
         Write-Host ""
-        Write-Host "Startup log ($LogPath) — last 40 lines:"
-        Get-Content $LogPath -Tail 40
+        Write-Host "Startup log ($LogPath):"
+        Get-Content $LogPath -Tail 20
     }
-    Write-Host ""
-    Write-Host "Fixes:"
-    Write-Host "  1. .\install-runtime.ps1 -Upgrade"
-    Write-Host "  2. Smart App Control off (Settings -> Windows Security -> App control)"
     Read-Host "Press Enter to close"
 }
