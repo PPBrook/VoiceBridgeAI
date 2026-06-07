@@ -37,20 +37,18 @@ cd desktop/macos && ./run.sh
 
 详见 [docs/development.md](../docs/development.md)。
 
-## 打包
+## 构建
 
 ```bash
 # 仓库根目录先创建 .venv
 ./run.sh
 
 cd desktop/macos
-./build-app-local.sh    # dist/VoiceBridgeAI-Local.app（内置 Whisper + Argos）
-./build-app-cloud.sh    # dist/VoiceBridgeAI-Cloud.app（仅云端 API）
-./scripts/package-release-zip.sh cloud   # → releases/VoiceBridgeAI-Cloud.app（直接复制，不压缩）
-./scripts/package-release-zip.sh local   # → releases/VoiceBridgeAI-Local.zip
+./build-app-local.sh    # dist/VoiceBridgeAI-Local.app
+./build-app-cloud.sh    # dist/VoiceBridgeAI-Cloud.app
 ```
 
-构建脚本 `build-app.sh` 会编译 Swift release、复制 Python 侧车与 venv、合并演示用 `.env` 种子；local 变体额外运行 `prepare-bundled-models.py` 下载并打包模型。Cloud 发布为 `releases/VoiceBridgeAI-Cloud.app/`（不压缩）；Local 打 zip 见 `package-release-zip.sh`（Git LFS）。
+`build-app.sh` 会编译 Swift release、复制 Python 侧车与 venv、合并演示用 `.env` 种子；local 变体额外下载并内置 Whisper + Argos 模型。产物在 `dist/`（gitignore）。
 
 ## 模块
 
