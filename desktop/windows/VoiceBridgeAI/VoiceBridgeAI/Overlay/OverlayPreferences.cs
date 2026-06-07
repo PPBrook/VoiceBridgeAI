@@ -1,27 +1,29 @@
-using Windows.Storage;
+using System.Text.Json;
 
 namespace VoiceBridgeAI.Overlay;
 
 public static class OverlayPreferences
 {
-    private const string BgKey = "overlayBackgroundOpacity";
-    private const string TextKey = "overlayTextOpacity";
-    private const string ShowEnglishKey = "overlayShowEnglish";
-    private const string PosXKey = "overlayPosX";
-    private const string PosYKey = "overlayPosY";
+    private const string FileName = "overlay-prefs.json";
+    private static readonly object Gate = new();
+    private static OverlayPrefsData? _cache;
 
     public static event Action? Changed;
-
-    private static ApplicationDataContainer Local => ApplicationData.Current.LocalSettings;
 
     /// <summary>背景不透明度 0.15～1.0，默认 0.78。</summary>
     public static double BackgroundOpacity
     {
-        get => Clamp(ReadDouble(BgKey), 0.15, 1.0, 0.78);
+        get => Clamp(Load().BackgroundOpacity, 0.15, 1.0, 0.78);
         set
         {
             var clamped = Clamp(value, 0.15, 1.0, 0.78);
-            Local.Values[BgKey] = clamped;
+            if (Math.Abs(Load().BackgroundOpacity - clamped) < 0.0001)
+            {
+                return;
+            }
+
+            Load().BackgroundOpacity = clamped;
+            Persist();
             Changed?.Invoke();
         }
     }
@@ -29,21 +31,33 @@ public static class OverlayPreferences
     /// <summary>字幕文字不透明度 0.25～1.0，默认 1.0。</summary>
     public static double TextOpacity
     {
-        get => Clamp(ReadDouble(TextKey), 0.25, 1.0, 1.0);
+        get => Clamp(Load().TextOpacity, 0.25, 1.0, 1.0);
         set
         {
             var clamped = Clamp(value, 0.25, 1.0, 1.0);
-            Local.Values[TextKey] = clamped;
+            if (Math.Abs(Load().TextOpacity - clamped) < 0.0001)
+            {
+                return;
+            }
+
+            Load().TextOpacity = clamped;
+            Persist();
             Changed?.Invoke();
         }
     }
 
     public static bool ShowEnglish
     {
-        get => !Local.Values.ContainsKey(ShowEnglishKey) || (bool)Local.Values[ShowEnglishKey];
+        get => Load().ShowEnglish;
         set
         {
-            Local.Values[ShowEnglishKey] = value;
+            if (Load().ShowEnglish == value)
+            {
+                return;
+            }
+
+            Load().ShowEnglish = value;
+            Persist();
             Changed?.Invoke();
         }
     }
@@ -52,37 +66,101 @@ public static class OverlayPreferences
     {
         get
         {
-            if (!Local.Values.ContainsKey(PosXKey) || !Local.Values.ContainsKey(PosYKey))
+            var data = Load();
+            if (data.PosX is int x && data.PosY is int y)
             {
-                return null;
+                return (x, y);
             }
 
-            return ((int)Local.Values[PosXKey], (int)Local.Values[PosYKey]);
+            return null;
         }
     }
 
     public static void SavePosition(int x, int y)
     {
-        Local.Values[PosXKey] = x;
-        Local.Values[PosYKey] = y;
-    }
-
-    private static double ReadDouble(string key)
-    {
-        if (!Local.Values.ContainsKey(key))
+        var data = Load();
+        if (data.PosX == x && data.PosY == y)
         {
-            return double.NaN;
+            return;
         }
 
-        return Local.Values[key] switch
-        {
-            double d => d,
-            float f => f,
-            int i => i,
-            _ => double.NaN,
-        };
+        data.PosX = x;
+        data.PosY = y;
+        Persist();
     }
+
+    private static OverlayPrefsData Load()
+    {
+        lock (Gate)
+        {
+            if (_cache is not null)
+            {
+                return _cache;
+            }
+
+            _cache = ReadFromDisk();
+            return _cache;
+        }
+    }
+
+    private static void Persist()
+    {
+        lock (Gate)
+        {
+            if (_cache is null)
+            {
+                return;
+            }
+
+            WriteToDisk(_cache);
+        }
+    }
+
+    private static OverlayPrefsData ReadFromDisk()
+    {
+        try
+        {
+            Directory.CreateDirectory(AppSupport.DataDirectory);
+            var path = PrefsPath();
+            if (!File.Exists(path))
+            {
+                return new OverlayPrefsData();
+            }
+
+            var json = File.ReadAllText(path);
+            return JsonSerializer.Deserialize<OverlayPrefsData>(json) ?? new OverlayPrefsData();
+        }
+        catch
+        {
+            return new OverlayPrefsData();
+        }
+    }
+
+    private static void WriteToDisk(OverlayPrefsData data)
+    {
+        try
+        {
+            Directory.CreateDirectory(AppSupport.DataDirectory);
+            var json = JsonSerializer.Serialize(data);
+            File.WriteAllText(PrefsPath(), json);
+        }
+        catch
+        {
+            // Preference persistence failure should not crash the app.
+        }
+    }
+
+    private static string PrefsPath() => Path.Combine(AppSupport.DataDirectory, FileName);
 
     private static double Clamp(double value, double min, double max, double fallback) =>
         double.IsNaN(value) ? fallback : Math.Min(max, Math.Max(min, value));
+
+    private sealed class OverlayPrefsData
+    {
+        public double BackgroundOpacity { get; set; } = 0.78;
+        public double TextOpacity { get; set; } = 1.0;
+        public bool ShowEnglish { get; set; } = true;
+        public int? PosX { get; set; }
+        public int? PosY { get; set; }
+    }
 }
