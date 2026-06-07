@@ -2,14 +2,7 @@
 
 面向评审：clone 或 sparse-checkout 后**直接使用 `.app`**，无需配置 Python、无需下载模型、**无需解压 zip**。
 
-## Demo 视频
-
-带配音的功能演示，覆盖主要模块与效果：
-
-| 平台 | 链接 | 状态 |
-|------|------|------|
-| **哔哩哔哩** | [澎湃brooks 空间](https://space.bilibili.com/34746379) | **审核中** |
-| **备用（仓库内）** | [VoiceBridgeAI-demo.mp4](../docs/demo/VoiceBridgeAI-demo.mp4) | 可直接播放 |
+**Demo 视频**（带配音，覆盖主要功能）：[哔哩哔哩 →](https://www.bilibili.com/video/BV1C4Et6PESe/)
 
 > Demo 仅涉及 **macOS 端**；Windows 版（`feat/winapp`）因时间有限未完成测试与录制，视频未展示 Windows 端。
 
