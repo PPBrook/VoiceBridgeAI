@@ -96,6 +96,11 @@ WinUI 项目在 `dotnet build` 时若报 `ExpandPriContent` / `Microsoft.Build.P
 - 需要 **.NET 8 SDK**，不必装完整 Visual Studio
 - 若仍失败，可装 [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/downloads/) → 工作负载 **「Windows 应用程序开发」**
 
+**「应用程序控制策略已阻止此文件」/ Smart App Control：**
+
+- `desktop\windows\run.ps1` 已改为 **`dotnet exec VoiceBridgeAI.dll`**（绕过未签名 apphost exe）
+- 若仍被拦：**设置 → 隐私和安全性 → Windows 安全中心 → 应用和浏览器控制 → 智能应用控制 → 关**（需重启）
+
 ## 开发机：未签名被 SmartScreen 拦截
 
 本地 `dotnet run` / `bin\...\VoiceBridgeAI.exe` **没有 Authenticode 签名**，Windows 可能提示「未知发布者」或 Defender 隔离。
