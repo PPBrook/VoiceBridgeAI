@@ -11,6 +11,8 @@ macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 
 **详细说明**（LFS 下载方式、内置功能、故障排查、作品介绍）：[docs/submission.md](docs/submission.md)
 
+**云端版**（约 24 MB，无本地模型，依赖云端 API）：[releases/VoiceBridgeAI-Cloud.zip](releases/VoiceBridgeAI-Cloud.zip)
+
 ---
 
 ## 开发与源码

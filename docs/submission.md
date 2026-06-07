@@ -17,6 +17,16 @@
 
 **系统要求：** macOS 13+
 
+### 云端版（可选）
+
+体积更小（约 24 MB），**不含** Whisper/Argos，默认使用云端 ASR/翻译（安装包内已合并演示用 API 配置）。
+
+1. 下载 [releases/VoiceBridgeAI-Cloud.zip](../releases/VoiceBridgeAI-Cloud.zip)（Git LFS）
+2. 解压 → **右键打开** `VoiceBridgeAI-Cloud.app`
+3. 其余步骤同上（屏幕录制 → 开始字幕）
+
+配置目录：`~/Library/Application Support/VoiceBridgeAI-Cloud/`
+
 ### 无法打开 App
 
 终端执行（把路径换成实际位置）：
@@ -54,7 +64,8 @@ ScreenCaptureKit → Swift App → Python 引擎 → 悬浮字幕
 
 ```
 VoiceBridgeAI/
-  releases/VoiceBridgeAI-Local.zip   # 评审安装包
+  releases/VoiceBridgeAI-Local.zip   # 评审推荐：离线完整版
+  releases/VoiceBridgeAI-Cloud.zip   # 云端版（较小）
   server/                            # Python 引擎
   desktop/macos/                     # Swift 客户端
   docs/                              # 开发与架构文档
