@@ -20,8 +20,8 @@ server/  （与 macOS 共用）
 |------|------|
 | **0** | `run.ps1`、Windows `APPDATA` 路径、文档与分支 |
 | **1** | WinUI 托盘 + 启动/停止 + `ServerManager` 等价物（已完成） |
-| **2** | WebSocket 会话 + 最小悬浮字幕（仅中文） |
-| **3** | WASAPI 系统音频采集 |
+| **2** | WebSocket 会话 + 最小悬浮字幕（已完成） |
+| **3** | WASAPI 系统音频采集（已完成） |
 | **4** | 设置窗（引擎 / 云端密钥），对齐 REST API |
 | **5** | 本地模型 Tab、字幕记录、Cloud/Local 打包变体 |
 

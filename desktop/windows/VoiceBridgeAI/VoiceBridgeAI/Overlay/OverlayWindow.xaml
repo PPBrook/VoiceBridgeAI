@@ -1,0 +1,78 @@
+<Window
+    x:Class="VoiceBridgeAI.Overlay.OverlayWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Padding="14,10">
+        <Border
+            Background="#85000000"
+            BorderBrush="#24FFFFFF"
+            BorderThickness="1"
+            CornerRadius="16">
+            <Grid Padding="14,10,14,16" RowSpacing="6">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock
+                        Grid.Column="0"
+                        Opacity="0.55"
+                        Text="VoiceBridgeAI"
+                        VerticalAlignment="Center" />
+                    <Button
+                        Grid.Column="1"
+                        Click="StopClicked"
+                        Content="×"
+                        ToolTipService.ToolTip="停止字幕"
+                        Width="28"
+                        Height="28" />
+                </Grid>
+
+                <TextBlock
+                    x:Name="HistoryZhLabel"
+                    Grid.Row="1"
+                    FontSize="14"
+                    Foreground="#8FC7C7C7"
+                    TextAlignment="Center"
+                    TextWrapping="WrapWholeWords"
+                    Visibility="Collapsed" />
+
+                <TextBlock
+                    x:Name="ZhLabel"
+                    Grid.Row="2"
+                    FontSize="24"
+                    FontWeight="SemiBold"
+                    Foreground="#FAFAFA"
+                    Text="等待字幕…"
+                    TextAlignment="Center"
+                    TextWrapping="WrapWholeWords" />
+
+                <TextBlock
+                    x:Name="EnLabel"
+                    Grid.Row="3"
+                    FontSize="13"
+                    Foreground="#D0D0D0"
+                    TextAlignment="Center"
+                    TextWrapping="WrapWholeWords"
+                    Visibility="Collapsed" />
+
+                <TextBlock
+                    x:Name="ErrorLabel"
+                    Grid.Row="4"
+                    Foreground="#FF6B6B"
+                    TextAlignment="Center"
+                    TextWrapping="WrapWholeWords"
+                    Visibility="Collapsed" />
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

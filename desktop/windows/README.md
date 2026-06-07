@@ -6,12 +6,12 @@
 
 ```
 desktop/windows/
-  VoiceBridgeAI/              # WinUI 3 解决方案（待建）
-    App/                      # 入口、托盘、BundleVariant
+  VoiceBridgeAI/              # WinUI 3 解决方案
+    App/                      # 入口、BundleVariant
     Capture/                  # WASAPI 环回采集
-    Session/                  # WebSocket、SubtitleStore、PcmSilenceMonitor
+    Session/                  # WebSocket、SubtitleStore、SessionController
     Overlay/                  # 置顶透明悬浮字幕
-    Settings/                 # 引擎 / 本地模型 / 字幕记录 / 云端密钥
+    Settings/                 # EngineConfig、SettingsStore（Phase 4 扩展）
     Sidecar/                  # 启动 python-venv + server
   scripts/
     run-server.ps1            # 打包版侧车启动（待建）
@@ -46,8 +46,8 @@ desktop/windows/
 - [x] Windows 数据目录（`server/config/app_paths.py`）
 - [x] 根目录 `run.ps1` 启动引擎
 - [x] WinUI 3 客户端（Phase 1：托盘 + 侧车 + 健康检查）
-- [ ] WASAPI 系统音频采集
-- [ ] 悬浮字幕 Overlay
+- [x] WebSocket 会话 + 悬浮字幕 Overlay（Phase 2）
+- [x] WASAPI 系统音频环回采集（Phase 3）
 - [ ] 设置窗
 - [ ] `build-app.ps1` 打包
 
@@ -68,4 +68,4 @@ cd desktop\windows
 .\run.ps1
 ```
 
-托盘图标 + 主窗口可启动/检测引擎侧车；WebSocket 字幕与 WASAPI 采集见 Phase 2–3（[docs/windows.md](../../docs/windows.md)）。
+托盘图标 + 主窗口 → **开始悬浮字幕** → 采集系统播放声 → 屏幕底部悬浮中文翻译。设置窗与打包见 Phase 4–5（[docs/windows.md](../../docs/windows.md)）。

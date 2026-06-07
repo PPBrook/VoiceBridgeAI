@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using System.Text.Json;
+using VoiceBridgeAI.Session;
 
 namespace VoiceBridgeAI;
 
@@ -21,7 +21,14 @@ public sealed partial class MainWindow : Window
         _pollTimer.Tick += async (_, _) => await RefreshEngineStatusAsync();
         _pollTimer.Start();
 
-        Closed += (_, _) => _pollTimer.Stop();
+        SessionController.Shared.StateChanged += RefreshSessionUi;
+        Closed += (_, _) =>
+        {
+            _pollTimer.Stop();
+            SessionController.Shared.StateChanged -= RefreshSessionUi;
+        };
+
+        RefreshSessionUi();
     }
 
     public async Task RefreshEngineStatusAsync()
@@ -53,6 +60,7 @@ public sealed partial class MainWindow : Window
         finally
         {
             _refreshing = false;
+            RefreshSessionUi();
         }
     }
 
@@ -98,9 +106,53 @@ public sealed partial class MainWindow : Window
         await RefreshEngineStatusAsync();
     }
 
+    private async void StartSubtitleClicked(object sender, RoutedEventArgs e)
+    {
+        ClearError();
+        var error = await SessionController.Shared.StartAsync();
+        if (error is not null)
+        {
+            ShowError(error);
+        }
+
+        RefreshSessionUi();
+        _tray?.RefreshMenu();
+    }
+
+    private void StopSubtitleClicked(object sender, RoutedEventArgs e)
+    {
+        SessionController.Shared.Stop();
+        RefreshSessionUi();
+        _tray?.RefreshMenu();
+    }
+
     private async void RefreshClicked(object sender, RoutedEventArgs e)
     {
         await RefreshEngineStatusAsync();
+    }
+
+    private void RefreshSessionUi()
+    {
+        var session = SessionController.Shared;
+        if (session.IsStarting)
+        {
+            SessionText.Text = "字幕：正在启动…";
+            StartSubtitleButton.IsEnabled = false;
+            StopSubtitleButton.IsEnabled = false;
+            return;
+        }
+
+        if (session.IsRunning)
+        {
+            SessionText.Text = "字幕：运行中（系统音频 → 悬浮字幕）";
+            StartSubtitleButton.IsEnabled = false;
+            StopSubtitleButton.IsEnabled = true;
+            return;
+        }
+
+        SessionText.Text = "字幕：未运行";
+        StartSubtitleButton.IsEnabled = true;
+        StopSubtitleButton.IsEnabled = false;
     }
 
     public void ShowError(string message)
@@ -117,6 +169,7 @@ public sealed partial class MainWindow : Window
 
     public void CloseApp()
     {
+        SessionController.Shared.Stop();
         _pollTimer.Stop();
         Close();
     }
