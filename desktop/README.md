@@ -50,7 +50,7 @@ cd desktop/macos
 ./scripts/package-release-zip.sh local   # → releases/VoiceBridgeAI-Local.zip
 ```
 
-构建脚本 `build-app.sh` 会编译 Swift release、复制 Python 侧车与 venv、合并演示用 `.env` 种子；local 变体额外运行 `prepare-bundled-models.py` 下载并打包模型。打 zip 请用 `package-release-zip.sh`（`ditto` 全新创建）。Local zip 在 [releases/](../releases/)（Git LFS）；Cloud zip 为普通 Git 文件。
+构建脚本 `build-app.sh` 会编译 Swift release、复制 Python 侧车与 venv、合并演示用 `.env` 种子；local 变体额外运行 `prepare-bundled-models.py` 下载并打包模型。打 zip 请用 `package-release-zip.sh`（`zip -r`，兼容 Finder 双击解压）。Local zip 在 [releases/](../releases/)（Git LFS）；Cloud zip 为普通 Git 文件。
 
 ## 模块
 

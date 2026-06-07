@@ -46,7 +46,7 @@ file ~/Downloads/VoiceBridgeAI-Cloud.zip
 ls -lh ~/Downloads/VoiceBridgeAI-Cloud.zip
 ```
 
-也可在终端解压：`ditto -xk ~/Downloads/VoiceBridgeAI-Cloud.zip ~/Desktop/`
+也可在终端解压（若双击 zip 提示损坏）：`ditto -xk ~/Downloads/VoiceBridgeAI-Cloud.zip ~/Desktop/`
 
 ### 无法打开 App
 
