@@ -24,6 +24,7 @@ desktop/macos/.build/
 desktop/macos/dist/
 desktop/macos/scripts/bundle-seed/local.secrets.env
 desktop/macos/scripts/bundle-seed/cloud.secrets.env
+# releases/*.zip tracked via Git LFS (see .gitattributes)
 .swiftpm/
 *.dSYM/
 
