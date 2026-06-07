@@ -1,3 +1,4 @@
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using VoiceBridgeAI.Overlay;
 using VoiceBridgeAI.Session;
@@ -14,6 +15,10 @@ public partial class App : Application
 
     public App()
     {
+        var syncContext = new DispatcherQueueSynchronizationContext(
+            DispatcherQueue.GetForCurrentThread());
+        SynchronizationContext.SetSynchronizationContext(syncContext);
+
         CurrentApp = this;
         InitializeComponent();
     }
