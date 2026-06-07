@@ -9,13 +9,19 @@ SERVER_DIR = Path(__file__).resolve().parent.parent
 
 
 def _dev_repo_root() -> Path | None:
-    direct = SERVER_DIR.parent
-    if (direct / "run.sh").is_file():
-        return direct
-    nested = direct.parent
-    if (nested / "run.sh").is_file():
-        return nested
+    for base in (SERVER_DIR.parent, SERVER_DIR.parent.parent):
+        if (base / "run.sh").is_file() or (base / "run.ps1").is_file():
+            return base
     return None
+
+
+def _default_data_root() -> Path:
+    if os.name == "nt":
+        appdata = os.getenv("APPDATA", "").strip()
+        if appdata:
+            return Path(appdata) / "VoiceBridgeAI"
+        return Path.home() / "AppData" / "Roaming" / "VoiceBridgeAI"
+    return Path.home() / "Library" / "Application Support" / "VoiceBridgeAI"
 
 
 def data_dir() -> Path:
@@ -25,7 +31,7 @@ def data_dir() -> Path:
     elif (dev := _dev_repo_root()) is not None:
         root = dev
     else:
-        root = Path.home() / "Library" / "Application Support" / "VoiceBridgeAI"
+        root = _default_data_root()
     root.mkdir(parents=True, exist_ok=True)
     return root
 
