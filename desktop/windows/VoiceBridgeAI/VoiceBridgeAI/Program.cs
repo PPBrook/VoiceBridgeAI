@@ -44,7 +44,7 @@ public static class Program
                         new DispatcherQueueSynchronizationContext(queue));
                 }
 
-                _ = new App();
+                new App();
             });
         }
         catch (Exception ex)
