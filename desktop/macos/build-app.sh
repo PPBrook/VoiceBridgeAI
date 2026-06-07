@@ -118,8 +118,14 @@ else
     deactivate
   }
 
+  # cloud 默认不复用仓库 .venv（开发 .venv 含 Whisper/Argos，体积 ~1GB）
+  default_copy_venv=1
+  if [[ "$VARIANT" == "cloud" ]]; then
+    default_copy_venv=0
+  fi
+
   repo_venv_ready=0
-  if [[ "${BUNDLE_COPY_VENV:-1}" == "1" ]]; then
+  if [[ "${BUNDLE_COPY_VENV:-$default_copy_venv}" == "1" ]]; then
     if [[ -x "$REPO_ROOT/.venv/bin/python" || -x "$REPO_ROOT/.venv/bin/python3" ]]; then
       repo_venv_ready=1
     fi

@@ -21,7 +21,8 @@
 
 体积更小（约 24 MB），**不含** Whisper/Argos，默认使用云端 ASR/翻译（安装包内已合并演示用 API 配置）。
 
-1. 下载 [releases/VoiceBridgeAI-Cloud.zip](../releases/VoiceBridgeAI-Cloud.zip)（Git LFS）
+1. 下载 [releases/VoiceBridgeAI-Cloud.zip](../releases/VoiceBridgeAI-Cloud.zip)（Git LFS，约 23 MB）
+   - 文件应约 23 MB；若只有几百字节且以 `version https://git-lfs.github.com` 开头，说明未拉取 LFS，请执行 `git lfs pull`
 2. 解压 → **右键打开** `VoiceBridgeAI-Cloud.app`
 3. 其余步骤同上（屏幕录制 → 开始字幕）
 
