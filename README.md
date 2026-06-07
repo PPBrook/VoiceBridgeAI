@@ -12,21 +12,46 @@ macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 
 ## 安装试用
 
-仓库 [`releases/`](releases/) 提供未压缩 `.app`：
+仓库 [`releases/`](releases/) 提供 **zip 打包安装包**（Git LFS）：
 
-| 版本 | 路径 | 体积 | 说明 |
+| 版本 | 文件 | 体积 | 说明 |
 |------|------|------|------|
-| **Local**（推荐） | [VoiceBridgeAI-Local.app](releases/VoiceBridgeAI-Local.app) | ~1.2 GB | 内置 Whisper + Argos，离线可用 |
-| **Cloud** | [VoiceBridgeAI-Cloud.app](releases/VoiceBridgeAI-Cloud.app) | ~77 MB | 仅云端 ASR/翻译 |
+| **Local**（推荐） | [VoiceBridgeAI-Local.zip](releases/VoiceBridgeAI-Local.zip) | ~260 MB | 内置 Whisper + Argos，离线可用 |
+| **Cloud** | [VoiceBridgeAI-Cloud.zip](releases/VoiceBridgeAI-Cloud.zip) | ~26 MB | 仅云端 ASR/翻译 |
+
+### ⚠️ 必须用终端解压（勿双击 zip）
+
+> **Finder /「归档实用工具」双击解压，大概率导致 `.app` 损坏**（提示「已损坏，无法打开」或无法运行）。**请务必在终端执行以下命令。**
 
 ```bash
 git clone https://github.com/PPBrook/VoiceBridgeAI.git
-open VoiceBridgeAI/releases/VoiceBridgeAI-Local.app
+cd VoiceBridgeAI
+git lfs pull    # 必须：否则 zip 只有几 KB 的 LFS 指针
+
+# 必须：终端解压（推荐 ditto）
+ditto -xk releases/VoiceBridgeAI-Local.zip .
+# Cloud 版：ditto -xk releases/VoiceBridgeAI-Cloud.zip .
+
+xattr -cr VoiceBridgeAI-Local.app
+open VoiceBridgeAI-Local.app
 ```
 
-只拉单个 App：`git sparse-checkout set releases/VoiceBridgeAI-Local.app`
+**禁止：** 在 Finder 中双击 zip、拖入「归档实用工具」解压。  
+**备选：** `unzip -q releases/VoiceBridgeAI-Local.zip`（解压后同样执行 `xattr -cr`）。
 
-**快速开始：** 拖入「应用程序」→ **右键 → 打开** → 授予**屏幕录制** → **开始悬浮字幕**
+只拉 zip（sparse checkout）：
+
+```bash
+git clone --depth 1 --filter=blob:none --sparse https://github.com/PPBrook/VoiceBridgeAI.git
+cd VoiceBridgeAI
+git sparse-checkout set releases/VoiceBridgeAI-Local.zip
+git checkout
+git lfs pull
+ditto -xk releases/VoiceBridgeAI-Local.zip .
+xattr -cr VoiceBridgeAI-Local.app
+```
+
+**快速开始：** 终端解压 → `xattr -cr` → **右键 → 打开** App → 授予**屏幕录制** → **开始悬浮字幕**
 
 详细步骤与故障排查：[docs/submission.md](docs/submission.md)
 
@@ -38,7 +63,7 @@ cp .env.example .env
 cd desktop/macos && ./run.sh      # 终端 2：Swift UI
 ```
 
-构建独立 App：`desktop/macos/build-app-{local,cloud}.sh` → `dist/`；发布到 `releases/` 见 `scripts/publish-release.sh`。
+构建独立 App：`desktop/macos/build-app-{local,cloud}.sh` → `dist/`；打包发布见 `scripts/publish-release.sh`。
 
 ## 文档
 

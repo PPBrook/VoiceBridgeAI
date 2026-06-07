@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 将 dist/*.app 复制到 releases/（不压缩、不打 zip）
+# 将 dist/*.app 打包为 releases/*.zip（推荐评审下载）
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$ROOT/../.." && pwd)"
@@ -15,7 +15,7 @@ case "$VARIANT" in
 esac
 
 APP="$ROOT/dist/$APP_NAME.app"
-RELEASE_APP="$REPO_ROOT/releases/$APP_NAME.app"
+ZIP="$REPO_ROOT/releases/$APP_NAME.zip"
 STAGE="$(mktemp -d)"
 
 cleanup() { rm -rf "$STAGE"; }
@@ -59,8 +59,10 @@ sanitize_venv_bin "$STAGE/$APP_NAME.app/Contents/Resources/python-venv/bin"
 rm -f "$STAGE/$APP_NAME.app/Contents/Resources/python-venv/.gitignore"
 test -x "$STAGE/$APP_NAME.app/Contents/MacOS/VoiceBridgeAI"
 
-rm -rf "$RELEASE_APP"
-rm -f "$REPO_ROOT/releases/$APP_NAME.zip" "$REPO_ROOT/releases/$APP_NAME.tar.gz" "$REPO_ROOT/releases/$APP_NAME.tar"
-ditto "$STAGE/$APP_NAME.app" "$RELEASE_APP"
-echo "已发布: $RELEASE_APP ($(du -sh "$RELEASE_APP" | awk '{print $1}'))"
-echo "无需解压，可直接右键打开或拖入「应用程序」"
+echo "打包 zip …"
+rm -f "$ZIP" "$REPO_ROOT/releases/$APP_NAME.tar.gz" "$REPO_ROOT/releases/$APP_NAME.tar"
+ditto -c -k --sequesterRsrc --keepParent "$STAGE/$APP_NAME.app" "$ZIP"
+rm -rf "$REPO_ROOT/releases/$APP_NAME.app"
+
+echo "已发布: $ZIP ($(du -sh "$ZIP" | awk '{print $1}'))"
+echo "解压: ditto -xk releases/$APP_NAME.zip ."

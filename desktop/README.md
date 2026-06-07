@@ -38,12 +38,13 @@ cd desktop/macos && ./run.sh
 cd desktop/macos
 ./build-app-local.sh              # → dist/VoiceBridgeAI-Local.app
 ./build-app-cloud.sh              # → dist/VoiceBridgeAI-Cloud.app
-./scripts/publish-release.sh local   # 复制到 releases/（不压缩）
+./scripts/publish-release.sh local   # → releases/*.zip
+./scripts/publish-release.sh cloud
 ```
 
-| 变体 | 产物 | 说明 |
-|------|------|------|
-| cloud | `VoiceBridgeAI-Cloud.app` | 无本地模型 Tab，依赖云端 API |
-| local | `VoiceBridgeAI-Local.app` | 内置 Whisper + Argos |
+| 变体 | zip | 说明 |
+|------|-----|------|
+| cloud | `VoiceBridgeAI-Cloud.zip` | 无本地模型 Tab，依赖云端 API |
+| local | `VoiceBridgeAI-Local.zip` | 内置 Whisper + Argos |
 
-产物在 `dist/`（gitignore）。架构见 [docs/architecture.md](../docs/architecture.md)。
+产物在 `dist/`（gitignore）。`releases/*.zip` 经 Git LFS 提交；评审须用终端 `ditto -xk` 解压，勿双击 zip。

@@ -24,7 +24,7 @@ desktop/macos/.build/
 desktop/macos/dist/
 desktop/macos/scripts/bundle-seed/local.secrets.env
 desktop/macos/scripts/bundle-seed/cloud.secrets.env
-# releases/*.app 为未压缩安装包（直接提交，勿打 zip）
+# releases/*.zip 为打包安装包（Git LFS）
 .swiftpm/
 *.dSYM/
 
