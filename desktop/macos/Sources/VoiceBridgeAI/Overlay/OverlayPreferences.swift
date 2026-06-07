@@ -3,6 +3,7 @@ import Foundation
 
 enum OverlayPreferences {
     private static let opacityKey = "overlayBackgroundOpacity"
+    private static let textOpacityKey = "overlayTextOpacity"
     private static let showEnglishKey = "overlayShowEnglish"
 
     /// 背景不透明度，0.15（很透）～ 1.0（不透明）。默认 0.78，接近 Web 扩展 overlay。
@@ -17,6 +18,21 @@ enum OverlayPreferences {
         set {
             let clamped = min(1.0, max(0.15, newValue))
             UserDefaults.standard.set(Double(clamped), forKey: opacityKey)
+        }
+    }
+
+    /// 字幕文字不透明度，0.25（很淡）～ 1.0（不透明）。默认 1.0。
+    static var textOpacity: CGFloat {
+        get {
+            let stored = UserDefaults.standard.object(forKey: textOpacityKey) as? Double
+            if let stored, stored >= 0.25, stored <= 1.0 {
+                return CGFloat(stored)
+            }
+            return 1.0
+        }
+        set {
+            let clamped = min(1.0, max(0.25, newValue))
+            UserDefaults.standard.set(Double(clamped), forKey: textOpacityKey)
         }
     }
 

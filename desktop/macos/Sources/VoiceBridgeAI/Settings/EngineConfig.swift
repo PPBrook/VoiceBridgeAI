@@ -98,7 +98,7 @@ struct EngineConfig {
     var asrProvider: String = "local"
     var partialProvider: String = "argos"
     var finalProvider: String = "argos"
-    var reviseMode: String = "balanced"
+    var reviseMode: String = "speech"
     var sampleRate: Int = 48000
 
     static func from(health: [String: Any]) -> EngineConfig {

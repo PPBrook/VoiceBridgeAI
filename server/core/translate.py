@@ -10,17 +10,18 @@ from config.final_config import normalize_provider as normalize_final
 from config.final_config import translate as final_translate
 from config.partial_config import normalize_provider as normalize_partial
 from config.partial_config import translate as partial_translate
+from core.revise_context import get_revise_mode
 
 log = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=512)
-def _cached_partial(provider: str, text: str) -> str:
+def _cached_partial(provider: str, text: str, scene: str) -> str:
     return _translate_partial_uncached(provider, text)
 
 
 @lru_cache(maxsize=256)
-def _cached_final(provider: str, text: str, draft: str) -> str:
+def _cached_final(provider: str, text: str, draft: str, scene: str) -> str:
     return _translate_final_uncached(provider, text, draft or None)
 
 
@@ -66,7 +67,7 @@ def _translate_final_uncached(
 
 def translate_partial(text: str, provider: str | None = None) -> str:
     p = normalize_partial(provider)
-    return _cached_partial(p, text.strip())
+    return _cached_partial(p, text.strip(), get_revise_mode())
 
 
 def translate_final(
@@ -75,4 +76,4 @@ def translate_final(
     provider: str | None = None,
 ) -> str:
     p = normalize_final(provider)
-    return _cached_final(p, text.strip(), (draft_zh or "").strip())
+    return _cached_final(p, text.strip(), (draft_zh or "").strip(), get_revise_mode())
