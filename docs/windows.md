@@ -96,6 +96,27 @@ WinUI 项目在 `dotnet build` 时若报 `ExpandPriContent` / `Microsoft.Build.P
 - 需要 **.NET 8 SDK**，不必装完整 Visual Studio
 - 若仍失败，可装 [Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/downloads/) → 工作负载 **「Windows 应用程序开发」**
 
+## 开发机：未签名被 SmartScreen 拦截
+
+本地 `dotnet run` / `bin\...\VoiceBridgeAI.exe` **没有 Authenticode 签名**，Windows 可能提示「未知发布者」或 Defender 隔离。
+
+**允许运行（仅自己的开发机）：**
+
+1. SmartScreen 蓝屏 → **更多信息** → **仍要运行**
+2. 或对仓库解除「来自 Internet 的锁定」：
+
+```powershell
+cd C:\Users\pengp\VoiceBridgeAI
+Get-ChildItem -Recurse desktop\windows\VoiceBridgeAI | Unblock-File
+```
+
+3. **Windows 安全中心** → 病毒和威胁防护 → 管理设置 → 排除项 → 添加文件夹  
+   `C:\Users\pengp\VoiceBridgeAI\desktop\windows\VoiceBridgeAI\VoiceBridgeAI\bin`
+
+4. 若 exe 已被隔离：安全中心 → 保护历史记录 → 还原/允许
+
+正式对外发布需购买代码签名证书并签名 exe；评审/自用开发可不上签名。
+
 ## 参考
 
 - macOS 实现：`desktop/macos/Sources/VoiceBridgeAI/`
