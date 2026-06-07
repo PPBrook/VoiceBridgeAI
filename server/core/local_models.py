@@ -6,11 +6,14 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from config.app_paths import data_dir
+from core.local_model_messages import model_label, progress_text
 
 log = logging.getLogger(__name__)
+
+ProgressCallback = Callable[[float, str], None]
 
 LOCAL_MODELS = (
     {
@@ -175,15 +178,56 @@ def mark_whisper_installed(model: str | None = None) -> None:
     marker.touch()
 
 
-def download_whisper(model: str | None = None) -> str:
+def _whisper_hf_repo(model: str) -> str:
+    return f"Systran/faster-whisper-{model}"
+
+
+def download_whisper(
+    model: str | None = None,
+    *,
+    on_progress: ProgressCallback | None = None,
+) -> str:
     configure_model_cache_env()
     name = model or whisper_model_name()
+    label = model_label("whisper", name)
     log.info("Downloading Whisper model %s …", name)
-    from faster_whisper import WhisperModel
 
+    def report(progress: float, step: str, *, ratio: float | None = None) -> None:
+        if on_progress:
+            on_progress(progress, progress_text(label, step, ratio=ratio))
+
+    report(0.03, "准备下载")
+
+    from faster_whisper import WhisperModel
+    from huggingface_hub import snapshot_download
+    from huggingface_hub.utils import tqdm as hf_tqdm
+
+    repo_id = _whisper_hf_repo(name)
+    tqdm_class: type = hf_tqdm
+    if on_progress:
+
+        class ProgressTqdm(hf_tqdm):
+            def update(self, n=1):
+                result = super().update(n)
+                total = self.total or 0
+                if total > 0:
+                    ratio = self.n / total
+                    on_progress(
+                        0.08 + 0.82 * ratio,
+                        progress_text(label, "正在下载", ratio=ratio),
+                    )
+                return result
+
+        tqdm_class = ProgressTqdm
+
+    report(0.08, "正在下载")
+    snapshot_download(repo_id=repo_id, tqdm_class=tqdm_class)
+
+    report(0.92, "正在校验")
     WhisperModel(name, device="cpu", compute_type="int8")
     mark_whisper_installed(name)
     os.environ["WHISPER_MODEL"] = name
+    report(1.0, "完成")
     log.info("Whisper %s ready", name)
     return name
 
@@ -212,13 +256,21 @@ def is_whisper_any_installed() -> bool:
     return any(is_whisper_installed(m["id"]) for m in WHISPER_CHOICES)
 
 
-def download_argos() -> None:
+def download_argos(*, on_progress: ProgressCallback | None = None) -> None:
     import argostranslate.package as argos_package
 
     from providers.translate_argos import FROM_CODE, TO_CODE
 
+    label = model_label("argos")
+
+    def report(progress: float, step: str) -> None:
+        if on_progress:
+            on_progress(progress, progress_text(label, step))
+
     log.info("Downloading Argos %s→%s pack …", FROM_CODE, TO_CODE)
+    report(0.05, "更新索引")
     argos_package.update_package_index()
+    report(0.12, "查找语言包")
     available = argos_package.get_available_packages()
     pkg = next(
         (p for p in available if p.from_code == FROM_CODE and p.to_code == TO_CODE),
@@ -226,10 +278,14 @@ def download_argos() -> None:
     )
     if pkg is None:
         raise RuntimeError("Argos en→zh package not found in index")
-    argos_package.install_from_path(pkg.download())
+    report(0.2, "正在下载")
+    path = pkg.download()
+    report(0.72, "正在安装")
+    argos_package.install_from_path(path)
     marker = models_root() / "argos" / ".installed-en-zh"
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.touch()
+    report(1.0, "完成")
     log.info("Argos en→zh pack installed")
 
 
@@ -292,11 +348,16 @@ def apply_local_model_settings(payload: dict[str, Any]) -> None:
         persist_local_model_settings(persist_payload)
 
 
-def download(model_id: str, *, whisper_model: str | None = None) -> str:
+def download(
+    model_id: str,
+    *,
+    whisper_model: str | None = None,
+    on_progress: ProgressCallback | None = None,
+) -> str:
     if model_id == "whisper":
-        return download_whisper(whisper_model)
+        return download_whisper(whisper_model, on_progress=on_progress)
     if model_id == "argos":
-        download_argos()
+        download_argos(on_progress=on_progress)
         return "argos"
     raise ValueError(f"unknown local model: {model_id}")
 

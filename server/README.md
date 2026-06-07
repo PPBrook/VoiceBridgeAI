@@ -35,7 +35,8 @@ server/
 |------|------|------|
 | GET | `/api/health` | 健康检查、引擎与本地模型状态 |
 | GET | `/api/models/local` | 本地模型状态 |
-| POST | `/api/models/local/download` | `{ id: whisper\|argos, whisperModel? }` |
+| POST | `/api/models/local/download` | 后台下载，立即返回 `job` |
+| GET | `/api/models/local/download/{jobId}` | 下载进度与状态 |
 | POST | `/api/models/local/delete` | `{ id: whisper\|argos, whisperModel? }` 删除已下载文件 |
 | POST | `/api/models/local/settings` | 见下表 |
 | POST | `/api/engine/settings` | 保存 ASR / 翻译引擎选择 |
