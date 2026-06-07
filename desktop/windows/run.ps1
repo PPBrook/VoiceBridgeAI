@@ -41,6 +41,7 @@ Write-Host ""
 
 Push-Location $OutDir
 $exitCode = 0
+$blockedByPolicy = $false
 try {
     $proc = Start-Process -FilePath $Exe -WorkingDirectory $OutDir -PassThru -Wait
     $exitCode = $proc.ExitCode
