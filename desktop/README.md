@@ -42,9 +42,9 @@ cd desktop/macos
 ./scripts/publish-release.sh cloud
 ```
 
-| 变体 | zip | 说明 |
-|------|-----|------|
-| cloud | `VoiceBridgeAI-Cloud.zip` | 无本地模型 Tab，依赖云端 API |
-| local | `VoiceBridgeAI-Local.zip` | 内置 Whisper + Argos |
+| 变体 | zip（解压后） | 说明 |
+|------|---------------|------|
+| cloud | `VoiceBridgeAI-Cloud.zip`（~26 MB / ~70 MB） | 无本地模型 Tab，依赖云端 API |
+| local | `VoiceBridgeAI-Local.zip`（~430 MB / ~1.1 GB） | 内置 Whisper + Argos |
 
-产物在 `dist/`（gitignore）。`releases/*.zip` 经 Git LFS 提交；评审须用终端 `ditto -xk` 解压，勿双击 zip。
+产物在 `dist/`（gitignore）。`releases/*.zip` 经 Git LFS 提交。评审侧：**解压 zip → `xattr -cr` .app → 右键打开**（解压方式不限；`xattr` 清除 Gatekeeper 隔离，见根目录 [README](../README.md)）。

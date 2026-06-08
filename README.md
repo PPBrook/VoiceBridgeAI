@@ -4,97 +4,76 @@ macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 
 ## Demo 视频
 
-带配音的功能演示，覆盖系统音频采集、实时悬浮字幕、三层引擎（ASR → 句中翻译 → 句末润色）、观看场景、字幕记录与 Local/Cloud 变体：
-
 **[哔哩哔哩观看 →](https://www.bilibili.com/video/BV1C4Et6PESe/)**
 
-> Demo 仅演示 **macOS 端**。Windows 客户端在 `feat/winapp` 分支有初步实现，因时间有限未做充分测试与录制。
+带配音演示：系统音频采集、悬浮字幕、三层引擎（ASR → 句中翻译 → 句末润色）、观看场景、字幕记录、Local/Cloud 变体。
 
-## 逾期修复说明（2026-06-08）
+> 仅 **macOS 端**；Windows 客户端在 `feat/winapp` 分支有初步实现，未纳入 Demo。
 
-截止前时间管理不足：安装包从 GitHub 下载后解压损坏的问题在多次提交中反复出现，最后一次提交时**未能本地验证「下载 → 解压 → 打开」全流程**，导致评审可能拿到不完整或不可用的 zip。
+## 逾期提交说明
 
-本次逾期修复：重新打包并校验（Local ~1.2 GB），打包脚本增加完整性检查；构建时移除 Python 3.14 venv 的 `𝜋thon` 等非 ASCII 别名（Finder 解压 zip 对此敏感）。对因此给评审带来的不便深表歉意。
+截止前时间管理不足，安装包「下载后无法打开」的问题在多次提交中反复出现；最后一次提交时**未在干净环境完整走通「下载 → 解压 → 打开」**，评审侧可能因此无法正常试用。
 
-**评审请务必：**
+事后排查确认：**多数「已损坏，无法打开」并非 zip 损坏**，而是 macOS **Gatekeeper 隔离标记**（`xattr -cr` 即可）。此前误判为解压方式或打包问题，反复改 zip 与文档，反而耽误了定位根因。
 
-1. `git lfs pull` 拉取完整 zip
-2. 终端执行 `ditto -xk releases/VoiceBridgeAI-Local.zip .` 解压（**勿** Finder 双击 zip）
-3. `xattr -cr VoiceBridgeAI-Local.app` 后 **右键 → 打开**
+本次逾期改动：补充正确的打开步骤（见下）、重新校验安装包，并对给评审带来的不便深表歉意。
 
 ## 安装试用
 
-仓库 [`releases/`](releases/) 提供 **zip 打包安装包**（Git LFS）：
+[`releases/`](releases/) 提供 zip 安装包（Git LFS）：
 
-| 版本 | 文件 | 体积 | 说明 |
-|------|------|------|------|
-| **Local**（推荐） | [VoiceBridgeAI-Local.zip](releases/VoiceBridgeAI-Local.zip) | ~1.2 GB | 内置 Whisper + Argos，离线可用 |
-| **Cloud** | [VoiceBridgeAI-Cloud.zip](releases/VoiceBridgeAI-Cloud.zip) | ~70 MB | 仅云端 ASR/翻译 |
+| 版本 | 文件 | 体积（zip / 解压后） | 说明 |
+|------|------|----------------------|------|
+| **Local**（推荐） | [VoiceBridgeAI-Local.zip](releases/VoiceBridgeAI-Local.zip) | ~430 MB / ~1.1 GB | 内置 Whisper + Argos，离线可用 |
+| **Cloud** | [VoiceBridgeAI-Cloud.zip](releases/VoiceBridgeAI-Cloud.zip) | ~26 MB / ~70 MB | 仅云端 ASR/翻译 |
 
-### ⚠️ 必须用终端解压（勿双击 zip）
-
-> **Finder /「归档实用工具」双击解压，大概率导致 `.app` 损坏**（提示「已损坏，无法打开」）。**请务必在终端执行以下命令。**  
-> 若 zip 体积明显偏小（Local 应约 **1.2 GB**），说明文件不完整或 LFS 未拉取，请 `git lfs pull` 或重新 clone。
+### 快速开始
 
 ```bash
 git clone https://github.com/PPBrook/VoiceBridgeAI.git
 cd VoiceBridgeAI
-git lfs pull    # 必须：否则 zip 只有几 KB 的 LFS 指针
+git lfs pull --include="releases/VoiceBridgeAI-Local.zip"   # Local；Cloud 改对应文件名
 
-# 必须：终端解压（推荐 ditto）
 ditto -xk releases/VoiceBridgeAI-Local.zip .
-# Cloud 版：ditto -xk releases/VoiceBridgeAI-Cloud.zip .
-
 xattr -cr VoiceBridgeAI-Local.app
-open VoiceBridgeAI-Local.app
+open VoiceBridgeAI-Local.app    # 首次请右键 → 打开
 ```
 
-**禁止：** 在 Finder 中双击 zip、拖入「归档实用工具」解压。  
-**备选：** `unzip -q releases/VoiceBridgeAI-Local.zip`（解压后同样执行 `xattr -cr`）。
+1. **解压** zip（`ditto`、unzip 或 Finder 均可）
+2. **`xattr -cr` .app** → **右键 → 打开**（App 未签名，首次不能双击）
+3. **系统设置 → 隐私与安全性 → 屏幕录制** → 勾选 VoiceBridgeAI
+4. 播放英文系统音频 → **开始悬浮字幕**
 
-只拉 zip（sparse checkout）：
+### 提示「已损坏，无法打开」？
+
+**通常不是文件损坏**，而是 macOS **Gatekeeper** 对下载内容附加的隔离标记。对 `.app` 执行：
+
+```bash
+xattr -cr VoiceBridgeAI-Local.app
+# 或：xattr -cr ~/Downloads/VoiceBridgeAI-Cloud.app
+```
+
+然后 **右键 → 打开**。
+
+### 只下载 zip（sparse checkout）
 
 ```bash
 git clone --depth 1 --filter=blob:none --sparse https://github.com/PPBrook/VoiceBridgeAI.git
 cd VoiceBridgeAI
-git sparse-checkout set releases/VoiceBridgeAI-Local.zip
+git sparse-checkout init --no-cone
+git sparse-checkout set /releases/VoiceBridgeAI-Local.zip
 git checkout
-git lfs pull
+git lfs pull --include="releases/VoiceBridgeAI-Local.zip"
+
 ditto -xk releases/VoiceBridgeAI-Local.zip .
 xattr -cr VoiceBridgeAI-Local.app
 ```
 
-**快速开始：** 终端解压 → `xattr -cr` → **右键 → 打开** App → 授予**屏幕录制** → **开始悬浮字幕**
+- zip 仅几 KB → 未拉 LFS，执行 `git lfs pull --include=…`
+- Local zip 远小于 **~400 MB** → 文件不完整，重新 pull（完整 zip 约 430 MB，解压后 ~1.1 GB）
+- sparse 报 `is not a directory` → 须 `init --no-cone` 且路径写 `/releases/….zip`
 
-### 为什么必须用终端解压？
-
-本 App 内置 Python 3.14 虚拟环境（`python-venv/`）。打包时我们已做以下处理，但**评审侧仍须用终端解压**：
-
-| 问题 | 说明 |
-|------|------|
-| **Python 3.14 `𝜋thon` 别名** | venv 会生成 Unicode 文件名 `𝜋thon`（数学 italic π + thon）。Finder /「归档实用工具」解压含此类路径或超大 zip 时，容易损坏 `.app`。构建脚本 `sanitize-venv-bin.sh` 会在打包前移除该别名。 |
-| **Git LFS 指针** | clone 后若未 `git lfs pull`，zip 可能只有几 KB 指针文件，解压必失败。 |
-| **zip 不完整** | 上传中断会导致 zip 缺尾部（如 Local 仅 ~240 MB 而非 ~1.2 GB），`unzip -t` 会报错。 |
-
-**如何确认 zip 完整：**
-
-```bash
-git lfs pull
-ls -lh releases/VoiceBridgeAI-Local.zip   # 应约 1.2 GB
-unzip -t releases/VoiceBridgeAI-Local.zip | tail -1   # 应显示 No errors
-```
-
-**正确解压流程（再次强调）：**
-
-```bash
-ditto -xk releases/VoiceBridgeAI-Local.zip .
-xattr -cr VoiceBridgeAI-Local.app
-# 右键 → 打开（非双击）
-```
-
-若提示「已损坏」：先确认 zip 体积与 `unzip -t`，再确认**未用 Finder 双击解压**；删除损坏的 `.app` 后按上述命令重来。
-
-详细步骤与故障排查：[docs/submission.md](docs/submission.md)
+更多故障排查：[docs/submission.md](docs/submission.md)
 
 ## 源码开发
 
@@ -104,7 +83,7 @@ cp .env.example .env
 cd desktop/macos && ./run.sh      # 终端 2：Swift UI
 ```
 
-构建独立 App：`desktop/macos/build-app-{local,cloud}.sh` → `dist/`；打包发布见 `scripts/publish-release.sh`。
+构建独立 App：`desktop/macos/build-app-{local,cloud}.sh` → `dist/`；发布 zip 见 `desktop/macos/scripts/publish-release.sh`。
 
 ## 文档
 
