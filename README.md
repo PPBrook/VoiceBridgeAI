@@ -10,6 +10,18 @@ macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 
 > Demo 仅演示 **macOS 端**。Windows 客户端在 `feat/winapp` 分支有初步实现，因时间有限未做充分测试与录制。
 
+## 逾期修复说明（2026-06-08）
+
+截止前时间管理不足：安装包从 GitHub 下载后解压损坏的问题在多次提交中反复出现，最后一次提交时**未能本地验证「下载 → 解压 → 打开」全流程**，导致评审可能拿到不完整或不可用的 zip。
+
+本次逾期修复：重新打包并校验（Local ~1.2 GB），打包脚本增加完整性检查。对因此给评审带来的不便深表歉意。
+
+**评审请务必：**
+
+1. `git lfs pull` 拉取完整 zip
+2. 终端执行 `ditto -xk releases/VoiceBridgeAI-Local.zip .` 解压（**勿** Finder 双击 zip）
+3. `xattr -cr VoiceBridgeAI-Local.app` 后 **右键 → 打开**
+
 ## 安装试用
 
 仓库 [`releases/`](releases/) 提供 **zip 打包安装包**（Git LFS）：
