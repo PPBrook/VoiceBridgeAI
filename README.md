@@ -2,6 +2,14 @@
 
 macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 
+## 项目介绍
+
+看英文视频、技术分享、会议或网课时，往往听不全或来不及查词。VoiceBridgeAI 采集**系统播放的英文音频**，经 **ASR → 句中翻译 → 句末润色** 三层引擎，在屏幕上方显示**实时中文悬浮字幕**；支持观看场景切换、字幕记录导出与透明度调节。
+
+项目从 **Web 控制台 + 浏览器扩展**（[`legacy/web-only`](https://github.com/PPBrook/VoiceBridgeAI/tree/legacy/web-only)）演进为 macOS 原生 App（`main`），并探索 Windows 客户端（[`feat/winapp`](https://github.com/PPBrook/VoiceBridgeAI/tree/feat/winapp)）。当前提交以 **macOS 独立安装包** 为主。
+
+**技术栈：** Swift / AppKit / ScreenCaptureKit（客户端）· Python / FastAPI / WebSocket（引擎侧车）· Whisper、Argos（本地）· 腾讯 / OpenAI 等（云端可选）
+
 ## Demo 视频
 
 **[哔哩哔哩观看 →](https://www.bilibili.com/video/BV1C4Et6PESe/)**
@@ -42,6 +50,10 @@ git checkout main              # 回到 macOS 正式版
 |------|------|----------------------|------|
 | **Local**（推荐） | [VoiceBridgeAI-Local.zip](releases/VoiceBridgeAI-Local.zip) | ~430 MB / ~1.1 GB | 内置 Whisper + Argos，离线可用 |
 | **Cloud** | [VoiceBridgeAI-Cloud.zip](releases/VoiceBridgeAI-Cloud.zip) | ~26 MB / ~70 MB | 仅云端 ASR/翻译 |
+
+**评审推荐 Local：** 内置 Whisper + Argos，**开箱离线可用**，无需配置 API Key 或下载模型。Cloud 体积更小，但需在 App 设置页填写云端密钥，且无本地模型 Tab。
+
+**系统要求：** macOS 13+
 
 ### 快速开始
 

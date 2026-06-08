@@ -24,7 +24,7 @@ VoiceBridgeAI/
   docs/
 ```
 
-主分支维护 **macOS App + Python 引擎**。Web / 浏览器扩展见其它分支。
+主分支维护 **macOS App + Python 引擎**。其它形态见 [`legacy/web-only`](https://github.com/PPBrook/VoiceBridgeAI/tree/legacy/web-only)（Web + 扩展）、[`feat/winapp`](https://github.com/PPBrook/VoiceBridgeAI/tree/feat/winapp)（Windows）；概述见 [README](../README.md#项目演进与其它分支)。
 
 ## 数据目录
 

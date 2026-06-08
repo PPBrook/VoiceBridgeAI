@@ -2,9 +2,22 @@
 
 面向评审：下载 `releases/*.zip` 解压后使用，无需配置 Python、无需下载模型。
 
+## 项目背景
+
+VoiceBridgeAI 面向**英文系统音频 → 实时中文悬浮字幕**场景（演讲、技术分享、会议、网课等）。客户端采集系统播放的声音，Python 侧车完成识别与翻译，结果以置顶悬浮窗显示；支持观看场景、字幕记录与 Local/Cloud 两种安装变体。
+
+项目演进：**Web + 浏览器扩展** → **macOS 原生 App**（本提交）→ 并行探索 **Windows 客户端**。详见根目录 [README 分支说明](../README.md#项目演进与其它分支)（[`legacy/web-only`](https://github.com/PPBrook/VoiceBridgeAI/tree/legacy/web-only)、[`feat/winapp`](https://github.com/PPBrook/VoiceBridgeAI/tree/feat/winapp)）。
+
 **Demo 视频**（带配音，覆盖主要功能）：[哔哩哔哩 →](https://www.bilibili.com/video/BV1C4Et6PESe/)
 
-> Demo 仅涉及 **macOS 端**；Windows 版（`feat/winapp`）因时间有限未完成测试与录制，视频未展示 Windows 端。
+> Demo 仅 **macOS 端**（`main`）；Windows 版未纳入视频。
+
+### Local 与 Cloud 怎么选？
+
+| 版本 | 适合谁 | 说明 |
+|------|--------|------|
+| **Local**（**推荐评审试用**） | 希望开箱即用 | 内置 Whisper + Argos，**离线即可出字幕**；打包时含演示用云端配置，一般无需自备 Key |
+| **Cloud** | 已有云端 API、想小体积安装 | zip 约 26 MB；须在 App **设置 → 云端** 填写 ASR/翻译密钥，无本地模型 Tab |
 
 ## ⚠️ 无法打开 /「已损坏，无法打开」
 
@@ -48,7 +61,7 @@ open ~/Applications/VoiceBridgeAI-Local.app        # 仍建议右键 → 打开
 
 ### 云端版（可选）
 
-`releases/VoiceBridgeAI-Cloud.zip`（zip 约 **26 MB**，解压后 ~70 MB）：
+体积更小，需自备云端 API Key（设置 → 云端）。`releases/VoiceBridgeAI-Cloud.zip`（zip 约 **26 MB**，解压后 ~70 MB）：
 
 ```bash
 ditto -xk releases/VoiceBridgeAI-Cloud.zip .
@@ -96,6 +109,7 @@ xattr -cr VoiceBridgeAI-Local.app
 | 数据流 | 系统音频 → ASR → 翻译/润色 → 悬浮显示 |
 | 观看场景 | 演讲 / 技术 / 会议 / 网课 |
 | 其它 | 字幕记录导出、透明度调节、静音自动清屏 |
-| 限制 | App 未签名；Local zip ~430 MB（解压 ~1.1 GB）/ Cloud ~26 MB（解压 ~70 MB）；仅 macOS |
+| 演进 | Web 扩展 → macOS App（主）；Windows 客户端见 `feat/winapp` |
+| 限制 | App 未签名；Local zip ~430 MB（解压 ~1.1 GB）/ Cloud ~26 MB（解压 ~70 MB）；macOS 13+ |
 
-架构与开发细节见 [architecture.md](architecture.md)、[development.md](development.md)。
+架构与开发细节见 [architecture.md](architecture.md)、[development.md](development.md)。分支与 Demo 见 [../README.md](../README.md)。
