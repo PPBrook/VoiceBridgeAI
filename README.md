@@ -8,7 +8,23 @@ macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 
 带配音演示：系统音频采集、悬浮字幕、三层引擎（ASR → 句中翻译 → 句末润色）、观看场景、字幕记录、Local/Cloud 变体。
 
-> 仅 **macOS 端**；Windows 客户端在 `feat/winapp` 分支有初步实现，未纳入 Demo。
+> Demo 仅 **macOS 端**（`main`）。其它平台见下方分支说明。
+
+## 项目演进与其它分支
+
+`main` 是当前提交评审的 **macOS 原生 App**。更早与并行的探索保留在下列分支：
+
+| 分支 | 形态 | 说明 | 状态 |
+|------|------|------|------|
+| [`legacy/web-only`](https://github.com/PPBrook/VoiceBridgeAI/tree/legacy/web-only) | Web 控制台 + Chromium 扩展 | 最早原型：浏览器标签页英文 → 悬浮字幕；支持 **语音识别** 与 **YouTube 英文字幕** 两条输入（扩展抓取 CC，跳过 ASR） | 历史版本，功能已不在 `main` 维护 |
+| [`feat/winapp`](https://github.com/PPBrook/VoiceBridgeAI/tree/feat/winapp) | Windows 原生客户端 | C# / WinUI 3 + WASAPI 系统环回采音，复用同一 `server/` 引擎与 WebSocket 协议；含托盘、悬浮字幕、设置窗等 | 初步实现，未充分测试，**未纳入 Demo** |
+
+```bash
+git fetch origin
+git checkout legacy/web-only   # Web + 扩展
+git checkout feat/winapp       # Windows 客户端（另需 .\run.ps1）
+git checkout main              # 回到 macOS 正式版
+```
 
 ## 逾期提交说明
 

@@ -20,7 +20,7 @@ VoiceBridgeAI/
   run.sh, requirements*.txt, .env.example
   server/          Python 侧车
   desktop/macos/   Swift App
-  releases/        安装包（.app）
+  releases/        安装包 zip（Git LFS）
   docs/
 ```
 
