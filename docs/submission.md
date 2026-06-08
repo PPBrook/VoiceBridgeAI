@@ -13,7 +13,7 @@
 
 ## 快速试用（Local 推荐）
 
-1. 获取 `releases/VoiceBridgeAI-Local.zip`（约 260 MB，Git LFS）
+1. 获取 `releases/VoiceBridgeAI-Local.zip`（约 **1.2 GB**，Git LFS）
 2. **终端解压（必须）**：
 
 ```bash
@@ -46,7 +46,7 @@ open ~/Applications/VoiceBridgeAI-Local.app
 
 ### 云端版（可选）
 
-`releases/VoiceBridgeAI-Cloud.zip`（约 26 MB），**同样必须在终端解压**：
+`releases/VoiceBridgeAI-Cloud.zip`（约 **70 MB**），**同样必须在终端解压**：
 
 ```bash
 git lfs pull
@@ -72,7 +72,8 @@ xattr -cr VoiceBridgeAI-Local.app
 | 现象 | 处理 |
 |------|------|
 | zip 只有几 KB | **必须**运行 `git lfs pull` |
-| 「已损坏，无法打开」 | 你很可能用了 Finder 双击解压 → **删除损坏的 .app**，改用 `ditto -xk …` 重新解压 |
+| Local zip 远小于 1 GB | 文件不完整（打包中断）→ 重新 `git pull` / `git lfs pull` |
+| 「已损坏，无法打开」 | 多半 Finder 双击解压 → **删除 .app**，用 `ditto -xk …` 重解 |
 | 无法打开 App | `xattr -cr VoiceBridgeAI-Local.app`，再 **右键 → 打开** |
 | 无字幕 | 确认 **屏幕录制** 权限；确认系统在播放英文音频 |
 | 其它 | `~/Library/Application Support/VoiceBridgeAI-Local/server.log` |
@@ -87,6 +88,6 @@ xattr -cr VoiceBridgeAI-Local.app
 | 数据流 | 系统音频 → ASR → 翻译/润色 → 悬浮显示 |
 | 观看场景 | 演讲 / 技术 / 会议 / 网课 |
 | 其它 | 字幕记录导出、透明度调节、静音自动清屏 |
-| 限制 | App 未签名；Local zip ~260 MB / Cloud ~26 MB；仅 macOS |
+| 限制 | App 未签名；Local zip ~1.2 GB / Cloud ~70 MB；仅 macOS |
 
 架构与开发细节见 [architecture.md](architecture.md)、[development.md](development.md)。

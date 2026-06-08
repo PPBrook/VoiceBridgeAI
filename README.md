@@ -16,12 +16,13 @@ macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 
 | 版本 | 文件 | 体积 | 说明 |
 |------|------|------|------|
-| **Local**（推荐） | [VoiceBridgeAI-Local.zip](releases/VoiceBridgeAI-Local.zip) | ~260 MB | 内置 Whisper + Argos，离线可用 |
-| **Cloud** | [VoiceBridgeAI-Cloud.zip](releases/VoiceBridgeAI-Cloud.zip) | ~26 MB | 仅云端 ASR/翻译 |
+| **Local**（推荐） | [VoiceBridgeAI-Local.zip](releases/VoiceBridgeAI-Local.zip) | ~1.2 GB | 内置 Whisper + Argos，离线可用 |
+| **Cloud** | [VoiceBridgeAI-Cloud.zip](releases/VoiceBridgeAI-Cloud.zip) | ~70 MB | 仅云端 ASR/翻译 |
 
 ### ⚠️ 必须用终端解压（勿双击 zip）
 
-> **Finder /「归档实用工具」双击解压，大概率导致 `.app` 损坏**（提示「已损坏，无法打开」或无法运行）。**请务必在终端执行以下命令。**
+> **Finder /「归档实用工具」双击解压，大概率导致 `.app` 损坏**（提示「已损坏，无法打开」）。**请务必在终端执行以下命令。**  
+> 若 zip 体积明显偏小（Local 应约 **1.2 GB**），说明文件不完整或 LFS 未拉取，请 `git lfs pull` 或重新 clone。
 
 ```bash
 git clone https://github.com/PPBrook/VoiceBridgeAI.git
