@@ -7,6 +7,8 @@ cd "$ROOT"
 
 # shellcheck disable=SC1091
 source "$ROOT/scripts/bundle-seed/merge-demo-secrets.sh"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/sanitize-venv-bin.sh"
 
 VARIANT="${1:-}"
 if [[ "$VARIANT" != "cloud" && "$VARIANT" != "local" ]]; then
@@ -137,6 +139,7 @@ else
     rsync -a \
       --exclude '__pycache__' \
       --exclude '*.pyc' \
+      --exclude '𝜋thon' \
       "$REPO_ROOT/.venv/" "$RES/python-venv/"
     if ! verify_bundled_venv; then
       echo "复用 .venv 校验失败（可能 Python 版本或依赖不完整），改为在 .app 内重新 pip install …" >&2
@@ -151,17 +154,6 @@ else
     exit 1
   fi
   echo "内置 python-venv 校验通过: $(bundled_python)"
-  # Python 3.14 venv 的 Unicode 别名 𝜋thon 会导致 Finder 解压 zip 失败
-  if [[ -d "$RES/python-venv/bin" ]]; then
-    for _vb in "$RES/python-venv/bin"/*; do
-      [[ -e "$_vb" ]] || continue
-      _name=$(basename "$_vb")
-      if ! LC_ALL=C printf '%s' "$_name" | grep -qE '^[!-~]+$'; then
-        echo "移除 venv 非 ASCII 条目: $_name"
-        rm -f "$_vb"
-      fi
-    done
-  fi
 fi
 
 if [[ "$VARIANT" == "local" && "$SKIP_VENV" != "1" && "$SKIP_MODELS" != "1" ]]; then
@@ -186,6 +178,12 @@ if [[ "$VARIANT" == "local" && "$SKIP_VENV" != "1" && "$SKIP_MODELS" != "1" ]]; 
     cd "$ROOT"
   fi
   verify_bundled_models "$MODELS_DIR"
+fi
+
+if [[ "$SKIP_VENV" != "1" && -d "$RES/python-venv/bin" ]]; then
+  # 必须在模型下载等所有 venv 操作之后；Python 3.14 的 𝜋thon 别名会导致 zip 解压损坏
+  sanitize_venv_bin "$RES/python-venv/bin"
+  verify_venv_bin_ascii "$RES/python-venv/bin"
 fi
 
 echo ""

@@ -14,7 +14,7 @@ macOS 原生 App：系统英文音频 → 实时中文悬浮字幕。
 
 截止前时间管理不足：安装包从 GitHub 下载后解压损坏的问题在多次提交中反复出现，最后一次提交时**未能本地验证「下载 → 解压 → 打开」全流程**，导致评审可能拿到不完整或不可用的 zip。
 
-本次逾期修复：重新打包并校验（Local ~1.2 GB），打包脚本增加完整性检查。对因此给评审带来的不便深表歉意。
+本次逾期修复：重新打包并校验（Local ~1.2 GB），打包脚本增加完整性检查；构建时移除 Python 3.14 venv 的 `𝜋thon` 等非 ASCII 别名（Finder 解压 zip 对此敏感）。对因此给评审带来的不便深表歉意。
 
 **评审请务必：**
 
@@ -65,6 +65,34 @@ xattr -cr VoiceBridgeAI-Local.app
 ```
 
 **快速开始：** 终端解压 → `xattr -cr` → **右键 → 打开** App → 授予**屏幕录制** → **开始悬浮字幕**
+
+### 为什么必须用终端解压？
+
+本 App 内置 Python 3.14 虚拟环境（`python-venv/`）。打包时我们已做以下处理，但**评审侧仍须用终端解压**：
+
+| 问题 | 说明 |
+|------|------|
+| **Python 3.14 `𝜋thon` 别名** | venv 会生成 Unicode 文件名 `𝜋thon`（数学 italic π + thon）。Finder /「归档实用工具」解压含此类路径或超大 zip 时，容易损坏 `.app`。构建脚本 `sanitize-venv-bin.sh` 会在打包前移除该别名。 |
+| **Git LFS 指针** | clone 后若未 `git lfs pull`，zip 可能只有几 KB 指针文件，解压必失败。 |
+| **zip 不完整** | 上传中断会导致 zip 缺尾部（如 Local 仅 ~240 MB 而非 ~1.2 GB），`unzip -t` 会报错。 |
+
+**如何确认 zip 完整：**
+
+```bash
+git lfs pull
+ls -lh releases/VoiceBridgeAI-Local.zip   # 应约 1.2 GB
+unzip -t releases/VoiceBridgeAI-Local.zip | tail -1   # 应显示 No errors
+```
+
+**正确解压流程（再次强调）：**
+
+```bash
+ditto -xk releases/VoiceBridgeAI-Local.zip .
+xattr -cr VoiceBridgeAI-Local.app
+# 右键 → 打开（非双击）
+```
+
+若提示「已损坏」：先确认 zip 体积与 `unzip -t`，再确认**未用 Finder 双击解压**；删除损坏的 `.app` 后按上述命令重来。
 
 详细步骤与故障排查：[docs/submission.md](docs/submission.md)
 

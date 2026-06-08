@@ -3,6 +3,8 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REPO_ROOT="$(cd "$ROOT/../.." && pwd)"
+# shellcheck disable=SC1091
+source "$ROOT/scripts/sanitize-venv-bin.sh"
 VARIANT="${1:-}"
 if [[ "$VARIANT" != "cloud" && "$VARIANT" != "local" ]]; then
   echo "用法: $0 cloud|local" >&2
@@ -18,6 +20,7 @@ APP="$ROOT/dist/$APP_NAME.app"
 ZIP="$REPO_ROOT/releases/$APP_NAME.zip"
 ZIP_TMP="${ZIP}.part"
 STAGE="$(mktemp -d)"
+VENV_BIN="$STAGE/$APP_NAME.app/Contents/Resources/python-venv/bin"
 
 cleanup() { rm -rf "$STAGE" "$ZIP_TMP"; }
 trap cleanup EXIT
@@ -26,20 +29,6 @@ if [[ ! -d "$APP" ]]; then
   echo "未找到 $APP，请先运行 build-app-${VARIANT}.sh" >&2
   exit 1
 fi
-
-sanitize_venv_bin() {
-  local bindir="$1"
-  [[ -d "$bindir" ]] || return 0
-  local f b
-  for f in "$bindir"/*; do
-    [[ -e "$f" ]] || continue
-    b=$(basename "$f")
-    if ! LC_ALL=C printf '%s' "$b" | grep -qE '^[!-~]+$'; then
-      echo "移除 venv 非 ASCII 条目: $b"
-      rm -f "$f"
-    fi
-  done
-}
 
 resolve_symlinks() {
   local dir="$1"
@@ -61,20 +50,21 @@ verify_zip() {
   tmp="$(mktemp -d)"
   ditto -xk "$z" "$tmp"
   test -x "$tmp/$APP_NAME.app/Contents/MacOS/VoiceBridgeAI"
+  verify_venv_bin_ascii "$tmp/$APP_NAME.app/Contents/Resources/python-venv/bin"
   rm -rf "$tmp"
-  echo "zip 校验通过"
+  echo "zip 校验通过（含 venv 非 ASCII 检查）"
 }
 
 echo "准备发布副本 …"
 ditto --norsrc --noextattr --noqtn "$APP" "$STAGE/$APP_NAME.app"
-resolve_symlinks "$STAGE/$APP_NAME.app/Contents/Resources/python-venv/bin"
-sanitize_venv_bin "$STAGE/$APP_NAME.app/Contents/Resources/python-venv/bin"
+resolve_symlinks "$VENV_BIN"
+sanitize_venv_bin "$VENV_BIN"
+verify_venv_bin_ascii "$VENV_BIN"
 rm -f "$STAGE/$APP_NAME.app/Contents/Resources/python-venv/.gitignore"
 test -x "$STAGE/$APP_NAME.app/Contents/MacOS/VoiceBridgeAI"
 
 echo "打包 zip（大体积请耐心等待，勿中断）…"
 rm -f "$ZIP_TMP" "$REPO_ROOT/releases/$APP_NAME.tar.gz" "$REPO_ROOT/releases/$APP_NAME.tar"
-# zip -0：仅存储不压缩，大体积更稳；比 ditto -c -k 不易产生半截 zip
 (
   cd "$STAGE"
   zip -0 -r -q "$ZIP_TMP" "$APP_NAME.app"
