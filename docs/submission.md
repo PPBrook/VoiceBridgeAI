@@ -16,7 +16,7 @@ VoiceBridgeAI 面向**英文系统音频 → 实时中文悬浮字幕**场景（
 
 | 版本 | 适合谁 | 说明 |
 |------|--------|------|
-| **Local**（**推荐评审试用**） | 希望开箱即用 | 内置 Whisper + Argos，**离线即可出字幕**；打包时含演示用云端配置，一般无需自备 Key |
+| **Local**（**推荐评审试用**） | 希望开箱即用 | 内置 Whisper + Argos，**离线即可出字幕**；不含云端密钥 |
 | **Cloud** | 已有云端 API、想小体积安装 | zip 约 26 MB；须在 App **设置 → 云端** 填写 ASR/翻译密钥，无本地模型 Tab |
 
 ## ⚠️ 无法打开 /「已损坏，无法打开」
@@ -54,7 +54,7 @@ open ~/Applications/VoiceBridgeAI-Local.app        # 仍建议右键 → 打开
 4. **系统设置 → 隐私与安全性 → 屏幕录制** → 勾选 VoiceBridgeAI
 5. 播放含英文的系统音频 → **开始悬浮字幕**
 
-**已内置：** Whisper 离线识别、Argos 离线翻译、演示用云端 API 配置。  
+**已内置：** Whisper 离线识别、Argos 离线翻译（离线模式，无需 API Key）。  
 日志：`~/Library/Application Support/VoiceBridgeAI-Local/server.log`
 
 **系统要求：** macOS 13+

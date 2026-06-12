@@ -8,6 +8,11 @@ __pycache__/
 # local UI prefs (dev repo root / App Support) — see cloud-ui.json.example
 cloud-ui.json
 
+# local secrets — never commit
+.env
+desktop/macos/scripts/bundle-seed/local.secrets.env
+desktop/macos/scripts/bundle-seed/cloud.secrets.env
+
 # dev / App Support downloaded models (Whisper markers, HF cache)
 models/
 
@@ -22,8 +27,6 @@ transcripts/
 # macOS desktop build artifacts
 desktop/macos/.build/
 desktop/macos/dist/
-desktop/macos/scripts/bundle-seed/local.secrets.env
-desktop/macos/scripts/bundle-seed/cloud.secrets.env
 # releases/*.zip 为打包安装包（Git LFS）
 .swiftpm/
 *.dSYM/

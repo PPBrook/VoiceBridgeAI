@@ -61,8 +61,10 @@ cp "$ROOT/Info.plist" "$APP/Contents/Info.plist"
 
 echo "$VARIANT" >"$RES/bundle-variant.txt"
 cp "$SEED" "$RES/bundle-seed.env"
-if [[ "$VARIANT" == "local" || "${BUNDLE_DEMO_SECRETS:-0}" == "1" ]]; then
+if [[ "${BUNDLE_DEMO_SECRETS:-0}" == "1" ]]; then
   append_bundle_env_secrets "$RES/bundle-seed.env" "$REPO_ROOT"
+else
+  echo "未合并云端密钥（默认 BUNDLE_DEMO_SECRETS=0；仅 bundle-seed 模板）"
 fi
 
 echo "复制 Python server …"
